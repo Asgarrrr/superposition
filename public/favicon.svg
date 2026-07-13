@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- croix de repérage mal repérée : la signature du jeu -->
+  <rect width="32" height="32" rx="6" fill="#14110E"/>
+  <g stroke="#45E0EC" stroke-width="1.8" fill="none" opacity="0.9">
+    <line x1="7" y1="15" x2="25" y2="15"/>
+    <line x1="16" y1="6" x2="16" y2="24"/>
+    <circle cx="16" cy="15" r="5.5"/>
+  </g>
+  <g stroke="#FF4FA3" stroke-width="1.8" fill="none" opacity="0.9">
+    <line x1="7" y1="17" x2="25" y2="17"/>
+    <line x1="18" y1="8" x2="18" y2="26"/>
+    <circle cx="18" cy="17" r="5.5"/>
+  </g>
+</svg>

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "title_tagline": "Atelier · deux films · une lumière",
+  "title_cta": "toucher pour ouvrir le tirage",
+  "select_edition": "Édition de {count} planches",
+  "select_set": "Tirage {ch}",
+  "chapter_I": "Encres",
+  "chapter_II": "Lumière",
+  "chapter_III": "Machine",
+  "chapter_IV": "Interférence",
+  "chapter_V": "Glace",
+  "chapter_VI": "Décalage",
+  "hud_back": "planches",
+  "hud_sound_on": "sonore",
+  "hud_sound_off": "silencieux",
+  "hud_moves_word": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "passe",
+        "countPlural=other": "passes"
+      }
+    }
+  ],
+  "controls_undo": "annuler",
+  "controls_reset": "reprendre",
+  "controls_split": "✕ scinder",
+  "controls_world": "⇄ monde",
+  "controls_arm": " · sens ?",
+  "win_stamp": "Bon à tirer",
+  "win_summary": [
+    {
+      "declarations": ["input plate", "input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "planche {plate} · {count} passe",
+        "countPlural=other": "planche {plate} · {count} passes"
+      }
+    }
+  ],
+  "win_record": " · record {best}",
+  "win_next": "Planche suivante ↵",
+  "win_complete": "Le tirage est complet — pour l'instant.",
+  "flash_no_split": "Scission impossible ici.",
+  "flash_no_shift": "Décalage impossible — borné à ±{max}.",
+  "rule_decalage_aligned": "⇄ Monde (ou Maj+flèche) glisse le film magenta. Les croix de repérage doivent finir alignées.",
+  "rule_decalage_off": "Repérage décalé de [{x}, {y}] — regarde les croix. Réaligne avant la fin.",
+  "rule_glace": "Glace : tout glisse jusqu'à l'obstacle. Les carrés blancs n'arrêtent que la lumière.",
+  "rule_lightwalls": "Les carrés blancs bloquent le pion fusionné — les encres les traversent. Et inversement.",
+  "rule_fusion_merged": "Fusionnés : la lumière traverse les encres. Scinder : ✕ puis une direction.",
+  "rule_fusion_split": "Réunis-les sur une même case pour fusionner. Chacun doit finir sur son cercle.",
+  "rule_base": "Un geste déplace les deux points. Bloqué par un mur ou un bord, un point reste.",
+  "hint_accord": "Un geste, deux mondes.",
+  "hint_retenue": "Ce qui bloque l'un libère l'autre.",
+  "hint_croisee": "Les bords aussi sont des murs.",
+  "hint_ecart": "Se perdre pour mieux se retrouver.",
+  "hint_rdv": "Gare l'un, promène l'autre.",
+  "hint_blanc": "Réunis, ils deviennent lumière.",
+  "hint_traversee": "La lumière passe à travers les encres.",
+  "hint_diffraction": "Sépare-les au bon moment, dans le bon sens.",
+  "hint_trouvaille": "Découvert par la machine. 21 coups au mieux.",
+  "hint_abysse": "Le plus profond connu. 22 coups au mieux.",
+  "hint_eclipse": "Le blanc traverse l'encre. L'encre traverse le blanc.",
+  "hint_echange": "Chacun doit finir là où l'autre est né.",
+  "hint_trinite": "Trois scissions. Pas une de moins.",
+  "hint_verglas": "26 coups au mieux. Bon courage.",
+  "hint_derive": "Glisse le monde sous les pions. 22 coups au mieux.",
+  "hint_tectonique": "Deux scissions, mondes en mouvement. 23 coups."
+}

@@ -1,0 +1,70 @@
+/* DA « la table lumineuse » : l'atelier de sérigraphie, deux films
+   (cyan, magenta) posés sur le caisson rétroéclairé. Le fond sombre
+   est un lieu, pas un thème. */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-room: #14110e; /* bakélite de l'atelier, fond global */
+  --color-box: #1b1713; /* surface du caisson lumineux */
+  --color-box-glow: #241f19; /* halo du caisson */
+  --color-ink-cyan: #45e0ec; /* les deux encres, blend `screen` */
+  --color-ink-magenta: #ff4fa3;
+  --color-paper: #f2ede4; /* texte — jamais #fff */
+  --color-tape: #e8b84b; /* ruban de masquage : accent RARE */
+
+  --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+}
+
+@layer components {
+  .btn {
+    @apply cursor-pointer rounded-xs border border-paper/20 bg-transparent
+      px-3.5 py-2 font-mono text-xs tracking-wide text-paper/50;
+  }
+
+  /* keycap : la touche clavier gravée sur un bouton d'action */
+  .kbd {
+    @apply rounded-xs border border-paper/15 px-1.5 pt-0.5 pb-1 font-mono
+      text-[10px] leading-none text-paper/35;
+  }
+
+  /* grain photographique de l'atelier, par-dessus tout */
+  .grain {
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+}
+
+/* recul du caisson quand un coup est bloqué */
+@keyframes sp-bump-U { 30% { transform: translateY(-5px); } }
+@keyframes sp-bump-D { 30% { transform: translateY(5px); } }
+@keyframes sp-bump-L { 30% { transform: translateX(-5px); } }
+@keyframes sp-bump-R { 30% { transform: translateX(5px); } }
+/* bloom blanc de la fusion */
+@keyframes sp-bloom {
+  from { opacity: 0.9; transform: scale(0.3); }
+  to { opacity: 0; transform: scale(2.4); }
+}
+@keyframes sp-fade { to { opacity: 0; } }
+/* tampon « bon à tirer » */
+@keyframes sp-stamp {
+  0% { opacity: 0; transform: rotate(-14deg) scale(1.7); }
+  55% { opacity: 1; transform: rotate(-8deg) scale(0.94); }
+  75% { transform: rotate(-8deg) scale(1.04); }
+  100% { opacity: 1; transform: rotate(-8deg) scale(1); }
+}
+
+.sp-trail {
+  animation: sp-fade 500ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

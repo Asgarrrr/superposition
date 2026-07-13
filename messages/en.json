@@ -1,0 +1,70 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "title_tagline": "Workshop · two films · one light",
+  "title_cta": "tap to open the edition",
+  "select_edition": "Edition of {count} boards",
+  "select_set": "Set {ch}",
+  "chapter_I": "Inks",
+  "chapter_II": "Light",
+  "chapter_III": "Machine",
+  "chapter_IV": "Interference",
+  "chapter_V": "Ice",
+  "chapter_VI": "Offset",
+  "hud_back": "boards",
+  "hud_sound_on": "sound",
+  "hud_sound_off": "muted",
+  "hud_moves_word": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "move",
+        "countPlural=other": "moves"
+      }
+    }
+  ],
+  "controls_undo": "undo",
+  "controls_reset": "reset",
+  "controls_split": "✕ split",
+  "controls_world": "⇄ world",
+  "controls_arm": " · which way?",
+  "win_stamp": "Ready to print",
+  "win_summary": [
+    {
+      "declarations": ["input plate", "input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "board {plate} · {count} move",
+        "countPlural=other": "board {plate} · {count} moves"
+      }
+    }
+  ],
+  "win_record": " · best {best}",
+  "win_next": "Next board ↵",
+  "win_complete": "The edition is complete — for now.",
+  "flash_no_split": "Can't split here.",
+  "flash_no_shift": "Shift blocked — capped at ±{max}.",
+  "rule_decalage_aligned": "⇄ World (or Shift+arrow) slides the magenta film. The registration marks must line up at the end.",
+  "rule_decalage_off": "Registration off by [{x}, {y}] — watch the marks. Realign before the end.",
+  "rule_glace": "Ice: everything slides until it hits something. White squares stop only the light.",
+  "rule_lightwalls": "White squares block the merged piece — the inks pass through them. And vice versa.",
+  "rule_fusion_merged": "Merged: the light passes through the inks. To split: ✕ then a direction.",
+  "rule_fusion_split": "Bring them onto the same cell to merge. Each must end on its own circle.",
+  "rule_base": "One gesture moves both points. Blocked by a wall or an edge, a point stays put.",
+  "hint_accord": "One gesture, two worlds.",
+  "hint_retenue": "What blocks one frees the other.",
+  "hint_croisee": "Edges are walls too.",
+  "hint_ecart": "Lose your way to find it.",
+  "hint_rdv": "Park one, walk the other.",
+  "hint_blanc": "Together, they become light.",
+  "hint_traversee": "Light passes through the inks.",
+  "hint_diffraction": "Split them at the right moment, the right way.",
+  "hint_trouvaille": "Found by the machine. 21 moves at best.",
+  "hint_abysse": "The deepest known. 22 moves at best.",
+  "hint_eclipse": "White through ink. Ink through white.",
+  "hint_echange": "Each must end where the other began.",
+  "hint_trinite": "Three splits. Not one fewer.",
+  "hint_verglas": "26 moves at best. Good luck.",
+  "hint_derive": "Slide the world under the pieces. 22 moves at best.",
+  "hint_tectonique": "Two splits, worlds in motion. 23 moves."
+}
