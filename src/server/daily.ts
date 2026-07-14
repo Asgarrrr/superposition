@@ -11,7 +11,7 @@ import { LEVELS } from "../engine/levels.ts";
 import { solve } from "../solver/bfs.ts";
 import { auth } from "../lib/auth.ts";
 import { utcDay } from "../lib/day.ts";
-import { MAX_INPUTS, validateSolution } from "./replay.ts";
+import { validateInputsShape, validateSolution } from "./replay.ts";
 import type { Input, Level } from "../engine/types.ts";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -84,27 +84,10 @@ export interface SubmitResult {
 export const submitDailyScore = createServerFn({ method: "POST" })
   .validator((data: unknown): { inputs: Input[]; date: string } => {
     const d = data as { inputs?: unknown; date?: unknown } | null;
-    const inputs = d?.inputs;
-    if (!Array.isArray(inputs)) throw new Error("inputs must be an array");
-    if (inputs.length > MAX_INPUTS) throw new Error("too many inputs"); // bound work before the loop
-    for (const it of inputs as Array<{ kind?: unknown; dir?: unknown }>) {
-      if (
-        !it ||
-        (it.kind !== "move" && it.kind !== "split" && it.kind !== "shift")
-      )
-        throw new Error("invalid input kind");
-      const dir = it.dir;
-      if (
-        !Array.isArray(dir) ||
-        dir.length !== 2 ||
-        typeof dir[0] !== "number" ||
-        typeof dir[1] !== "number"
-      )
-        throw new Error("invalid input direction");
-    }
+    const inputs = validateInputsShape(d?.inputs);
     if (typeof d?.date !== "string" || !DATE_RE.test(d.date))
       throw new Error("invalid date");
-    return { inputs: inputs as Input[], date: d.date };
+    return { inputs, date: d.date };
   })
   .handler(async ({ data }): Promise<SubmitResult> => {
     const userId = await currentUserId();
@@ -145,6 +128,7 @@ export interface LeaderRow {
   userId: string;
   name: string;
   moves: number;
+  clean?: boolean; // campaign only: solved with no undo/reset (a "clean pull")
 }
 
 export const getDailyLeaderboard = createServerFn({ method: "GET" }).handler(

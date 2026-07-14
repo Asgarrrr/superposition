@@ -7,6 +7,7 @@ import type { Input } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { Wordmark } from "./Wordmark.tsx";
 import { AuthPanel } from "./AuthPanel.tsx";
+import { LeaderboardRows } from "./LeaderboardRows.tsx";
 import { signOut, useSession } from "../../lib/auth-client.ts";
 import {
   getDailyLeaderboard,
@@ -43,12 +44,15 @@ export function DailyOverlay({
     let alive = true;
 
     const refresh = async () => {
-      const rows = await getDailyLeaderboard();
-      if (alive) setBoard(rows);
-      if (uid) {
-        const r = await getMyDailyResult();
-        if (alive) setMine(r);
-      }
+      // the board and the caller's own result are independent GETs — run them
+      // together instead of waiting for the board before asking for mine
+      const [rows, r] = await Promise.all([
+        getDailyLeaderboard(),
+        uid ? getMyDailyResult() : Promise.resolve(null),
+      ]);
+      if (!alive) return;
+      setBoard(rows);
+      if (uid) setMine(r);
     };
 
     const run = async () => {
@@ -129,31 +133,12 @@ function Leaderboard({ rows, uid }: { rows: LeaderRow[]; uid?: string }) {
       <div className="mb-1 text-center text-[10px] tracking-[0.28em] text-paper/40 uppercase">
         {m.daily_leaderboard_title()}
       </div>
-      {rows.length === 0 ? (
-        <p className="text-center text-[11px] text-paper/30">
-          {m.daily_leaderboard_empty()}
-        </p>
-      ) : (
-        <ol className="flex max-h-[34vh] flex-col gap-0.5 overflow-y-auto">
-          {rows.map((r) => (
-            <li
-              key={r.userId}
-              className={`flex items-baseline justify-between font-mono text-[12px] ${
-                r.userId === uid ? "text-tape" : "text-paper/70"
-              }`}
-            >
-              <span className="tabular-nums text-paper/35">
-                {String(r.rank).padStart(2, "0")}
-              </span>
-              <span className="mx-2 flex-1 truncate">
-                {r.name}
-                {r.userId === uid ? ` · ${m.daily_you()}` : ""}
-              </span>
-              <span className="tabular-nums">{r.moves}</span>
-            </li>
-          ))}
-        </ol>
-      )}
+      <LeaderboardRows
+        rows={rows}
+        uid={uid}
+        emptyLabel={m.daily_leaderboard_empty()}
+        listClassName="max-h-[34vh] overflow-y-auto"
+      />
     </div>
   );
 }

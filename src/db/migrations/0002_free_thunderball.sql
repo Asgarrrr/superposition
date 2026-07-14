@@ -1,0 +1,1 @@
+ALTER TABLE "level_score" ADD COLUMN "undos" integer DEFAULT 0 NOT NULL;
