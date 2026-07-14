@@ -10,12 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DailyRouteImport } from './routes/daily'
+import { Route as Align2RouteImport } from './routes/align2'
+import { Route as AlignRouteImport } from './routes/align'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const DailyRoute = DailyRouteImport.update({
   id: '/daily',
   path: '/daily',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Align2Route = Align2RouteImport.update({
+  id: '/align2',
+  path: '/align2',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlignRoute = AlignRouteImport.update({
+  id: '/align',
+  path: '/align',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,30 +43,38 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/align': typeof AlignRoute
+  '/align2': typeof Align2Route
   '/daily': typeof DailyRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/align': typeof AlignRoute
+  '/align2': typeof Align2Route
   '/daily': typeof DailyRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/align': typeof AlignRoute
+  '/align2': typeof Align2Route
   '/daily': typeof DailyRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/daily' | '/api/auth/$'
+  fullPaths: '/' | '/align' | '/align2' | '/daily' | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/daily' | '/api/auth/$'
-  id: '__root__' | '/' | '/daily' | '/api/auth/$'
+  to: '/' | '/align' | '/align2' | '/daily' | '/api/auth/$'
+  id: '__root__' | '/' | '/align' | '/align2' | '/daily' | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AlignRoute: typeof AlignRoute
+  Align2Route: typeof Align2Route
   DailyRoute: typeof DailyRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -66,6 +86,20 @@ declare module '@tanstack/react-router' {
       path: '/daily'
       fullPath: '/daily'
       preLoaderRoute: typeof DailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/align2': {
+      id: '/align2'
+      path: '/align2'
+      fullPath: '/align2'
+      preLoaderRoute: typeof Align2RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/align': {
+      id: '/align'
+      path: '/align'
+      fullPath: '/align'
+      preLoaderRoute: typeof AlignRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,9 +121,21 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AlignRoute: AlignRoute,
+  Align2Route: Align2Route,
   DailyRoute: DailyRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
