@@ -18,8 +18,8 @@
     "gen": "bun src/solver/generate.ts",
     "gen:daily": "bun src/solver/generate-daily.ts",
     "gen:hero": "bun scripts/gen-hero.ts",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:generate": "drizzle-kit generate --config src/db/drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate --config src/db/drizzle.config.ts",
     "auth:generate": "bunx @better-auth/cli@latest generate --config src/lib/auth.ts --output src/db/schema.ts -y"
   },
   "dependencies": {
