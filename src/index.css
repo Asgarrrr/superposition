@@ -2,8 +2,8 @@
    (cyan, magenta) posés sur le caisson rétroéclairé. Le fond sombre
    est un lieu, pas un thème. */
 
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
-@import 'tailwindcss';
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap");
+@import "tailwindcss";
 
 @theme {
   --color-room: #14110e; /* bakélite de l'atelier, fond global */
@@ -14,8 +14,17 @@
   --color-paper: #f2ede4; /* texte — jamais #fff */
   --color-tape: #e8b84b; /* ruban de masquage : accent RARE */
 
-  --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+}
+
+/* the document root's dark is set inline on <html> in __root.tsx (a literal
+   mirroring --color-room, so the first frame is dark even before this
+   stylesheet loads); color-scheme keeps form controls and scrollbars dark */
+@layer base {
+  html {
+    color-scheme: dark;
+  }
 }
 
 @layer components {
@@ -40,26 +49,80 @@
 }
 
 /* recul du caisson quand un coup est bloqué */
-@keyframes sp-bump-U { 30% { transform: translateY(-5px); } }
-@keyframes sp-bump-D { 30% { transform: translateY(5px); } }
-@keyframes sp-bump-L { 30% { transform: translateX(-5px); } }
-@keyframes sp-bump-R { 30% { transform: translateX(5px); } }
+@keyframes sp-bump-U {
+  30% {
+    transform: translateY(-5px);
+  }
+}
+@keyframes sp-bump-D {
+  30% {
+    transform: translateY(5px);
+  }
+}
+@keyframes sp-bump-L {
+  30% {
+    transform: translateX(-5px);
+  }
+}
+@keyframes sp-bump-R {
+  30% {
+    transform: translateX(5px);
+  }
+}
 /* bloom blanc de la fusion */
 @keyframes sp-bloom {
-  from { opacity: 0.9; transform: scale(0.3); }
-  to { opacity: 0; transform: scale(2.4); }
+  from {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.4);
+  }
 }
-@keyframes sp-fade { to { opacity: 0; } }
+@keyframes sp-fade {
+  to {
+    opacity: 0;
+  }
+}
 /* tampon « bon à tirer » */
 @keyframes sp-stamp {
-  0% { opacity: 0; transform: rotate(-14deg) scale(1.7); }
-  55% { opacity: 1; transform: rotate(-8deg) scale(0.94); }
-  75% { transform: rotate(-8deg) scale(1.04); }
-  100% { opacity: 1; transform: rotate(-8deg) scale(1); }
+  0% {
+    opacity: 0;
+    transform: rotate(-14deg) scale(1.7);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(0.94);
+  }
+  75% {
+    transform: rotate(-8deg) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(1);
+  }
 }
 
 .sp-trail {
   animation: sp-fade 500ms ease-out forwards;
+}
+
+/* grab-knob idle pulse — CSS so it can't be reset by React re-renders /
+   StrictMode remounts the way a JS repeat animation was */
+@keyframes sp-knob-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  70%,
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+.sp-knob-pulse {
+  animation: sp-knob-pulse 2.2s ease-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

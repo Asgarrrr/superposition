@@ -20,7 +20,9 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    // literal mirrors --color-room: paints the root dark on the very first
+    // frame, before the stylesheet (and its token) has loaded
+    <html lang="fr" style={{ backgroundColor: "#14110e" }}>
       <head>
         <HeadContent />
       </head>

@@ -1,38 +1,35 @@
-// Prototype v2 — "align to enter", powered by Motion. Two acetate films sit
-// on a light table: the magenta one is spring-dragged into a register slot
-// over the cyan one; as it nears, the slot brightens, it snaps home, prints
-// white, and the lamp surges the screen open.
-// Throwaway test route at /align2 — not wired into the app's screen flow.
+// The app's title screen — "align to enter". Two acetate films sit on the
+// light table: the magenta one is spring-dragged into a register slot over the
+// cyan one; as it nears, the slot brightens, it snaps home, prints white, and
+// the lamp surges the screen open — at which point `onStart` hands off to the
+// level select.
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AnimatePresence,
   animate,
   motion,
   useMotionTemplate,
   useMotionValue,
+  useSpring,
   useTransform,
+  useVelocity,
 } from "motion/react";
-import { LightField } from "../ui/components/LightField.tsx";
-import { RegCross } from "../ui/components/RegCross.tsx";
+import { m } from "../../paraglide/messages.js";
+import { LightField } from "../components/LightField.tsx";
+import { RegCross } from "../components/RegCross.tsx";
+import { EYE, floodGradient } from "../transition.ts";
 
 const reduced =
   typeof matchMedia !== "undefined" &&
   matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-// register point in viewport %, where the light opens from
-const EYE = { cx: 50, cy: 52 };
-
-export const Route = createFileRoute("/align2")({ component: AlignMotion });
 
 const START = { x: 78, y: 50 };
 const SNAP = 20; // px: auto-lock while dragging
 const MAGNET = 66; // px: pull-in on release
 const SPRING = { type: "spring", stiffness: 420, damping: 30 } as const;
 
-function AlignMotion() {
-  const navigate = useNavigate();
+export function EnterScreen({ onStart }: { onStart: () => void }) {
   const [solved, setSolved] = useState(false);
   const [opening, setOpening] = useState(false);
 
@@ -57,27 +54,63 @@ function AlignMotion() {
   const snap = SNAP * scale;
   const magnet = MAGNET * scale;
 
-  // magenta film offset from register
-  const x = useMotionValue(START.x);
-  const y = useMotionValue(START.y);
+  // magenta film offset from register — initialised already off-register (to
+  // the right) so the very first painted frame is the start of the fly-in, not
+  // the rest pose; the entrance effect then springs it home. Reduced-motion
+  // starts at rest.
+  const x = useMotionValue(START.x * scale + (reduced ? 0 : 220));
+  const y = useMotionValue(START.y * scale + (reduced ? 0 : 26));
   const dist = useTransform(() => Math.hypot(x.get(), y.get()));
-  // seed / reset the offset proportionally (skipped once dragging or solved)
-  useEffect(() => {
-    if (solved) return;
-    x.set(START.x * scale);
-    y.set(START.y * scale);
-  }, [scale, solved, x, y]);
 
   // proximity drives the whole scene (domains scale with the mark)
   const halo = useTransform(dist, [0, 150 * scale], [0.9, 0], { clamp: true });
   const ring = useTransform(dist, [0, 160 * scale], [0.85, 0.32], {
     clamp: true,
   });
-  const cuff = useTransform(dist, [0, 150 * scale], [14, 4], { clamp: true });
-  const cuffShadow = useTransform(
-    cuff,
-    (c) => `0 0 0 ${c}px rgba(232,184,75,0.12)`,
-  );
+  // corner crosses breathe with the film's live offset (0→1), so the whole
+  // sheet comes into register at once when the magenta locks home
+  const crossSpread = useTransform(dist, [0, 150 * scale], [0, 1], {
+    clamp: true,
+  });
+
+  // entrance — one shot: the block fades up and settles in scale while the
+  // loose magenta film flies in from off-register and lands with a bounce.
+  // The ref guard survives StrictMode's remount, and we deliberately DON'T
+  // stop the animations on cleanup so mount-1's one-shot finishes cleanly.
+  const appear = useMotionValue(reduced ? 1 : 0);
+  const mScale = useMotionValue(reduced ? 1 : 1.06);
+  const entered = useRef(false);
+  useEffect(() => {
+    if (reduced || entered.current) return;
+    entered.current = true;
+    animate(appear, 1, { duration: 0.55, ease: "easeOut" });
+    animate(mScale, 1, {
+      type: "spring",
+      stiffness: 120,
+      damping: 16,
+      delay: 0.05,
+    });
+    const spring = {
+      type: "spring",
+      stiffness: 90,
+      damping: 13,
+      delay: 0.22,
+    } as const;
+    animate(x, START.x * scale, spring);
+    animate(y, START.y * scale, spring);
+    // deps intentionally empty — runs once, scale read live
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // drag weight — the film banks against the fling velocity, then rights
+  // itself. Raw velocity is jittery, so we spring-smooth it first (per Motion
+  // docs) before mapping to a bank angle; centred 3-point range so a still
+  // film sits level.
+  const xVelocity = useVelocity(x);
+  const smoothVelocity = useSpring(xVelocity, { stiffness: 200, damping: 40 });
+  const tilt = useTransform(smoothVelocity, [-2000, 0, 2000], [7, 0, -7], {
+    clamp: true,
+  });
 
   // pointer parallax on the cyan film (idle depth)
   const px = useMotionValue(0);
@@ -85,22 +118,27 @@ function AlignMotion() {
   const cx = useTransform(px, [-1, 1], [7, -7]);
   const cy = useTransform(py, [-1, 1], [5, -5]);
 
-  // the opening: light irises out from the register point as a clip-path
+  // the opening: light irises out from the register point as a clip-path,
+  // then hands off to the level select
   const iris = useMotionValue(0);
   const clip = useMotionTemplate`circle(${iris}% at ${EYE.cx}% ${EYE.cy}%)`;
   useEffect(() => {
     if (!opening) return;
     const controls = animate(iris, 150, {
-      duration: 1,
+      // reduced motion: skip the iris sweep, flood instantly and hand off
+      duration: reduced ? 0.01 : 1,
       ease: [0.7, 0, 0.28, 1],
-      onComplete: () => navigate({ to: "/" }),
+      onComplete: onStart,
     });
     return () => controls.stop();
-  }, [opening, iris, navigate]);
+  }, [opening, iris, onStart]);
 
   const lock = () => {
     animate(x, 0, SPRING);
     animate(y, 0, SPRING);
+    if (!reduced) {
+      animate(mScale, [1, 1.06, 1], { duration: 0.42, ease: "easeOut" });
+    }
     setSolved(true);
   };
   const onDrag = () => {
@@ -137,25 +175,35 @@ function AlignMotion() {
       <LightField variant={2} reduced={reduced} />
       <div className="grain absolute inset-0 opacity-[0.03]" />
 
-      <RegCross pos="top-11 left-11" />
-      <RegCross pos="top-11 right-11" />
-      <RegCross pos="bottom-11 left-11" />
-      <RegCross pos="bottom-11 right-11" />
+      <RegCross pos="top-11 left-11" spread={crossSpread} />
+      <RegCross pos="top-11 right-11" spread={crossSpread} />
+      <RegCross pos="bottom-11 left-11" spread={crossSpread} />
+      <RegCross pos="bottom-11 right-11" spread={crossSpread} />
 
-      {/* register glow — brightens as the films close in */}
+      {/* register glow — a warm bloom the films kindle as they close in.
+          Centred on the register point (EYE), elliptical so it cradles the
+          wordmark's width, screen-blended and softly blurred so it reads as
+          emitted light rather than a disc pasted on the table. */}
       <motion.div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-[50%]"
         style={{
+          left: `${EYE.cx}%`,
+          top: `${EYE.cy}%`,
+          width: "min(960px, 84vw)",
+          height: "min(340px, 38vh)",
           opacity: halo,
+          mixBlendMode: "screen",
           background:
-            "radial-gradient(circle, rgba(242,237,228,0.14), transparent 62%)",
+            "radial-gradient(ellipse at center, rgba(242,237,228,0.16), rgba(232,184,75,0.05) 46%, transparent 72%)",
+          filter: "blur(14px)",
         }}
       />
 
       {/* table ignition — the lamp surges the instant the films register:
-          a warm flood, volumetric rays, and CMY→white shock rings */}
+          a warm flood, volumetric rays, and CMY→white shock rings.
+          Suppressed under reduced-motion (full-screen flashing/scaling). */}
       <AnimatePresence>
-        {solved && (
+        {solved && !reduced && (
           <>
             <motion.div
               key="surge"
@@ -224,22 +272,16 @@ function AlignMotion() {
         )}
       </AnimatePresence>
 
-      {/* lamp pool — a warm light cradling the wordmark on the table */}
-      <div
-        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[50%]"
+      {/* the two films — anchored on the register point (EYE) so the spot
+          where the inks superimpose is exactly where the light irises open;
+          absolute so the instruction below can't shift it off-centre */}
+      <motion.div
+        className="absolute left-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
         style={{
-          width: "min(1180px, 94vw)",
-          height: "min(680px, 60vh)",
-          background:
-            "radial-gradient(ellipse at center, rgba(43,36,25,0.85), rgba(36,31,25,0.35) 42%, transparent 72%)",
-          filter: "blur(6px)",
+          top: `${EYE.cy}%`,
+          fontSize: "clamp(34px, 8.5vw, 150px)",
+          opacity: appear,
         }}
-      />
-
-      {/* the two films */}
-      <div
-        className="relative z-10"
-        style={{ fontSize: "clamp(34px, 8.5vw, 150px)" }}
       >
         {/* register slot — the housing the magenta film must be dropped into */}
         <motion.div
@@ -251,20 +293,45 @@ function AlignMotion() {
           }}
           animate={{ opacity: solved ? 0 : undefined }}
         />
+        {/* pencil-note annotation — a scrawled "align here" and a hand-drawn
+            arrow curling down into the slot, in the printer's tape colour */}
         {!solved && (
           <div
-            className="pointer-events-none absolute text-[11px] font-medium tracking-[0.34em] text-tape/85"
-            style={{ left: -16, top: -42 }}
+            className="pointer-events-none absolute flex items-end gap-1 text-tape/85"
+            style={{ left: -20, top: -64 }}
           >
-            CALER ICI
+            <span
+              className="font-display text-[21px] leading-none italic"
+              style={{ transform: "rotate(-5deg)" }}
+            >
+              {m.enter_annotation()}
+            </span>
+            <svg
+              width="40"
+              height="46"
+              viewBox="0 0 40 46"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-tape/70"
+            >
+              <path d="M4 4c9 1 17 8 19 20 1 5 1 10 0 15" />
+              <path d="M14 32l9 8 8-9" />
+            </svg>
           </div>
         )}
-        <div
+        <motion.div
           className="relative font-display italic"
-          style={{ lineHeight: 1, letterSpacing: "0.02em" }}
+          style={{ lineHeight: 1, letterSpacing: "0.02em", scale: mScale }}
         >
           <motion.span
-            style={{ ...film("var(--color-ink-cyan)"), x: cx, y: cy }}
+            style={{
+              ...film("var(--color-ink-cyan)"),
+              x: cx,
+              y: cy,
+            }}
           >
             Superposition
           </motion.span>
@@ -278,6 +345,7 @@ function AlignMotion() {
               borderColor: "rgba(255,79,163,0.32)",
               x,
               y,
+              rotate: tilt,
             }}
             initial={false}
             animate={{ opacity: solved ? 0 : 1 }}
@@ -296,6 +364,7 @@ function AlignMotion() {
               ...film("var(--color-ink-magenta)"),
               x,
               y,
+              rotate: tilt,
               cursor: solved ? "default" : "grab",
             }}
           >
@@ -304,50 +373,56 @@ function AlignMotion() {
 
           <span className="invisible">Superposition</span>
 
-          {/* drag handle rides the magenta film */}
+          {/* grab knob — flat, thin-stroke ring in keeping with the marks;
+              no gloss, no glow */}
           {!solved && (
             <motion.div
-              className="pointer-events-none absolute grid place-items-center rounded-full border"
+              className="pointer-events-none absolute grid place-items-center rounded-full"
               style={{
-                right: -10,
-                bottom: 6,
-                width: 44,
-                height: 44,
+                right: -12,
+                bottom: 4,
+                width: 36,
+                height: 36,
                 x,
                 y,
-                background: "rgba(20,17,14,0.55)",
-                borderColor: "rgba(242,237,228,0.5)",
-                boxShadow: cuffShadow,
+                background: "rgba(16,13,10,0.32)",
+                border: "1px solid rgba(242,237,228,0.32)",
               }}
             >
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{ border: "1px solid rgba(232,184,75,0.5)" }}
-                animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
-                transition={{
-                  duration: 1.6,
-                  repeat: Infinity,
-                  ease: "easeOut",
+              {/* subtle idle pulse — CSS-driven so it can't glitch on reset */}
+              <div
+                className="sp-knob-pulse absolute rounded-full"
+                style={{
+                  inset: -1,
+                  border: "1px solid rgba(242,237,228,0.22)",
                 }}
               />
               <svg
-                width="20"
-                height="20"
+                width="15"
+                height="15"
                 viewBox="0 0 22 22"
                 fill="none"
                 stroke="var(--color-paper)"
-                strokeWidth="1.4"
+                strokeWidth="1.1"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                opacity="0.8"
               >
-                <path d="M11 3v16M3 11h16M11 3l-2.5 2.5M11 3l2.5 2.5M11 19l-2.5-2.5M11 19l2.5-2.5M3 11l2.5-2.5M3 11l2.5 2.5M19 11l-2.5-2.5M19 11l-2.5 2.5" />
+                <path d="M11 4v14M4 11h14M11 4l-2 2.4M11 4l2 2.4M11 18l-2-2.4M11 18l2-2.4M4 11l2.4-2M4 11l2.4 2M18 11l-2.4-2M18 11l-2.4 2" />
               </svg>
             </motion.div>
           )}
 
+          {/* instruction — hangs from the wordmark's baseline so it never
+              pulls the title off the register point; the opening light simply
+              floods over it. */}
+          <div className="pointer-events-none absolute top-full left-1/2 mt-16 flex h-9 -translate-x-1/2 items-center px-6 text-center text-[12px] font-medium tracking-[0.16em] whitespace-nowrap text-paper/85 sm:mt-24 sm:text-[14px]">
+            {m.enter_instruction()}
+          </div>
+
           {/* register bloom on lock */}
           <AnimatePresence>
-            {solved && (
+            {solved && !reduced && (
               <motion.div
                 key="bloom"
                 className="pointer-events-none absolute left-1/2 top-1/2 rounded-full border"
@@ -364,26 +439,19 @@ function AlignMotion() {
               />
             )}
           </AnimatePresence>
-        </div>
-      </div>
-
-      {/* instruction — a stable label; it never blinks out on its own,
-          the opening light simply floods over it. `relative z-10` lifts it
-          above the LightField canvas (which, being positioned, would
-          otherwise paint over this static text). */}
-      <div className="relative z-10 mt-16 flex h-9 items-center px-6 text-center text-[12px] font-medium tracking-[0.16em] text-paper/85 sm:mt-24 sm:text-[14px]">
-        Glissez le film magenta sur le cyan
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* identity marginalia — genre, so the screen reads as a title rather
           than a loader. Hidden on small screens; flooded over on opening. */}
       <div className="pointer-events-none absolute bottom-8 left-6 hidden text-[11px] tracking-[0.26em] text-paper/45 uppercase sm:bottom-12 sm:left-[96px] sm:block sm:text-[12px]">
-        Casse-tête de superposition
+        {m.enter_genre()}
       </div>
 
       {/* contact flare — the two inks release a burst the instant they meet */}
       <AnimatePresence>
         {solved &&
+          !reduced &&
           [
             { c: "var(--color-ink-cyan)", d: 0 },
             { c: "var(--color-ink-magenta)", d: 0.05 },
@@ -413,34 +481,31 @@ function AlignMotion() {
       <AnimatePresence>
         {opening && (
           <>
-            <motion.div
-              key="wavefront"
-              className="pointer-events-none fixed rounded-full border-2"
-              style={{
-                left: `${EYE.cx}%`,
-                top: `${EYE.cy}%`,
-                width: 120,
-                height: 120,
-                marginLeft: -60,
-                marginTop: -60,
-                zIndex: 45,
-                borderColor: "var(--color-paper)",
-              }}
-              initial={{ scale: 0, opacity: 0.8 }}
-              animate={{ scale: 24, opacity: 0 }}
-              transition={{ duration: 0.85, ease: [0.5, 0, 0.2, 1] }}
-            />
+            {!reduced && (
+              <motion.div
+                key="wavefront"
+                className="pointer-events-none fixed rounded-full border-2"
+                style={{
+                  left: `${EYE.cx}%`,
+                  top: `${EYE.cy}%`,
+                  width: 120,
+                  height: 120,
+                  marginLeft: -60,
+                  marginTop: -60,
+                  zIndex: 45,
+                  borderColor: "var(--color-paper)",
+                }}
+                initial={{ scale: 0, opacity: 0.8 }}
+                animate={{ scale: 24, opacity: 0 }}
+                transition={{ duration: 0.85, ease: [0.5, 0, 0.2, 1] }}
+              />
+            )}
             <motion.div
               key="flood"
               className="pointer-events-none fixed inset-0 z-50"
               style={{
                 clipPath: clip,
-                background:
-                  "radial-gradient(circle at " +
-                  EYE.cx +
-                  "% " +
-                  EYE.cy +
-                  "%, #ffffff 0%, #f7f3ea 60%, #f2ede4 100%)",
+                background: floodGradient,
               }}
             />
           </>

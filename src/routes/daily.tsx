@@ -3,10 +3,9 @@
 // are owned here, mirroring App.tsx — this route lives outside App's shell.
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
 import { getDailyPuzzle } from "../server/daily.ts";
 import { PlayScreen } from "../ui/screens/PlayScreen.tsx";
-import { useSound } from "../ui/hooks/useSound.ts";
+import { usePersistedSound } from "../ui/hooks/useSound.ts";
 
 export const Route = createFileRoute("/daily")({
   loader: () => getDailyPuzzle(),
@@ -16,8 +15,7 @@ export const Route = createFileRoute("/daily")({
 function DailyRoute() {
   const { date, level, optimal } = Route.useLoaderData();
   const navigate = useNavigate();
-  const [muted, setMutedState] = useState(false);
-  const { fx, setMuted } = useSound();
+  const { fx, muted, toggleMuted } = usePersistedSound();
 
   return (
     <PlayScreen
@@ -25,10 +23,7 @@ function DailyRoute() {
       level={level}
       fx={fx}
       muted={muted}
-      onToggleMute={() => {
-        setMuted(!muted);
-        setMutedState(!muted);
-      }}
+      onToggleMute={toggleMuted}
       onExit={() => navigate({ to: "/" })}
       daily={{ date, optimal }}
     />
