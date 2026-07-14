@@ -3,7 +3,13 @@
 // inputs and translate the result into sound / haptics / visuals.
 
 import { useEffect, useRef, useState } from "react";
-import type { GameState, Input, Level, Pos } from "../../engine/types.ts";
+import type {
+  GameState,
+  Input,
+  Level,
+  Pos,
+  TraceStep,
+} from "../../engine/types.ts";
 import { initialState, isWin, MAX_SHIFT } from "../../engine/state.ts";
 import { applyInput } from "../../engine/successors.ts";
 import { eq } from "../../engine/grid.ts";
@@ -36,9 +42,14 @@ export function useGame(
   // the winning input sequence, exposed once solved so the daily overlay can
   // submit it for server-side replay
   const [wonInputs, setWonInputs] = useState<Input[]>([]);
+  // the full raw event trace (inputs + undo/reset), exposed once solved so the
+  // campaign leaderboard can replay it and count corrections (a clean solve has
+  // none). Unlike `inputs`, it is NEVER popped — corrections stay on the record.
+  const [wonTrace, setWonTrace] = useState<TraceStep[]>([]);
   const history = useRef<GameState[]>([]);
   // mirror of `history`: the exact inputs applied, popped on undo
   const inputs = useRef<Input[]>([]);
+  const trace = useRef<TraceStep[]>([]);
   const stampTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // the stamp must not sound after an undo or a level change
@@ -87,6 +98,7 @@ export function useGame(
     });
     history.current.push(st);
     inputs.current.push({ kind, dir: d });
+    trace.current.push({ kind, dir: d });
     setSt(next);
     setMoves((m) => m + 1);
     if (isWin(next, level)) {
@@ -94,6 +106,7 @@ export function useGame(
       vibrate([30, 60, 30]);
       const won = inputs.current.slice();
       setWonInputs(won);
+      setWonTrace(trace.current.slice());
       onWin?.(history.current.length, won);
       stampTimer.current = setTimeout(() => fx.stamp(), 650);
     }
@@ -103,16 +116,20 @@ export function useGame(
     const prev = history.current.pop();
     if (!prev) return;
     inputs.current.pop();
+    trace.current.push({ kind: "undo" }); // a correction — recorded, not popped
     cancelStamp();
     setSt(prev);
     setMoves((m) => m - 1);
     setAltArmed(false);
     setTrails({ a: null, b: null });
     setWonInputs([]); // undoing leaves the won state
+    setWonTrace([]);
   };
 
   const reset = () => {
     cancelStamp();
+    // only a reset that discards progress is a correction worth recording
+    if (inputs.current.length) trace.current.push({ kind: "reset" });
     setSt(initialState(level));
     setMoves(0);
     setAltArmed(false);
@@ -123,6 +140,7 @@ export function useGame(
     history.current = [];
     inputs.current = [];
     setWonInputs([]);
+    setWonTrace([]);
   };
 
   return {
@@ -137,6 +155,7 @@ export function useGame(
     iceTrailA: trails.a,
     iceTrailB: trails.b,
     wonInputs,
+    wonTrace,
     play,
     undo,
     reset,
