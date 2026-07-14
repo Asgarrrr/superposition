@@ -1,193 +1,167 @@
-Welcome to your new TanStack Start app! 
+<p align="center">
+  <img src="docs/media/wordmark.svg" alt="Superposition" width="460">
+</p>
 
-# Getting Started
+<p align="center"><em>A two-layer puzzle: two pawns, one input.</em></p>
 
-To run this application:
+You move the cyan pawn and the magenta pawn **at the same time**, with a single
+gesture, and you have to land each one on its own target. One arrow key, swipe,
+or button drives both worlds — the whole puzzle is that they don't react the
+same way.
 
-```bash
+<p align="center">
+  <img src="docs/media/board.webp" alt="The last level, Tectonique, solved: pawns move, the magenta world drifts, the pawns fuse and split, then everything realigns and locks to amber" width="300">
+</p>
+
+<p align="center"><sub>The last level, <em>Tectonique</em>, played out by the solver: moves, world drift (<code>decalage</code>), fusion (the pawns overlap to white), scission, then the amber lock — "ready to print".</sub></p>
+
+A React web game running on TanStack Start, fully playable in the browser. The
+core game is client-only; the optional **daily mode** (accounts, shared board,
+leaderboard) is the one part that talks to a server.
+
+## The idea
+
+The same input acts on both layers at once. The difficulty comes from the two
+worlds not behaving identically: each layer has its own walls, the planes can be
+offset from one another, the two pawns can merge into one, and so on. Solving a
+board means finding the sequence of inputs that satisfies both constraints
+simultaneously.
+
+## Mechanics
+
+Each mechanic is a self-contained file in `src/engine/mechanics/`, switched on
+per board through the level's `mods` list.
+
+| Id         | Effect                                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------------------------- |
+| `fusion`   | When `a == b + off`, the two pawns merge; the merged pawn passes through ink walls — only light stops it. |
+| `scission` | From the merged state: cyan goes in the chosen direction, magenta goes the opposite way.                  |
+| `lumiere`  | White squares block only the merged pawn; the inks pass straight through them.                            |
+| `glace`    | Every move slides until it hits an obstacle (a layer wall or the edge).                                   |
+| `decalage` | Slides layer B by one cell under the pawns; the two worlds must end up aligned.                           |
+
+## Architecture
+
+The engine guarantees state that is **finite, discrete, deterministic, and
+hashable**: no randomness during play, no real time, no hidden information. The
+direct consequence is that the game and the solver consume exactly the same API
+(`successors` / `isWin` / `hashState`), so they cannot drift apart.
+
+| Path                                    | Purpose                                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------------------ |
+| `src/engine/types.ts`                   | The contract: the game state and the mechanic protocol                               |
+| `src/engine/{grid,state,successors}.ts` | Geometry, lifecycle, move enumeration                                                |
+| `src/engine/mechanics/`                 | One mechanic = one file + `registry.ts`                                              |
+| `src/engine/levels.ts`                  | The level bank (pure data, 16 boards)                                                |
+| `src/solver/`                           | Rule-agnostic BFS + the `verify` / `gen` CLIs                                        |
+| `src/ui/screens/`                       | The title / select / play screens                                                    |
+| `src/ui/components/`                    | Board, InkLayer, RegMark, Wordmark, Hud, Controls…                                   |
+| `src/ui/hooks/`                         | `useGame`, `useSound`, `useKeyboard`, `useSwipe`, `useBestScores`                    |
+| `src/routes/`                           | TanStack Start file-based routes (single `/` mounts the game; `api/` for daily mode) |
+| `src/db/`                               | Postgres + Drizzle: schema, client, `drizzle.config.ts`, `migrations/`               |
+| `src/lib/`                              | Better Auth setup (email + password)                                                 |
+| `project.inlang/messages/{fr,en}.json`  | i18n catalogue (translation source, inlang format)                                   |
+
+Data flow: input (keyboard / swipe / buttons) → `useGame.play` →
+`engine.applyInput` → new state → render.
+
+This repo is a TanStack Start (React 19 + Vite + Nitro) shell around the
+original game. SSR is disabled app-wide — the game needs `AudioContext`,
+`localStorage`, and keyboard/swipe — so the core loop is client-only. See
+`AGENTS.md` for the full port history and toolchain notes.
+
+## Getting started
+
+Requires [Bun](https://bun.sh).
+
+```sh
 bun install
-bun --bun run dev
+bun run dev       # Vite dev server on :3000
 ```
 
-# Building For Production
+That is enough to play. For the **daily mode** (accounts + leaderboard) you also
+need Postgres and a couple of secrets:
 
-To build this application for production:
-
-```bash
-bun --bun run build
+```sh
+cp .env.example .env      # then fill BETTER_AUTH_SECRET (openssl rand -base64 32)
+docker compose up -d      # local Postgres from docker-compose.yml
+bun run db:migrate        # apply migrations to the database
 ```
 
-## Testing
+## Commands
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
-
-```bash
-bun --bun run test
+```sh
+bun run dev          # dev server
+bun run build        # paraglide + tsc typecheck + vite build
+bun run test         # Vitest suite (engine only)
+bun run lint         # oxlint
+bun run verify       # certify every board in the bank is solvable (via the solver)
+bun run gen          # hunt for new boards
+bun run gen:daily    # generate the daily board
+bun run db:generate  # emit a Drizzle migration from the schema
+bun run db:migrate   # apply migrations
 ```
 
-## Styling
+Run a single test: `bunx vitest run src/engine/state.test.ts`.
 
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+Generate boards with constraints:
 
-### Removing Tailwind CSS
-
-If you prefer not to use Tailwind CSS:
-
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `bun install @tailwindcss/vite tailwindcss -D`
-
-
-
-## Routing
-
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
+```sh
+bun run gen -- --mods fusion,scission --size 5 --min 18 --ms 30000
 ```
 
-Then anywhere in your JSX you can use it like so:
+## The solver
 
-```tsx
-<Link to="/about">About</Link>
-```
+`src/solver/` holds a completely rule-agnostic BFS: it only ever touches
+`successors` / `isWin` / `hashState`. It powers two tools:
 
-This will create a link that will navigate to the `/about` route.
+- `verify` — guarantees no board in the bank is unsolvable (part of the
+  definition of done);
+- `gen` — explores the level space to find new boards that genuinely require the
+  requested mechanics.
 
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
+## Internationalisation
 
-### Using A Layout
+Every displayed string goes through a key in `project.inlang/messages/{fr,en}.json`
+and is read as `m.key()` (Paraglide). `src/paraglide/` is generated (git-ignored)
+and regenerated on build, or by hand with `bun run paraglide`. The default
+language follows the browser, with a French fallback.
 
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
+## Adding content
 
-Here is an example layout that includes a header:
+- **A mechanic**: a file in `src/engine/mechanics/`, an entry in `registry.ts`,
+  its id in `MechanicId` (`types.ts`), tests in `mechanics.test.ts`, then
+  `bun run gen` to prove it is needed by a board.
+- **A board**: an entry in `levels.ts`, a `hint_<id>` key in both languages, the
+  entry in `src/ui/copy.ts`, then `bun run verify` must stay green.
 
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+## Art direction — "The light table"
 
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
+The screen-printing workshop, the night before the run: two films (cyan,
+magenta) laid on the backlit box. The dark background is a place, not a theme.
 
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
+Tokens (`@theme` in `src/index.css`):
 
-## Server Functions
+| Role                   | Value                 | Use                                                        |
+| ---------------------- | --------------------- | ---------------------------------------------------------- |
+| room                   | `#14110E`             | the workshop bakelite, global background                   |
+| box / box-glow         | `#1B1713` / `#241F19` | light-box surface and halo                                 |
+| ink-cyan / ink-magenta | `#45E0EC` / `#FF4FA3` | the two inks, `screen` blend                               |
+| paper                  | `#F2EDE4`             | text — never `#fff`                                        |
+| tape                   | `#E8B84B`             | masking tape: a RARE accent (armed states, stamp, records) |
 
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
+Type: Instrument Serif italic for names and the wordmark (printed twice, badly
+registered); the system monospace for data.
 
-```tsx
-import { createServerFn } from '@tanstack/react-start'
+Signature element: the **registration marks** in the four corners of the board.
+Doubled cyan/magenta, their misalignment visualises the offset between the
+worlds (the `decalage` mechanic); they turn white on fusion and lock to amber on
+"ready to print".
 
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
+Sensory signatures (one per verb — sound + haptics + visual): a block is a
+recoil of the box plus a 95 Hz thump; fusion is a white bloom plus two sine
+waves converging to unison; scission is a diverging chord; decalage is a 62 Hz
+rumble with inertia; glace is an ink trail with a glissando. Golden rule: every
+effect is a legible consequence of the game state — nothing decorative.
 
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+`prefers-reduced-motion` is respected globally.
