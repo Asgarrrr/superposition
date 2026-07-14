@@ -31,7 +31,11 @@
   "win_stamp": "Bon à tirer",
   "win_summary": [
     {
-      "declarations": ["input plate", "input count", "local countPlural = count: plural"],
+      "declarations": [
+        "input plate",
+        "input count",
+        "local countPlural = count: plural"
+      ],
       "selectors": ["countPlural"],
       "match": {
         "countPlural=one": "planche {plate} · {count} passe",
@@ -42,6 +46,36 @@
   "win_record": " · record {best}",
   "win_next": "Planche suivante ↵",
   "win_complete": "Le tirage est complet — pour l'instant.",
+  "daily_tag": "Niveau du jour",
+  "daily_back": "accueil",
+  "daily_solved": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Résolu · {count} passe",
+        "countPlural=other": "Résolu · {count} passes"
+      }
+    }
+  ],
+  "daily_optimal": "optimal · {optimal}",
+  "daily_signin_prompt": "Connecte-toi pour rejoindre le classement.",
+  "daily_submitting": "Enregistrement…",
+  "daily_submitted": "Score enregistré",
+  "daily_submit_error": "Échec — réessaie.",
+  "daily_your_rank": "ton rang · #{rank}",
+  "daily_leaderboard_title": "Classement du jour",
+  "daily_leaderboard_empty": "Personne n'a encore résolu aujourd'hui.",
+  "daily_you": "toi",
+  "daily_signout": "déconnexion",
+  "auth_email": "Email",
+  "auth_password": "Mot de passe",
+  "auth_name": "Nom (optionnel)",
+  "auth_signin": "Se connecter",
+  "auth_signup": "Créer un compte",
+  "auth_to_signup": "Pas de compte ? S'inscrire",
+  "auth_to_signin": "Déjà inscrit ? Se connecter",
+  "auth_error": "Identifiants invalides.",
   "flash_no_split": "Scission impossible ici.",
   "flash_no_shift": "Décalage impossible — borné à ±{max}.",
   "rule_decalage_aligned": "⇄ Monde (ou Maj+flèche) glisse le film magenta. Les croix de repérage doivent finir alignées.",

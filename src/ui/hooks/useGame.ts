@@ -24,7 +24,7 @@ interface IceTrails {
 export function useGame(
   level: Level,
   fx: SoundFx,
-  onWin: (moves: number) => void,
+  onWin?: (moves: number, inputs: Input[]) => void,
 ) {
   const [st, setSt] = useState<GameState>(() => initialState(level));
   const [moves, setMoves] = useState(0);
@@ -33,7 +33,12 @@ export function useGame(
   const [bump, setBump] = useState<Pulse | null>(null);
   const [bloom, setBloom] = useState<Pulse | null>(null);
   const [trails, setTrails] = useState<IceTrails>({ a: null, b: null });
+  // the winning input sequence, exposed once solved so the daily overlay can
+  // submit it for server-side replay
+  const [wonInputs, setWonInputs] = useState<Input[]>([]);
   const history = useRef<GameState[]>([]);
+  // mirror of `history`: the exact inputs applied, popped on undo
+  const inputs = useRef<Input[]>([]);
   const stampTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // the stamp must not sound after an undo or a level change
@@ -81,12 +86,15 @@ export function useGame(
       b: ice && !eq(st.b, next.b) ? { from: st.b } : null,
     });
     history.current.push(st);
+    inputs.current.push({ kind, dir: d });
     setSt(next);
     setMoves((m) => m + 1);
     if (isWin(next, level)) {
       fx.win();
       vibrate([30, 60, 30]);
-      onWin(history.current.length);
+      const won = inputs.current.slice();
+      setWonInputs(won);
+      onWin?.(history.current.length, won);
       stampTimer.current = setTimeout(() => fx.stamp(), 650);
     }
   };
@@ -94,11 +102,13 @@ export function useGame(
   const undo = () => {
     const prev = history.current.pop();
     if (!prev) return;
+    inputs.current.pop();
     cancelStamp();
     setSt(prev);
     setMoves((m) => m - 1);
     setAltArmed(false);
     setTrails({ a: null, b: null });
+    setWonInputs([]); // undoing leaves the won state
   };
 
   const reset = () => {
@@ -111,6 +121,8 @@ export function useGame(
     setBloom(null);
     setTrails({ a: null, b: null });
     history.current = [];
+    inputs.current = [];
+    setWonInputs([]);
   };
 
   return {
@@ -124,6 +136,7 @@ export function useGame(
     bloom,
     iceTrailA: trails.a,
     iceTrailB: trails.b,
+    wonInputs,
     play,
     undo,
     reset,

@@ -5,6 +5,7 @@
     "dist",
     ".output",
     ".nitro",
+    ".railway",
     "src/solver",
     "scripts"
   ],

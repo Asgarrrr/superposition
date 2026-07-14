@@ -1,0 +1,23 @@
+# Local Postgres for development. Railway provides the managed database in
+# production; this only exists so `bun run dev` / migrations / gen:daily have a
+# database to talk to locally. Data lives in a named volume.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: superposition
+      POSTGRES_PASSWORD: superposition
+      POSTGRES_DB: superposition
+    ports:
+      - "5432:5432"
+    volumes:
+      - superposition_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superposition"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  superposition_pg:

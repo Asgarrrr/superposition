@@ -31,7 +31,11 @@
   "win_stamp": "Ready to print",
   "win_summary": [
     {
-      "declarations": ["input plate", "input count", "local countPlural = count: plural"],
+      "declarations": [
+        "input plate",
+        "input count",
+        "local countPlural = count: plural"
+      ],
       "selectors": ["countPlural"],
       "match": {
         "countPlural=one": "board {plate} · {count} move",
@@ -42,6 +46,36 @@
   "win_record": " · best {best}",
   "win_next": "Next board ↵",
   "win_complete": "The edition is complete — for now.",
+  "daily_tag": "Daily level",
+  "daily_back": "home",
+  "daily_solved": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Solved · {count} move",
+        "countPlural=other": "Solved · {count} moves"
+      }
+    }
+  ],
+  "daily_optimal": "optimal · {optimal}",
+  "daily_signin_prompt": "Sign in to join the leaderboard.",
+  "daily_submitting": "Saving…",
+  "daily_submitted": "Score saved",
+  "daily_submit_error": "Failed — try again.",
+  "daily_your_rank": "your rank · #{rank}",
+  "daily_leaderboard_title": "Today's leaderboard",
+  "daily_leaderboard_empty": "No one has solved it yet today.",
+  "daily_you": "you",
+  "daily_signout": "sign out",
+  "auth_email": "Email",
+  "auth_password": "Password",
+  "auth_name": "Name (optional)",
+  "auth_signin": "Sign in",
+  "auth_signup": "Create account",
+  "auth_to_signup": "No account? Sign up",
+  "auth_to_signin": "Have an account? Sign in",
+  "auth_error": "Invalid credentials.",
   "flash_no_split": "Can't split here.",
   "flash_no_shift": "Shift blocked — capped at ±{max}.",
   "rule_decalage_aligned": "⇄ World (or Shift+arrow) slides the magenta film. The registration marks must line up at the end.",
