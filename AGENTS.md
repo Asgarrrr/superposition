@@ -144,25 +144,34 @@ functions + one auth API route (no server rendering).
 
 ### Deployment
 
-Target: **Railway** (web service + managed Postgres + a dedicated cron service,
-same repo). The build uses the **Nitro** server target (`nitro({ preset: "bun" })`
-in `vite.config.ts`) — it self-serves the client bundle, reads `PORT`, and emits
+Target: **Railway**, defined as **Infrastructure as Code** in
+`.railway/railway.ts` — web service + managed Postgres + cron service, one file,
+one source of truth (there is no `railway.json`). Edit it, then
+`railway config plan` → `railway config apply`. The `railway` npm package (the
+Railway TS SDK) provides `railway/iac` and powers `config plan/apply`; a
+project-local `railway-config` skill (`.agents/skills/`) helps edit it safely.
+
+The build uses the **Nitro** server target (`nitro({ preset: "bun" })` in
+`vite.config.ts`) — it self-serves the client bundle, reads `PORT`, and emits
 `.output/server/index.mjs`. Run with `bun run start`. (The srvx CLI output does
 NOT serve the client assets alongside the handler — that's why we use Nitro.)
 
-- **Web service** — `railway.json` at repo root: Railpack build `bun run build`,
-  `preDeployCommand: bun run db:migrate`, start `bun run start`, healthcheck `/`.
-  Set `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `BETTER_AUTH_SECRET`,
-  `BETTER_AUTH_URL` (public domain).
-- **Postgres** — `railway add --database postgres`.
-- **Cron service** — a 2nd service, same repo: build override `bun install`
-  (skip the vite build), start `bun run gen:daily`, `cronSchedule = "0 5 * * *"`
-  (UTC). It must close the pool and `exit(0)` or the next run is skipped. Set
-  `DATABASE_URL=${{Postgres.DATABASE_URL}}`. `railway.json` is per-service, so
-  configure the cron service in the dashboard (or a second config file).
-- `.railway/railway.ts` — **experimental** IaC declaring web + cron + Postgres in
-  one file. Excluded from the app build; its cron-schedule field is unverified.
-  The `railway.json` + dashboard cron path above is the reliable one.
+Topology in `.railway/railway.ts`:
+
+- **web** — `source: github(...)`, build `bun run build`, start `bun run start`,
+  `preDeployCommand: bun run db:migrate`, healthcheck `/`. Env: `DATABASE_URL`
+  from the Postgres ref; `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` set out of band
+  (secrets, `preserve()`d in IaC).
+- **Postgres** — `postgres("Postgres")`; other services reference its
+  `DATABASE_URL`.
+- **cron** — `source: github(...)`, build `bun install` (skips the vite build),
+  start `bun run gen:daily`, `deploy.cronSchedule = "0 5 * * *"` (UTC),
+  `restartPolicyType: "NEVER"`. The generator closes the pool and `exit(0)` or
+  the next run is skipped.
+
+Secrets to set once (dashboard/CLI, not in the file): `BETTER_AUTH_SECRET`
+(`openssl rand -base64 32`) and `BETTER_AUTH_URL` (the web service's public
+domain).
 
 Runtime network dependency: the Instrument Serif web font (Google Fonts).
 
