@@ -4,15 +4,16 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { and, asc, count, eq, lt, or, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "../db/index.ts";
-import { dailyPuzzle, dailyScore, user } from "../db/schema.ts";
+import { dailyPuzzle, dailyScore } from "../db/schema.ts";
 import { LEVELS } from "../engine/levels.ts";
 import { solve } from "../solver/bfs.ts";
 import { auth } from "../lib/auth.ts";
 import { utcDay } from "../lib/day.ts";
-import { validateInputsShape, validateSolution } from "./replay.ts";
-import type { Input, Level } from "../engine/types.ts";
+import { boardRows, standing } from "./leaderboard.ts";
+import { validateTrace, validateTraceShape } from "./replay.ts";
+import type { Level, TraceStep } from "../engine/types.ts";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -78,16 +79,17 @@ export interface SubmitResult {
 /**
  * Records a player's daily score. Trusts nothing: the client says which day it
  * played, the server re-resolves that day's puzzle (deterministically, never
- * from the client) and replays the winning inputs through the pure engine.
- * Only a clean win is stored — best move count wins the (date, user) slot.
+ * from the client) and replays the full trace through the pure engine, deriving
+ * both the winning move count and the correction count itself. The best result
+ * per user wins the (date, user) slot: fewest moves, then fewest corrections.
  */
 export const submitDailyScore = createServerFn({ method: "POST" })
-  .validator((data: unknown): { inputs: Input[]; date: string } => {
-    const d = data as { inputs?: unknown; date?: unknown } | null;
-    const inputs = validateInputsShape(d?.inputs);
+  .validator((data: unknown): { trace: TraceStep[]; date: string } => {
+    const d = data as { trace?: unknown; date?: unknown } | null;
+    const trace = validateTraceShape(d?.trace);
     if (typeof d?.date !== "string" || !DATE_RE.test(d.date))
       throw new Error("invalid date");
-    return { inputs, date: d.date };
+    return { trace, date: d.date };
   })
   .handler(async ({ data }): Promise<SubmitResult> => {
     const userId = await currentUserId();
@@ -96,7 +98,7 @@ export const submitDailyScore = createServerFn({ method: "POST" })
 
     const date = data.date;
     const puzzle = await resolveDaily(date);
-    const result = validateSolution(puzzle.level, data.inputs);
+    const result = validateTrace(puzzle.level, data.trace);
     if (!result.ok) throw new Error("Invalid solution");
 
     // Guarantee the puzzle row exists (fallback days have none) so the score FK
@@ -106,18 +108,26 @@ export const submitDailyScore = createServerFn({ method: "POST" })
       .values({ date, level: puzzle.level, optimal: puzzle.optimal })
       .onConflictDoNothing();
 
-    // Keep the best (lowest) move count for this (date, user).
+    // Keep the best result for this (date, user): fewer moves, or same moves
+    // with fewer corrections.
     await db
       .insert(dailyScore)
-      .values({ date, userId, moves: result.moves, inputs: data.inputs })
+      .values({
+        date,
+        userId,
+        moves: result.moves,
+        undos: result.corrections,
+        trace: data.trace,
+      })
       .onConflictDoUpdate({
         target: [dailyScore.date, dailyScore.userId],
         set: {
           moves: result.moves,
-          inputs: data.inputs,
+          undos: result.corrections,
+          trace: data.trace,
           createdAt: new Date(),
         },
-        where: sql`${dailyScore.moves} > ${result.moves}`,
+        where: sql`${dailyScore.moves} > ${result.moves} OR (${dailyScore.moves} = ${result.moves} AND ${dailyScore.undos} > ${result.corrections})`,
       });
 
     return { ok: true, moves: result.moves };
@@ -128,67 +138,54 @@ export interface LeaderRow {
   userId: string;
   name: string;
   moves: number;
-  clean?: boolean; // campaign only: solved with no undo/reset (a "clean pull")
+  clean?: boolean; // solved with no undo/reset (a "clean pull"); both boards set it
 }
-
-export const getDailyLeaderboard = createServerFn({ method: "GET" }).handler(
-  async (): Promise<LeaderRow[]> => {
-    const date = utcDay();
-    const rows = await db
-      .select({
-        userId: dailyScore.userId,
-        name: user.name,
-        moves: dailyScore.moves,
-      })
-      .from(dailyScore)
-      .innerJoin(user, eq(dailyScore.userId, user.id))
-      .where(eq(dailyScore.date, date))
-      .orderBy(asc(dailyScore.moves), asc(dailyScore.createdAt))
-      .limit(50);
-    return rows.map((r, i) => ({
-      rank: i + 1,
-      userId: r.userId,
-      name: r.name,
-      moves: r.moves,
-    }));
-  },
-);
 
 export interface MyResult {
   moves: number;
   rank: number;
 }
 
-export const getMyDailyResult = createServerFn({ method: "GET" }).handler(
-  async (): Promise<MyResult | null> => {
+/** One board's worth of data, mirrored by the campaign (see campaign.ts). */
+export interface BoardData {
+  optimal: number;
+  rows: LeaderRow[];
+  mine: MyResult | null;
+}
+
+// optimal is fixed per date, so resolve the puzzle for it at most once per date
+// per process instead of on every board read (which is a daily_puzzle SELECT, or
+// the solver on a cron-missed day).
+const optimalByDate = new Map<string, number>();
+async function dailyOptimal(date: string): Promise<number> {
+  const cached = optimalByDate.get(date);
+  if (cached !== undefined) return cached;
+  const { optimal } = await resolveDaily(date);
+  optimalByDate.set(date, optimal);
+  return optimal;
+}
+
+/** The board for a specific day (optimal, top 50, and — if signed in — the
+ *  caller's own standing) in one round trip. The date is the day the client is
+ *  playing (the loader's), NOT the server's current utcDay(): a solve that
+ *  crosses UTC midnight must still read the board it submitted to. Public:
+ *  reading needs no account; the caller's standing is queried only with a
+ *  session. */
+export const getDailyBoard = createServerFn({ method: "GET" })
+  .validator((data: unknown): { date: string } => {
+    const d = data as { date?: unknown } | null;
+    if (typeof d?.date !== "string" || !DATE_RE.test(d.date))
+      throw new Error("invalid date");
+    return { date: d.date };
+  })
+  .handler(async ({ data }): Promise<BoardData> => {
+    const { date } = data;
+    const scope = eq(dailyScore.date, date);
     const userId = await currentUserId();
-    if (!userId) return null;
-
-    const date = utcDay();
-    const [mine] = await db
-      .select({ moves: dailyScore.moves, createdAt: dailyScore.createdAt })
-      .from(dailyScore)
-      .where(and(eq(dailyScore.date, date), eq(dailyScore.userId, userId)))
-      .limit(1);
-    if (!mine) return null;
-
-    // Positional rank, matching getDailyLeaderboard's (moves asc, createdAt asc)
-    // order: count everyone who sorts strictly ahead, plus one.
-    const [{ ahead }] = await db
-      .select({ ahead: count() })
-      .from(dailyScore)
-      .where(
-        and(
-          eq(dailyScore.date, date),
-          or(
-            lt(dailyScore.moves, mine.moves),
-            and(
-              eq(dailyScore.moves, mine.moves),
-              lt(dailyScore.createdAt, mine.createdAt),
-            ),
-          ),
-        ),
-      );
-    return { moves: mine.moves, rank: Number(ahead) + 1 };
-  },
-);
+    const [optimal, rows, mine] = await Promise.all([
+      dailyOptimal(date),
+      boardRows(dailyScore, scope),
+      userId ? standing(dailyScore, scope, userId) : Promise.resolve(null),
+    ]);
+    return { optimal, rows, mine };
+  });

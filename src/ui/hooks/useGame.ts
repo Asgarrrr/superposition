@@ -30,7 +30,7 @@ interface IceTrails {
 export function useGame(
   level: Level,
   fx: SoundFx,
-  onWin?: (moves: number, inputs: Input[]) => void,
+  onWin?: (moves: number) => void,
 ) {
   const [st, setSt] = useState<GameState>(() => initialState(level));
   const [moves, setMoves] = useState(0);
@@ -39,11 +39,8 @@ export function useGame(
   const [bump, setBump] = useState<Pulse | null>(null);
   const [bloom, setBloom] = useState<Pulse | null>(null);
   const [trails, setTrails] = useState<IceTrails>({ a: null, b: null });
-  // the winning input sequence, exposed once solved so the daily overlay can
-  // submit it for server-side replay
-  const [wonInputs, setWonInputs] = useState<Input[]>([]);
   // the full raw event trace (inputs + undo/reset), exposed once solved so the
-  // campaign leaderboard can replay it and count corrections (a clean solve has
+  // leaderboard rail can replay it and count corrections (a clean solve has
   // none). Unlike `inputs`, it is NEVER popped — corrections stay on the record.
   const [wonTrace, setWonTrace] = useState<TraceStep[]>([]);
   const history = useRef<GameState[]>([]);
@@ -104,10 +101,8 @@ export function useGame(
     if (isWin(next, level)) {
       fx.win();
       vibrate([30, 60, 30]);
-      const won = inputs.current.slice();
-      setWonInputs(won);
       setWonTrace(trace.current.slice());
-      onWin?.(history.current.length, won);
+      onWin?.(history.current.length);
       stampTimer.current = setTimeout(() => fx.stamp(), 650);
     }
   };
@@ -122,8 +117,7 @@ export function useGame(
     setMoves((m) => m - 1);
     setAltArmed(false);
     setTrails({ a: null, b: null });
-    setWonInputs([]); // undoing leaves the won state
-    setWonTrace([]);
+    setWonTrace([]); // undoing leaves the won state
   };
 
   const reset = () => {
@@ -139,7 +133,6 @@ export function useGame(
     setTrails({ a: null, b: null });
     history.current = [];
     inputs.current = [];
-    setWonInputs([]);
     setWonTrace([]);
   };
 
@@ -154,7 +147,6 @@ export function useGame(
     bloom,
     iceTrailA: trails.a,
     iceTrailB: trails.b,
-    wonInputs,
     wonTrace,
     play,
     undo,

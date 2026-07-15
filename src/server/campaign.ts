@@ -5,15 +5,16 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { and, asc, count, eq, lt, or, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "../db/index.ts";
-import { levelScore, user } from "../db/schema.ts";
+import { levelScore } from "../db/schema.ts";
 import { LEVELS } from "../engine/levels.ts";
 import { solve } from "../solver/bfs.ts";
 import { auth } from "../lib/auth.ts";
+import { boardRows, standing } from "./leaderboard.ts";
 import { validateTrace, validateTraceShape } from "./replay.ts";
 import type { Level, TraceStep } from "../engine/types.ts";
-import type { LeaderRow, MyResult } from "./daily.ts";
+import type { BoardData } from "./daily.ts";
 
 // Campaign levels are static and live in code, so index them once and cache the
 // solver's optimal per level (BFS is not free) for the lifetime of the process.
@@ -41,96 +42,26 @@ function validateLevelId(data: unknown): { levelId: string } {
   return { levelId: id };
 }
 
-export interface LevelBoard {
-  optimal: number;
-  rows: LeaderRow[];
-  mine: MyResult | null;
-}
-
 /** A level's leaderboard (top 50, fewest moves first, then fewest corrections,
  *  then earliest submission), the solver's optimal, and — if signed in — the
  *  caller's own standing. Public: reading the board needs no account. */
 export const getLevelBoard = createServerFn({ method: "GET" })
   .validator(validateLevelId)
-  .handler(async ({ data }): Promise<LevelBoard> => {
+  .handler(async ({ data }): Promise<BoardData> => {
     const { levelId } = data;
     const level = BY_ID.get(levelId)!;
+    const scope = eq(levelScore.levelId, levelId);
 
     // the board and the caller's own standing are independent — fetch both in
     // one round trip rather than serializing mine behind rows
+    const userId = await currentUserId();
     const [rows, mine] = await Promise.all([
-      db
-        .select({
-          userId: levelScore.userId,
-          name: user.name,
-          moves: levelScore.moves,
-          undos: levelScore.undos,
-        })
-        .from(levelScore)
-        .innerJoin(user, eq(levelScore.userId, user.id))
-        .where(eq(levelScore.levelId, levelId))
-        .orderBy(
-          asc(levelScore.moves),
-          asc(levelScore.undos),
-          asc(levelScore.createdAt),
-        )
-        .limit(50),
-      myResult(levelId),
+      boardRows(levelScore, scope),
+      userId ? standing(levelScore, scope, userId) : Promise.resolve(null),
     ]);
 
-    return {
-      optimal: levelOptimal(level),
-      rows: rows.map((r, i) => ({
-        rank: i + 1,
-        userId: r.userId,
-        name: r.name,
-        moves: r.moves,
-        clean: r.undos === 0,
-      })),
-      mine,
-    };
+    return { optimal: levelOptimal(level), rows, mine };
   });
-
-/** The caller's standing on a level: best moves and positional rank, matching
- *  getLevelBoard's ordering. Null when signed out or with no score yet. */
-async function myResult(levelId: string): Promise<MyResult | null> {
-  const userId = await currentUserId();
-  if (!userId) return null;
-
-  const [mine] = await db
-    .select({
-      moves: levelScore.moves,
-      undos: levelScore.undos,
-      createdAt: levelScore.createdAt,
-    })
-    .from(levelScore)
-    .where(and(eq(levelScore.levelId, levelId), eq(levelScore.userId, userId)))
-    .limit(1);
-  if (!mine) return null;
-
-  // count everyone who sorts strictly ahead under (moves, undos, createdAt)
-  const [{ ahead }] = await db
-    .select({ ahead: count() })
-    .from(levelScore)
-    .where(
-      and(
-        eq(levelScore.levelId, levelId),
-        or(
-          lt(levelScore.moves, mine.moves),
-          and(
-            eq(levelScore.moves, mine.moves),
-            lt(levelScore.undos, mine.undos),
-          ),
-          and(
-            eq(levelScore.moves, mine.moves),
-            eq(levelScore.undos, mine.undos),
-            lt(levelScore.createdAt, mine.createdAt),
-          ),
-        ),
-      ),
-    );
-  return { moves: mine.moves, rank: Number(ahead) + 1 };
-}
 
 export interface SubmitResult {
   ok: boolean;

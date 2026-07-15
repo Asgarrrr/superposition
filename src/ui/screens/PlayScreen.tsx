@@ -1,12 +1,13 @@
 // The play screen: composes Hud, Board, rule line and Controls
 // around useGame. Remounted (key) on every level change.
 
-import type { Input, Level } from "../../engine/types.ts";
+import type { Level } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { ruleLine } from "../ruleLine.ts";
 import { Board } from "../components/Board.tsx";
 import { Controls } from "../components/Controls.tsx";
 import { Hud } from "../components/Hud.tsx";
+import { DailyBoard } from "../components/DailyBoard.tsx";
 import { LevelBoard } from "../components/LevelBoard.tsx";
 import { LightField } from "../components/LightField.tsx";
 import { RegCross } from "../components/RegCross.tsx";
@@ -48,7 +49,7 @@ export function PlayScreen({
   fx: SoundFx;
   muted: boolean;
   onToggleMute: () => void;
-  onWin?: (moves: number, inputs: Input[]) => void;
+  onWin?: (moves: number) => void;
   onNext?: (() => void) | null;
   onExit: () => void;
   daily?: DailyMode;
@@ -92,71 +93,82 @@ export function PlayScreen({
       <RegCross pos="bottom-10 left-10" />
       <RegCross pos="bottom-10 right-10" />
 
-      <div className="relative z-10 flex flex-col items-center">
-        <Hud
-          plate={plate}
-          total={total}
-          level={level}
-          moves={game.moves}
-          muted={muted}
-          onToggleMute={onToggleMute}
-          onExit={onExit}
-          daily={daily?.date}
-          backLabel={daily ? m.daily_back() : undefined}
-        />
+      {/* desktop: a three-column grid — an empty left counterweight, the hero
+          column (board + its chrome), and the leaderboard — so the board stays
+          the true optical centre instead of being shoved left by a rail bolted
+          to its right. Below xl it collapses to a single centred stack. */}
+      <div className="relative z-10 grid w-full max-w-6xl grid-cols-1 place-items-center gap-8 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:items-start xl:gap-10">
+        <div className="hidden xl:block" />
 
-        <Board
-          level={level}
-          st={game.st}
-          solved={game.solved}
-          bump={game.bump}
-          bloom={game.bloom}
-          iceTrailA={game.iceTrailA}
-          iceTrailB={game.iceTrailB}
-          {...swipe}
-        >
-          {game.solved &&
-            (daily ? (
-              <DailyOverlay
-                date={daily.date}
-                moves={game.moves}
-                optimal={daily.optimal}
-                inputs={game.wonInputs}
-              />
+        <div className="flex flex-col items-center">
+          <Hud
+            plate={plate}
+            total={total}
+            level={level}
+            moves={game.moves}
+            muted={muted}
+            onToggleMute={onToggleMute}
+            onExit={onExit}
+            daily={daily?.date}
+            backLabel={daily ? m.daily_back() : undefined}
+          />
+
+          <Board
+            level={level}
+            st={game.st}
+            solved={game.solved}
+            bump={game.bump}
+            bloom={game.bloom}
+            iceTrailA={game.iceTrailA}
+            iceTrailB={game.iceTrailB}
+            {...swipe}
+          >
+            {game.solved &&
+              (daily ? (
+                <DailyOverlay moves={game.moves} optimal={daily.optimal} />
+              ) : (
+                <WinOverlay
+                  plate={plate}
+                  moves={game.moves}
+                  best={best}
+                  onNext={onNext}
+                />
+              ))}
+          </Board>
+
+          <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28">
+            {game.flash ? (
+              <span className="text-ink-magenta">{game.flash}</span>
             ) : (
-              <WinOverlay
-                plate={plate}
-                moves={game.moves}
-                best={best}
-                onNext={onNext}
-              />
-            ))}
-        </Board>
+              ruleLine(game.st, level)
+            )}
+          </div>
 
-        <div className="mt-3.5 min-h-[30px] max-w-[400px] text-center text-[11.5px] tracking-[0.02em] text-paper/28">
-          {game.flash ? (
-            <span className="text-ink-magenta">{game.flash}</span>
-          ) : (
-            ruleLine(game.st, level)
-          )}
+          <Controls
+            altLabel={altLabel}
+            altArmed={game.altArmed}
+            onDir={game.play}
+            onToggleAlt={game.toggleAlt}
+            onUndo={game.undo}
+            onReset={game.reset}
+          />
         </div>
 
-        <Controls
-          altLabel={altLabel}
-          altArmed={game.altArmed}
-          onDir={game.play}
-          onToggleAlt={game.toggleAlt}
-          onUndo={game.undo}
-          onReset={game.reset}
-        />
-
-        {!daily && (
+        {daily ? (
+          <DailyBoard
+            date={daily.date}
+            solved={game.solved}
+            moves={game.moves}
+            wonTrace={game.wonTrace}
+            className="w-[min(90vw,420px)] xl:mt-1 xl:w-[220px] xl:justify-self-start"
+          />
+        ) : (
           <LevelBoard
             levelId={level.id}
             solved={game.solved}
             moves={game.moves}
             wonTrace={game.wonTrace}
-            className="mt-8 w-[min(92vw,420px)] xl:absolute xl:top-0 xl:left-full xl:mt-0 xl:ml-10 xl:w-[220px]"
+            className="w-[min(90vw,420px)] xl:mt-1 xl:w-[220px] xl:justify-self-start"
           />
         )}
       </div>

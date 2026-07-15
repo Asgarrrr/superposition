@@ -129,25 +129,28 @@ functions + one auth API route (no server rendering).
   `randomLevel` + certified search, importable), `generate-daily.ts` (cron CLI:
   hunt today + J+1/J+2, insert, **close the pool and `exit(0)`**).
 - **UI**: `/daily` route plays the day's level through `PlayScreen` in daily
-  mode; `DailyOverlay` gates on an account (`AuthPanel`), auto-submits the win,
-  and shows the leaderboard. `useGame` records the applied input sequence.
+  mode. The shared `LeaderboardRail` (bound to the day via `DailyBoard`, to a
+  campaign level via `LevelBoard`) reads the board, gates on an account
+  (`AuthPanel`), auto-submits the winning trace, and shows the standing;
+  `DailyOverlay` is now the daily win celebration only. `useGame` records the
+  full trace (inputs + undo/reset) for server-side replay.
 
 ### Don't recreate
 
-| Concern                                  | Lives in                                                                                                  |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| pg pool + drizzle client                 | `src/db/index.ts`                                                                                         |
-| DB tables (auth + daily + campaign)      | `src/db/schema.ts`                                                                                        |
-| Better Auth server / client              | `src/lib/auth.ts` / `src/lib/auth-client.ts`                                                              |
-| auth HTTP mount                          | `src/routes/api/auth/$.ts`                                                                                |
-| daily server functions                   | `src/server/daily.ts`                                                                                     |
-| campaign leaderboard functions           | `src/server/campaign.ts`                                                                                  |
-| solution/trace replay + input validation | `src/server/replay.ts` (`validateSolution`, `validateTrace`, `validateInputsShape`, `validateTraceShape`) |
-| level generation core                    | `src/solver/hunt.ts`                                                                                      |
-| daily cron entry                         | `src/solver/generate-daily.ts`                                                                            |
-| daily win overlay / auth form            | `src/ui/components/DailyOverlay.tsx` / `AuthPanel.tsx`                                                    |
-| leaderboard row list                     | `src/ui/components/LeaderboardRows.tsx`                                                                   |
-| per-level leaderboard rail               | `src/ui/components/LevelBoard.tsx`                                                                        |
+| Concern                             | Lives in                                                                               |
+| ----------------------------------- | -------------------------------------------------------------------------------------- |
+| pg pool + drizzle client            | `src/db/index.ts`                                                                      |
+| DB tables (auth + daily + campaign) | `src/db/schema.ts`                                                                     |
+| Better Auth server / client         | `src/lib/auth.ts` / `src/lib/auth-client.ts`                                           |
+| auth HTTP mount                     | `src/routes/api/auth/$.ts`                                                             |
+| daily server functions              | `src/server/daily.ts`                                                                  |
+| campaign leaderboard functions      | `src/server/campaign.ts`                                                               |
+| trace replay + shape validation     | `src/server/replay.ts` (`validateTrace`, `validateTraceShape`)                         |
+| level generation core               | `src/solver/hunt.ts`                                                                   |
+| daily cron entry                    | `src/solver/generate-daily.ts`                                                         |
+| daily win overlay / auth form       | `src/ui/components/DailyOverlay.tsx` / `AuthPanel.tsx`                                 |
+| leaderboard row list                | `src/ui/components/LeaderboardRows.tsx`                                                |
+| leaderboard rail (shared)           | `src/ui/components/LeaderboardRail.tsx` (bound by `DailyBoard.tsx` / `LevelBoard.tsx`) |
 
 ### Deployment
 

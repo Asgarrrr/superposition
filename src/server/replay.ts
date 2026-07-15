@@ -1,20 +1,12 @@
-// Anti-cheat: the client submits its winning input sequence; the server replays
-// it through the pure engine to decide whether it truly wins and how many moves
-// it took. The server trusts nothing the client says about its score. Pure and
-// framework-free so it can be unit-tested directly (see replay.test.ts).
+// Anti-cheat: the client submits its full play trace; the server replays it
+// through the pure engine to decide whether it truly wins, how many moves it
+// took, and how many corrections (undo/reset) it used. The server trusts
+// nothing the client says about its score. Pure and framework-free so it can be
+// unit-tested directly (see replay.test.ts).
 
-import type { GameState, Input, Level, TraceStep } from "../engine/types.ts";
+import type { GameState, Level, TraceStep } from "../engine/types.ts";
 import { initialState, isWin } from "../engine/state.ts";
 import { applyInput } from "../engine/successors.ts";
-
-export interface ReplayResult {
-  ok: boolean;
-  moves: number;
-}
-
-// Hard ceiling on submitted length: no honest size-5 solution is near this long,
-// and it bounds replay work per request.
-export const MAX_INPUTS = 500;
 
 /** Shape-check one applied input (known kind + numeric [row, col] direction).
  * Shared by every submitted-shape validator; throws on the first malformation. */
@@ -31,51 +23,9 @@ function assertValidInput(step: { kind?: unknown; dir?: unknown }): void {
     throw new Error("invalid input direction");
 }
 
-/**
- * Structural validation of a submitted input list, shared by every score
- * endpoint: an array of at most MAX_INPUTS well-formed inputs. Bounds work
- * before the replay loop and throws on the first malformation. Does NOT check
- * that the sequence wins — that's validateSolution's job.
- */
-export function validateInputsShape(inputs: unknown): Input[] {
-  if (!Array.isArray(inputs)) throw new Error("inputs must be an array");
-  if (inputs.length > MAX_INPUTS) throw new Error("too many inputs");
-  for (const it of inputs as Array<{ kind?: unknown; dir?: unknown }>) {
-    if (!it) throw new Error("invalid input");
-    assertValidInput(it);
-  }
-  return inputs as Input[];
-}
-
-const REJECT: ReplayResult = { ok: false, moves: 0 };
-
-/**
- * Replays `inputs` from the level's initial state. Accepts only a clean
- * solution: every input legal, the win reached on the LAST input and not
- * before. Returns the move count (= inputs.length) when accepted.
- */
-export function validateSolution(level: Level, inputs: Input[]): ReplayResult {
-  if (
-    !Array.isArray(inputs) ||
-    inputs.length === 0 ||
-    inputs.length > MAX_INPUTS
-  )
-    return REJECT;
-
-  let state = initialState(level);
-  for (let i = 0; i < inputs.length; i++) {
-    const next = applyInput(state, level, inputs[i]);
-    if (!next) return REJECT; // illegal / impossible move
-    state = next;
-    const won = isWin(state, level);
-    const last = i === inputs.length - 1;
-    if (won !== last) return REJECT; // won early, or ended without winning
-  }
-  return { ok: true, moves: inputs.length };
-}
-
-// A raw trace carries corrections (undo/reset), so it runs longer than a clean
-// solution — a looser ceiling than MAX_INPUTS, still bounding replay work.
+// Hard ceiling on submitted length: a raw trace carries corrections (undo/reset)
+// so it runs longer than a clean solution, but no honest play is near this long
+// and it bounds replay work per request.
 export const MAX_TRACE = 2000;
 
 export interface TraceResult {

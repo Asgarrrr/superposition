@@ -1,45 +1,41 @@
-// The campaign rail: binds LeaderboardRail to a level's board (getLevelBoard /
-// submitLevelScore, keyed by the code-side level id). All the shared behavior —
-// read, auto-submit, auth gate, standing — lives in LeaderboardRail.
+// The daily rail: binds LeaderboardRail to the day's board (getDailyBoard /
+// submitDailyScore, keyed by date). All the shared behavior — read, auto-submit,
+// auth gate, standing — lives in LeaderboardRail.
 
 import { useCallback, useMemo } from "react";
 import type { TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { LeaderboardRail } from "./LeaderboardRail.tsx";
 import type { BoardSource } from "./LeaderboardRail.tsx";
-import { getLevelBoard, submitLevelScore } from "../../server/campaign.ts";
+import { getDailyBoard, submitDailyScore } from "../../server/daily.ts";
 
-export function LevelBoard({
-  levelId,
+export function DailyBoard({
+  date,
   solved,
   moves,
   wonTrace,
   className = "",
 }: {
-  levelId: string;
+  date: string;
   solved: boolean;
   moves: number;
   wonTrace: TraceStep[];
   className?: string;
 }) {
-  const read = useCallback(
-    () => getLevelBoard({ data: { levelId } }),
-    [levelId],
-  );
   const submit = useCallback(
     async (trace: TraceStep[]) => {
-      await submitLevelScore({ data: { levelId, trace } });
+      await submitDailyScore({ data: { trace, date } });
     },
-    [levelId],
+    [date],
   );
   const source = useMemo<BoardSource>(
     () => ({
-      read,
+      read: () => getDailyBoard({ data: { date } }),
       submit,
-      title: m.level_leaderboard_title(),
-      emptyLabel: m.level_leaderboard_empty(),
+      title: m.daily_leaderboard_title(),
+      emptyLabel: m.daily_leaderboard_empty(),
     }),
-    [read, submit],
+    [submit, date],
   );
 
   return (

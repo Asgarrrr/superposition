@@ -26,7 +26,7 @@ export function Hud({
   backLabel?: string;
 }) {
   return (
-    <div className="mb-4 flex w-[min(92vw,420px)] flex-col gap-1 border-b border-paper/10 pb-3">
+    <div className="mb-4 flex w-[min(92vw,520px)] flex-col gap-1 border-b border-paper/10 pb-3">
       <div className="flex items-center justify-between">
         <button
           type="button"
