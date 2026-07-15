@@ -53,6 +53,16 @@ export function Board({
     [span - 13, span - 13],
   ];
 
+  // The sheet is seated into the lit table, not floating above it: a full
+  // hairline warm rim frames the panel evenly, a touch brighter on the top lip
+  // where the lamp catches, and a short, low-opacity contact grounds it. A
+  // heavy black drop would only dirty the warm glow the caisson is darker
+  // than, so the outer shadow stays tight and diffuse.
+  const drop =
+    "inset 0 0 0 1px rgba(242,237,228,0.03), " +
+    "inset 0 1px 0 rgba(242,237,228,0.05), " +
+    "0 1px 2px rgba(0,0,0,0.35), 0 6px 18px rgba(0,0,0,0.22)";
+
   return (
     <div
       key={bump ? bump.t : "steady"}
@@ -63,8 +73,8 @@ export function Board({
         background:
           "radial-gradient(ellipse 80% 80% at 50% 50%, var(--color-box-glow), var(--color-box) 80%)",
         boxShadow: st.merged
-          ? "inset 0 0 90px rgba(242,237,228,0.06), 0 12px 40px rgba(0,0,0,0.5)"
-          : "inset 0 0 70px rgba(69,224,236,0.04), inset 0 0 70px rgba(255,79,163,0.04), 0 12px 40px rgba(0,0,0,0.5)",
+          ? `inset 0 0 90px rgba(242,237,228,0.06), ${drop}`
+          : `inset 0 0 70px rgba(69,224,236,0.04), inset 0 0 70px rgba(255,79,163,0.04), ${drop}`,
         transition: "box-shadow 500ms",
         animation: bump ? `${bumpName(bump.payload)} 220ms ease-out` : "none",
       }}

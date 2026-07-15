@@ -16,6 +16,7 @@
   "hud_back": "planches",
   "hud_sound_on": "sonore",
   "hud_sound_off": "silencieux",
+  "hud_level": "niveau",
   "hud_moves_word": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
@@ -26,6 +27,9 @@
       }
     }
   ],
+  "stat_current": "actuel",
+  "stat_moves": "passes",
+  "stat_record": "record",
   "controls_undo": "annuler",
   "controls_reset": "reprendre",
   "controls_split": "✕ scinder",

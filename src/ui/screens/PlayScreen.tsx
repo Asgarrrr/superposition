@@ -7,6 +7,7 @@ import { ruleLine } from "../ruleLine.ts";
 import { Board } from "../components/Board.tsx";
 import { Controls } from "../components/Controls.tsx";
 import { Hud } from "../components/Hud.tsx";
+import { LeftRail } from "../components/LeftRail.tsx";
 import { DailyBoard } from "../components/DailyBoard.tsx";
 import { LevelBoard } from "../components/LevelBoard.tsx";
 import { LightField } from "../components/LightField.tsx";
@@ -21,6 +22,14 @@ import { useSwipe } from "../hooks/useSwipe.ts";
 const reduced =
   typeof matchMedia !== "undefined" &&
   matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// The two rails flanking the board share one shape so it stays optically
+// centred between them: two stacked subgrid rows the board's height, 220px wide
+// on xl. Kept as one source so a tweak to either side can't silently drift.
+const railShape =
+  "xl:row-start-1 xl:row-span-2 xl:grid xl:w-[220px] xl:grid-rows-subgrid";
+const leftRailClass = `w-[min(92vw,520px)] ${railShape} xl:col-start-1 xl:justify-self-end`;
+const boardRailClass = `mt-8 w-[min(90vw,420px)] ${railShape} xl:col-start-3 xl:mt-0 xl:justify-self-start xl:self-stretch`;
 
 /** Daily mode: the level of the day, played for the shared leaderboard rather
  *  than the campaign. Swaps the HUD banner and the win overlay. */
@@ -76,7 +85,7 @@ export function PlayScreen({
 
   return (
     <div
-      className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10 font-mono text-paper select-none"
+      className="relative flex min-h-screen flex-col items-center justify-center px-4 pt-20 pb-10 font-mono text-paper select-none xl:py-10"
       style={{
         background:
           "radial-gradient(ellipse 68% 60% at 50% 46%, var(--color-box-glow), #1a1611 46%, var(--color-room) 80%)",
@@ -96,23 +105,36 @@ export function PlayScreen({
       {/* desktop: a three-column grid — an empty left counterweight, the hero
           column (board + its chrome), and the leaderboard — so the board stays
           the true optical centre instead of being shoved left by a rail bolted
-          to its right. Below xl it collapses to a single centred stack. */}
-      <div className="relative z-10 grid w-full max-w-6xl grid-cols-1 place-items-center gap-8 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:items-start xl:gap-10">
-        <div className="hidden xl:block" />
+          to its right. The Hud, board and controls occupy three explicit rows so
+          the rail can share the board's row: their top edges line up and the
+          rail stretches to the board's height, reading as one paired object
+          rather than a panel floating up beside the title. Below xl it collapses
+          to a single centred stack. */}
+      <div className="relative z-10 grid w-full max-w-6xl grid-cols-1 place-items-center gap-y-0 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:grid-rows-[auto_auto_auto] xl:items-start xl:gap-x-20">
+        {/* left rail — navigation, level progress, sound and the move readout.
+            It mirrors the leaderboard: its nav shares the Hud's baseline rule
+            (subgrid row 1), its stats sit at the board's row (row 2). Below xl
+            the DOM order puts it first, so it becomes the top bar. */}
+        <LeftRail
+          plate={plate}
+          total={total}
+          moves={game.moves}
+          record={daily ? undefined : best}
+          muted={muted}
+          onToggleMute={onToggleMute}
+          onExit={onExit}
+          daily={daily?.date}
+          backLabel={daily ? m.daily_back() : undefined}
+          className={leftRailClass}
+        />
 
-        <div className="flex flex-col items-center">
-          <Hud
-            plate={plate}
-            total={total}
-            level={level}
-            moves={game.moves}
-            muted={muted}
-            onToggleMute={onToggleMute}
-            onExit={onExit}
-            daily={daily?.date}
-            backLabel={daily ? m.daily_back() : undefined}
-          />
+        {/* mobile: the title leads, so the nav bar drops below its separator,
+            right above the board. On xl explicit grid placement ignores order. */}
+        <div className="order-first xl:order-none xl:col-start-2 xl:row-start-1">
+          <Hud level={level} daily={!!daily} />
+        </div>
 
+        <div className="xl:col-start-2 xl:row-start-2 xl:pt-4">
           <Board
             level={level}
             st={game.st}
@@ -135,7 +157,9 @@ export function PlayScreen({
                 />
               ))}
           </Board>
+        </div>
 
+        <div className="flex flex-col items-center xl:col-start-2 xl:row-start-3">
           <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28">
             {game.flash ? (
               <span className="text-ink-magenta">{game.flash}</span>
@@ -160,7 +184,7 @@ export function PlayScreen({
             solved={game.solved}
             moves={game.moves}
             wonTrace={game.wonTrace}
-            className="w-[min(90vw,420px)] xl:mt-1 xl:w-[220px] xl:justify-self-start"
+            className={boardRailClass}
           />
         ) : (
           <LevelBoard
@@ -168,7 +192,7 @@ export function PlayScreen({
             solved={game.solved}
             moves={game.moves}
             wonTrace={game.wonTrace}
-            className="w-[min(90vw,420px)] xl:mt-1 xl:w-[220px] xl:justify-self-start"
+            className={boardRailClass}
           />
         )}
       </div>

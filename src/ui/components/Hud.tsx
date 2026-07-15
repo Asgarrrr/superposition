@@ -1,63 +1,25 @@
-// Game banner: navigation, sound, level name, move counter, hint.
+// The editorial block: the level's title and its one-line hint. Navigation,
+// level progress, sound and the move count now live in the left rail (LeftRail);
+// this stays purely editorial so the title reads as the sheet's caption. Its
+// bottom rule is the shared baseline the two rails align their headers onto.
 
 import type { Level } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { levelHint } from "../copy.ts";
 
 export function Hud({
-  plate,
-  total,
   level,
-  moves,
-  muted,
-  onToggleMute,
-  onExit,
   daily,
-  backLabel,
 }: {
-  plate: number; // level number, 1-based
-  total: number;
   level: Level;
-  moves: number;
-  muted: boolean;
-  onToggleMute: () => void;
-  onExit: () => void;
-  daily?: string; // when set (a YYYY-MM-DD date), show the daily banner instead of plate/total
-  backLabel?: string;
+  daily?: boolean; // daily mode: swap the title for the daily tag
 }) {
   return (
-    <div className="mb-4 flex w-[min(92vw,520px)] flex-col gap-1 border-b border-paper/10 pb-3">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          className="btn border-none p-0 text-[11px] text-paper/28 transition-colors hover:text-paper/55"
-          onClick={onExit}
-        >
-          ← {backLabel ?? m.hud_back()}
-        </button>
-        <button
-          type="button"
-          className="btn border-none p-0 text-[11px] text-paper/28 transition-colors hover:text-paper/55"
-          onClick={onToggleMute}
-        >
-          {muted ? m.hud_sound_off() : m.hud_sound_on()}
-        </button>
+    <div className="mb-4 flex w-[min(92vw,520px)] flex-col gap-1 border-b border-paper/10 pb-3 xl:mb-0">
+      <div className="font-display text-[26px] leading-none italic tracking-[0.02em]">
+        {daily ? m.daily_tag() : level.name}
       </div>
-      <div className="flex items-baseline justify-between">
-        <div className="font-display text-[26px] italic tracking-[0.02em]">
-          <span className="mr-2.5 font-mono text-[11px] not-italic tracking-[0.12em] text-paper/35 tabular-nums">
-            {daily ?? `${String(plate).padStart(2, "0")}/${total}`}
-          </span>
-          {daily ? m.daily_tag() : level.name}
-        </div>
-        <div className="font-mono text-xs text-paper/50">
-          <span className="text-paper/75 tabular-nums">{moves}</span>{" "}
-          <span className="text-paper/28">
-            {m.hud_moves_word({ count: moves })}
-          </span>
-        </div>
-      </div>
-      <div className="font-display text-xs italic tracking-[0.02em] text-paper/35">
+      <div className="mt-0.5 font-display text-base not-italic tracking-[0.01em] text-paper/45">
         {levelHint(level.id)}
       </div>
     </div>

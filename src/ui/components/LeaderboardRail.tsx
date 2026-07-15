@@ -141,8 +141,11 @@ export function LeaderboardRail({
   }, [isPending, uid, solved, read, submit, retry]);
 
   return (
-    <aside className={`font-mono ${className}`}>
-      <div className="mb-2 flex items-baseline justify-between border-b border-paper/10 pb-2">
+    <aside className={`flex flex-col font-mono ${className}`}>
+      {/* header — its own subgrid row on xl (shares the Hud's row), stretched so
+          its baseline rule lands on the Hud's rule; content bottom-aligned so the
+          short title sits just above that shared line rather than floating up. */}
+      <div className="mb-2 flex items-baseline justify-between border-b border-paper/10 pb-2 xl:mb-0 xl:items-end">
         <span className="text-[10px] tracking-[0.28em] text-paper/40 uppercase">
           {title}
         </span>
@@ -153,43 +156,46 @@ export function LeaderboardRail({
         )}
       </div>
 
-      <LeaderboardRows
-        rows={rows}
-        uid={uid}
-        limit={12}
-        emptyLabel={emptyLabel}
-      />
+      {/* body — the board's row on xl: rows at the top, standing pinned to the
+          bottom so its edge meets the board's lower edge. */}
+      <div className="flex flex-col xl:min-h-0 xl:pt-4">
+        <LeaderboardRows
+          rows={rows}
+          uid={uid}
+          limit={12}
+          emptyLabel={emptyLabel}
+        />
 
-      {/* footer: your standing when signed in, otherwise a sign-in gate */}
-      <div className="mt-3 border-t border-paper/10 pt-2 text-[11px] tracking-[0.1em]">
-        {phase === "submitting" && (
-          <span className="text-paper/50">{m.daily_submitting()}</span>
-        )}
-        {phase === "error" && (
-          <button
-            type="button"
-            className="btn border-none p-0 text-[11px] text-ink-magenta transition-opacity hover:opacity-70"
-            onClick={() => setRetry((r) => r + 1)}
-          >
-            {m.daily_submit_error()}
-          </button>
-        )}
-        {phase === "idle" &&
-          (uid ? (
-            mine && (
-              <span className="text-paper/60">
-                {m.daily_your_rank({ rank: mine.rank })} · {mine.moves}
-              </span>
-            )
-          ) : (
+        <div className="mt-3 border-t border-paper/10 pt-2 text-[11px] tracking-[0.1em] xl:mt-auto">
+          {phase === "submitting" && (
+            <span className="text-paper/50">{m.daily_submitting()}</span>
+          )}
+          {phase === "error" && (
             <button
               type="button"
-              className="btn border-none p-0 text-[11px] text-paper/40 transition-colors hover:text-paper/70"
-              onClick={() => setAuthOpen(true)}
+              className="btn border-none p-0 text-[11px] text-ink-magenta transition-opacity hover:opacity-70"
+              onClick={() => setRetry((r) => r + 1)}
             >
-              {m.level_signin_cta()} →
+              {m.daily_submit_error()}
             </button>
-          ))}
+          )}
+          {phase === "idle" &&
+            (uid ? (
+              mine && (
+                <span className="text-paper/60">
+                  {m.daily_your_rank({ rank: mine.rank })} · {mine.moves}
+                </span>
+              )
+            ) : (
+              <button
+                type="button"
+                className="btn border-none p-0 text-[11px] text-paper/40 transition-colors hover:text-paper/70"
+                onClick={() => setAuthOpen(true)}
+              >
+                {m.level_signin_cta()} →
+              </button>
+            ))}
+        </div>
       </div>
 
       {authOpen && !uid && (
