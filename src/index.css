@@ -48,27 +48,8 @@
   }
 }
 
-/* recul du caisson quand un coup est bloqué */
-@keyframes sp-bump-U {
-  30% {
-    transform: translateY(-5px);
-  }
-}
-@keyframes sp-bump-D {
-  30% {
-    transform: translateY(5px);
-  }
-}
-@keyframes sp-bump-L {
-  30% {
-    transform: translateX(-5px);
-  }
-}
-@keyframes sp-bump-R {
-  30% {
-    transform: translateX(5px);
-  }
-}
+/* recul du caisson quand un coup est bloqué : piloté par motion (Board), plus
+   de keyframes CSS ici. */
 /* bloom blanc de la fusion */
 @keyframes sp-bloom {
   from {

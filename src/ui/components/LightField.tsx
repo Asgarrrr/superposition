@@ -133,6 +133,10 @@ export function LightField({
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      // NB: deliberately NOT calling WEBGL_lose_context here. getContext caches
+      // one context per canvas, so under StrictMode's mount→unmount→mount the
+      // second mount would re-acquire the just-lost context and render blank.
+      // Each mount uses a fresh canvas, so the browser GCs the old context.
     };
   }, [variant, reduced]);
 

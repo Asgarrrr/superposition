@@ -16,13 +16,15 @@ import {
   useVelocity,
 } from "motion/react";
 import { m } from "../../paraglide/messages.js";
-import { LightField } from "../components/LightField.tsx";
-import { RegCross } from "../components/RegCross.tsx";
+import { Room } from "../components/Room.tsx";
 import { EYE, floodGradient } from "../transition.ts";
+import { reducedMotion as reduced } from "../motion.ts";
 
-const reduced =
-  typeof matchMedia !== "undefined" &&
-  matchMedia("(prefers-reduced-motion: reduce)").matches;
+// the title's own wash — biased left of the register point to seat the wordmark
+// and its slot, where the board and edition sit centred. Same room, its lamp
+// just pulled to one side of the composition.
+const TITLE_GRADIENT =
+  "radial-gradient(ellipse 72% 62% at 40% 46%, var(--color-box-glow), #1a1611 45%, var(--color-room) 78%)";
 
 const START = { x: 78, y: 50 };
 const SNAP = 20; // px: auto-lock while dragging
@@ -167,18 +169,18 @@ export function EnterScreen({ onStart }: { onStart: () => void }) {
     <div
       onPointerMove={onPointerMove}
       className="relative flex min-h-screen touch-none flex-col items-center justify-center overflow-hidden font-mono text-paper select-none"
-      style={{
-        background:
-          "radial-gradient(ellipse 72% 62% at 40% 46%, var(--color-box-glow), #1a1611 45%, var(--color-room) 78%)",
-      }}
     >
-      <LightField variant={2} reduced={reduced} />
-      <div className="grain absolute inset-0 opacity-[0.03]" />
-
-      <RegCross pos="top-11 left-11" spread={crossSpread} />
-      <RegCross pos="top-11 right-11" spread={crossSpread} />
-      <RegCross pos="bottom-11 left-11" spread={crossSpread} />
-      <RegCross pos="bottom-11 right-11" spread={crossSpread} />
+      {/* the shared lit table — the room the edition and board also open in.
+          Its corner marks breathe into register with the wordmark (crossSpread)
+          as the films close in (variant 2: the cool counter-lamp on the right). */}
+      <Room
+        variant={2}
+        reduced={reduced}
+        gradient={TITLE_GRADIENT}
+        crossSpread={crossSpread}
+        wideCorners
+        grainOpacity={0.03}
+      />
 
       {/* register glow — a warm bloom the films kindle as they close in.
           Centred on the register point (EYE), elliptical so it cradles the

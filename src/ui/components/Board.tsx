@@ -2,21 +2,16 @@
 // registration marks, merge bloom) and the recoil when a move
 // is blocked. Receives the state, decides nothing.
 
+import { useEffect } from "react";
+import { motion, useAnimationControls } from "motion/react";
 import type { GameState, Level, Pos } from "../../engine/types.ts";
 import { sub } from "../../engine/grid.ts";
 import type { Pulse } from "../hooks/useGame.ts";
 import { boardSpan, CELL, cellCenter } from "./board-metrics.ts";
 import { InkLayer } from "./InkLayer.tsx";
 import { RegMark } from "./RegMark.tsx";
-
-const bumpName = (d: Pos) =>
-  d[0] === -1
-    ? "sp-bump-U"
-    : d[0] === 1
-      ? "sp-bump-D"
-      : d[1] === -1
-        ? "sp-bump-L"
-        : "sp-bump-R";
+import { introInitial, introVariants } from "./board-intro.ts";
+import { reducedMotion } from "../motion.ts";
 
 export function Board({
   level,
@@ -41,6 +36,21 @@ export function Board({
   onTouchEnd: (e: React.TouchEvent) => void;
   children?: React.ReactNode;
 }) {
+  // a blocked move recoils the whole box. Driven imperatively so the board
+  // keeps a stable identity (no remount), which is what lets the develop-in
+  // play exactly once on level mount rather than restarting on every bump.
+  const recoil = useAnimationControls();
+  useEffect(() => {
+    if (!bump || reducedMotion) return;
+    const d = bump.payload;
+    const vertical = d[0] !== 0;
+    const kf = [0, (vertical ? d[0] : d[1]) * 5, 0];
+    recoil.start({
+      ...(vertical ? { y: kf } : { x: kf }),
+      transition: { duration: 0.22, ease: "easeOut" as const },
+    });
+  }, [bump, recoil]);
+
   const span = boardSpan(level.size);
   const pa = st.merged ? st.m : st.a;
   const pbBoard: Pos = st.merged ? sub(st.m, st.off) : st.b;
@@ -64,8 +74,8 @@ export function Board({
     "0 1px 2px rgba(0,0,0,0.35), 0 6px 18px rgba(0,0,0,0.22)";
 
   return (
-    <div
-      key={bump ? bump.t : "steady"}
+    <motion.div
+      animate={recoil}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       className="relative aspect-square w-[min(92vw,520px)] overflow-hidden rounded-md"
@@ -76,7 +86,6 @@ export function Board({
           ? `inset 0 0 90px rgba(242,237,228,0.06), ${drop}`
           : `inset 0 0 70px rgba(69,224,236,0.04), inset 0 0 70px rgba(255,79,163,0.04), ${drop}`,
         transition: "box-shadow 500ms",
-        animation: bump ? `${bumpName(bump.payload)} 220ms ease-out` : "none",
       }}
     >
       <InkLayer
@@ -106,38 +115,50 @@ export function Board({
         viewBox={`0 0 ${span} ${span}`}
         className="pointer-events-none absolute inset-0 h-full w-full"
       >
-        {(level.lightWalls ?? []).map(([r, c]) => {
-          const [x, y] = cellCenter([r, c]);
-          return (
-            <g
-              key={`${r}-${c}`}
-              opacity={st.merged ? 1 : 0.4}
-              style={{ transition: "opacity 400ms" }}
-            >
-              <rect
-                x={x - CELL / 2 + 8}
-                y={y - CELL / 2 + 8}
-                width={CELL - 16}
-                height={CELL - 16}
-                fill="none"
-                stroke="var(--color-paper)"
-                strokeWidth="2"
-                strokeDasharray="4 4"
-              />
-              <circle cx={x} cy={y} r="3" fill="var(--color-paper)" />
-            </g>
-          );
-        })}
-        {marks.map(([x, y]) => (
-          <RegMark
-            key={`${x}-${y}`}
-            x={x}
-            y={y}
-            offPx={offPx}
-            merged={st.merged}
-            locked={solved}
-          />
-        ))}
+        <motion.g
+          initial={introInitial}
+          animate="visible"
+          variants={introVariants.light}
+        >
+          {(level.lightWalls ?? []).map(([r, c]) => {
+            const [x, y] = cellCenter([r, c]);
+            return (
+              <g
+                key={`${r}-${c}`}
+                opacity={st.merged ? 1 : 0.4}
+                style={{ transition: "opacity 400ms" }}
+              >
+                <rect
+                  x={x - CELL / 2 + 8}
+                  y={y - CELL / 2 + 8}
+                  width={CELL - 16}
+                  height={CELL - 16}
+                  fill="none"
+                  stroke="var(--color-paper)"
+                  strokeWidth="2"
+                  strokeDasharray="4 4"
+                />
+                <circle cx={x} cy={y} r="3" fill="var(--color-paper)" />
+              </g>
+            );
+          })}
+        </motion.g>
+        <motion.g
+          initial={introInitial}
+          animate="visible"
+          variants={introVariants.marks}
+        >
+          {marks.map(([x, y]) => (
+            <RegMark
+              key={`${x}-${y}`}
+              x={x}
+              y={y}
+              offPx={offPx}
+              merged={st.merged}
+              locked={solved}
+            />
+          ))}
+        </motion.g>
         {bloom && (
           <circle
             cx={cellCenter(bloom.payload)[0]}
@@ -155,6 +176,6 @@ export function Board({
       </svg>
 
       {children}
-    </div>
+    </motion.div>
   );
 }

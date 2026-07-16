@@ -1,6 +1,7 @@
 // The play screen: composes Hud, Board, rule line and Controls
 // around useGame. Remounted (key) on every level change.
 
+import { motion, type Variants } from "motion/react";
 import type { Level } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { ruleLine } from "../ruleLine.ts";
@@ -10,18 +11,50 @@ import { Hud } from "../components/Hud.tsx";
 import { LeftRail } from "../components/LeftRail.tsx";
 import { DailyBoard } from "../components/DailyBoard.tsx";
 import { LevelBoard } from "../components/LevelBoard.tsx";
-import { LightField } from "../components/LightField.tsx";
-import { RegCross } from "../components/RegCross.tsx";
+import { Room } from "../components/Room.tsx";
 import { WinOverlay } from "../components/WinOverlay.tsx";
 import { DailyOverlay } from "../components/DailyOverlay.tsx";
 import { useGame } from "../hooks/useGame.ts";
 import { useKeyboard } from "../hooks/useKeyboard.ts";
 import type { SoundFx } from "../hooks/useSound.ts";
 import { useSwipe } from "../hooks/useSwipe.ts";
+import { PRINT_EASE, reducedMotion as reduced } from "../motion.ts";
 
-const reduced =
-  typeof matchMedia !== "undefined" &&
-  matchMedia("(prefers-reduced-motion: reduce)").matches;
+// ── the develop-in ───────────────────────────────────────────────
+// The board doesn't just pop in: each element of the composition makes its own
+// entrance and they assemble around the board. The parent flips the shared
+// hidden→visible label; every piece carries its own variant (with a baked-in
+// delay, so the order is explicit and independent of DOM/stagger mechanics):
+// the caption drops in, the board lifts + settles from a hair under size, then
+// the two rails slide in from their outer edges and the controls come up last.
+// Pieces receive their variant via `variants=`; the rails pass theirs down to a
+// motion root (LeftRail / LeaderboardRail) so they animate without breaking the
+// board-height subgrid a wrapper would.
+const ease = (delay: number, duration = 0.5) =>
+  ({ duration, ease: PRINT_EASE, delay }) as const;
+
+const composition: Variants = { hidden: {}, visible: {} };
+
+const vCaption: Variants = {
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0, transition: ease(0.04) },
+};
+const vBoard: Variants = {
+  hidden: { opacity: 0, y: 22, scale: 0.94 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: ease(0.1, 0.62) },
+};
+const vLeftRail: Variants = {
+  hidden: { opacity: 0, x: -30 },
+  visible: { opacity: 1, x: 0, transition: ease(0.16) },
+};
+const vRightRail: Variants = {
+  hidden: { opacity: 0, x: 30 },
+  visible: { opacity: 1, x: 0, transition: ease(0.18) },
+};
+const vControls: Variants = {
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0, transition: ease(0.24) },
+};
 
 // The two rails flanking the board share one shape so it stays optically
 // centred between them: two stacked subgrid rows the board's height, 220px wide
@@ -86,23 +119,12 @@ export function PlayScreen({
       : null;
 
   return (
-    <div
-      className="relative flex min-h-screen flex-col items-center justify-center px-4 pt-20 pb-10 font-mono text-paper select-none xl:py-10"
-      style={{
-        background:
-          "radial-gradient(ellipse 68% 60% at 50% 46%, var(--color-box-glow), #1a1611 46%, var(--color-room) 80%)",
-      }}
-    >
-      {/* the workshop around the table: a slow warm lamp, grain, and the sheet's
-          registration crosses framing the four corners — the same lit room the
-          title screen opens in, so the board reads as a print on the table
-          rather than a widget in a void */}
-      <LightField variant={0} reduced={reduced} />
-      <div className="grain fixed inset-0" />
-      <RegCross pos="top-10 left-10" />
-      <RegCross pos="top-10 right-10" />
-      <RegCross pos="bottom-10 left-10" />
-      <RegCross pos="bottom-10 right-10" />
+    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 pt-20 pb-10 font-mono text-paper select-none xl:py-10">
+      {/* the shared lit table — the same workshop the title and edition sit in,
+          so the board reads as a print on the table rather than a widget in a
+          void (variant 0: the plain warm lamp, no halftone competing with the
+          board) */}
+      <Room variant={0} reduced={reduced} />
 
       {/* desktop: a three-column grid — an empty left counterweight, the hero
           column (board + its chrome), and the leaderboard — so the board stays
@@ -111,8 +133,14 @@ export function PlayScreen({
           the rail can share the board's row: their top edges line up and the
           rail stretches to the board's height, reading as one paired object
           rather than a panel floating up beside the title. Below xl it collapses
-          to a single centred stack. */}
-      <div className="relative z-10 grid w-full max-w-6xl grid-cols-1 place-items-center gap-y-0 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:grid-rows-[auto_auto_auto] xl:items-start xl:gap-x-20">
+          to a single centred stack. This is also the develop-in root: it flips
+          the shared hidden→visible label its children each animate against. */}
+      <motion.div
+        className="relative z-10 grid w-full max-w-6xl grid-cols-1 place-items-center gap-y-0 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:grid-rows-[auto_auto_auto] xl:items-start xl:gap-x-20"
+        variants={composition}
+        initial={reduced ? false : "hidden"}
+        animate="visible"
+      >
         {/* left rail — navigation, level progress, sound and the move readout.
             It mirrors the leaderboard: its nav shares the Hud's baseline rule
             (subgrid row 1), its stats sit at the board's row (row 2). Below xl
@@ -128,15 +156,22 @@ export function PlayScreen({
           daily={daily?.date}
           backLabel={daily ? m.hud_back() : undefined}
           className={leftRailClass}
+          variants={vLeftRail}
         />
 
         {/* mobile: the title leads, so the nav bar drops below its separator,
             right above the board. On xl explicit grid placement ignores order. */}
-        <div className="order-first xl:order-none xl:col-start-2 xl:row-start-1">
+        <motion.div
+          className="order-first xl:order-none xl:col-start-2 xl:row-start-1"
+          variants={vCaption}
+        >
           <Hud level={level} daily={!!daily} />
-        </div>
+        </motion.div>
 
-        <div className="xl:col-start-2 xl:row-start-2 xl:pt-4">
+        <motion.div
+          className="xl:col-start-2 xl:row-start-2 xl:pt-4"
+          variants={vBoard}
+        >
           <Board
             level={level}
             st={game.st}
@@ -159,9 +194,12 @@ export function PlayScreen({
                 />
               ))}
           </Board>
-        </div>
+        </motion.div>
 
-        <div className="flex flex-col items-center xl:col-start-2 xl:row-start-3">
+        <motion.div
+          className="flex flex-col items-center xl:col-start-2 xl:row-start-3"
+          variants={vControls}
+        >
           <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28">
             {game.flash ? (
               <span className="text-ink-magenta">{game.flash}</span>
@@ -178,7 +216,7 @@ export function PlayScreen({
             onUndo={game.undo}
             onReset={game.reset}
           />
-        </div>
+        </motion.div>
 
         {daily ? (
           <DailyBoard
@@ -188,6 +226,7 @@ export function PlayScreen({
             moves={game.moves}
             wonTrace={game.wonTrace}
             className={boardRailClass}
+            variants={vRightRail}
           />
         ) : (
           <LevelBoard
@@ -196,9 +235,10 @@ export function PlayScreen({
             moves={game.moves}
             wonTrace={game.wonTrace}
             className={boardRailClass}
+            variants={vRightRail}
           />
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

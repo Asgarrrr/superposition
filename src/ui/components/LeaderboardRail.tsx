@@ -7,6 +7,7 @@
 // Reading never needs an account.
 
 import { useEffect, useRef, useState } from "react";
+import { motion, type Variants } from "motion/react";
 import type { TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { AuthPanel } from "./AuthPanel.tsx";
@@ -32,12 +33,14 @@ export function LeaderboardRail({
   moves,
   wonTrace,
   className = "",
+  variants,
 }: {
   source: BoardSource;
   solved: boolean;
   moves: number; // the winning line's move count (for the resubmit guard)
   wonTrace: TraceStep[];
   className?: string;
+  variants?: Variants; // develop-in: inherits the parent's hidden→visible label
 }) {
   const { read, submit, title, emptyLabel } = source;
   const { data: session, isPending } = useSession();
@@ -141,7 +144,10 @@ export function LeaderboardRail({
   }, [isPending, uid, solved, read, submit, retry]);
 
   return (
-    <aside className={`flex flex-col font-mono ${className}`}>
+    <motion.aside
+      className={`flex flex-col font-mono ${className}`}
+      variants={variants}
+    >
       {/* header — its own subgrid row on xl (shares the Hud's row), stretched so
           its baseline rule lands on the Hud's rule; content bottom-aligned so the
           short title sits just above that shared line rather than floating up. */}
@@ -208,6 +214,6 @@ export function LeaderboardRail({
           </div>
         </div>
       )}
-    </aside>
+    </motion.aside>
   );
 }

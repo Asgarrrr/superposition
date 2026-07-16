@@ -3,6 +3,7 @@
 // read, auto-submit, auth gate, standing — lives in LeaderboardRail.
 
 import { useCallback, useMemo } from "react";
+import type { Variants } from "motion/react";
 import type { TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { LeaderboardRail } from "./LeaderboardRail.tsx";
@@ -15,12 +16,14 @@ export function LevelBoard({
   moves,
   wonTrace,
   className = "",
+  variants,
 }: {
   levelId: string;
   solved: boolean;
   moves: number;
   wonTrace: TraceStep[];
   className?: string;
+  variants?: Variants;
 }) {
   const read = useCallback(
     () => getLevelBoard({ data: { levelId } }),
@@ -49,6 +52,7 @@ export function LevelBoard({
       moves={moves}
       wonTrace={wonTrace}
       className={className}
+      variants={variants}
     />
   );
 }

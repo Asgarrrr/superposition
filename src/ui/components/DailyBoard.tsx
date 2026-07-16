@@ -3,6 +3,7 @@
 // auth gate, standing — lives in LeaderboardRail.
 
 import { useCallback, useMemo } from "react";
+import type { Variants } from "motion/react";
 import type { TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { LeaderboardRail } from "./LeaderboardRail.tsx";
@@ -16,6 +17,7 @@ export function DailyBoard({
   moves,
   wonTrace,
   className = "",
+  variants,
 }: {
   date: string;
   tier: number;
@@ -23,6 +25,7 @@ export function DailyBoard({
   moves: number;
   wonTrace: TraceStep[];
   className?: string;
+  variants?: Variants;
 }) {
   const submit = useCallback(
     async (trace: TraceStep[]) => {
@@ -47,6 +50,7 @@ export function DailyBoard({
       moves={moves}
       wonTrace={wonTrace}
       className={className}
+      variants={variants}
     />
   );
 }

@@ -7,6 +7,7 @@
 // row 2). Below xl it collapses to the top utility bar above the board, the
 // move count folded inline and the big readout hidden.
 
+import { motion, type Variants } from "motion/react";
 import { m } from "../../paraglide/messages.js";
 
 export function LeftRail({
@@ -20,6 +21,7 @@ export function LeftRail({
   daily,
   backLabel,
   className = "",
+  variants,
 }: {
   plate: number; // level number, 1-based
   total: number;
@@ -31,9 +33,10 @@ export function LeftRail({
   daily?: string; // when set (a YYYY-MM-DD date), show it instead of level progress
   backLabel?: string;
   className?: string;
+  variants?: Variants; // develop-in: inherits the parent's hidden→visible label
 }) {
   return (
-    <div className={`font-mono ${className}`}>
+    <motion.div className={`font-mono ${className}`} variants={variants}>
       {/* nav — the shared baseline rule with the Hud and the leaderboard header
           (xl: subgrid row 1, pinned to the row's bottom so the three rules line
           up into one continuous edge). Below xl it's the top utility bar. */}
@@ -143,6 +146,6 @@ export function LeftRail({
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
