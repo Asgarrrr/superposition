@@ -15,6 +15,8 @@ import {
   boolean,
   index,
   uniqueIndex,
+  primaryKey,
+  foreignKey,
 } from "drizzle-orm/pg-core";
 import type { Level, TraceStep } from "../engine/types.ts";
 
@@ -93,25 +95,33 @@ export const verification = pgTable(
 
 // ─── Daily puzzle tables (ours) ──────────────────────────────
 
-/** One shared level per UTC day, written by the cron generator. */
-export const dailyPuzzle = pgTable("daily_puzzle", {
-  date: text("date").primaryKey(), // YYYY-MM-DD (UTC)
-  level: jsonb("level").$type<Level>().notNull(),
-  optimal: integer("optimal").notNull(), // solver's optimal move count
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+/** Three shared levels per UTC day (one per difficulty tier), written by the
+ *  cron generator. `tier` is 0 (easy) · 1 (medium) · 2 (hard); the pair
+ *  (date, tier) identifies a puzzle. Rows predating the tiered generator default
+ *  to tier 1 — the old single daily was the ~16-move "medium". */
+export const dailyPuzzle = pgTable(
+  "daily_puzzle",
+  {
+    date: text("date").notNull(), // YYYY-MM-DD (UTC)
+    tier: integer("tier").notNull().default(1),
+    level: jsonb("level").$type<Level>().notNull(),
+    optimal: integer("optimal").notNull(), // solver's optimal move count
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.date, t.tier] })],
+);
 
-/** A player's best result for a given day. `trace` holds the full raw play
- *  trace (inputs + undo/reset), kept for server-side replay/audit; `undos` is
- *  the correction count the server derived from it (0 = a clean solve). Rank is
- *  moves, then undos. One row per (date, user). */
+/** A player's best result for a given day's tier. `trace` holds the full raw
+ *  play trace (inputs + undo/reset), kept for server-side replay/audit; `undos`
+ *  is the correction count the server derived from it (0 = a clean solve). Rank
+ *  is moves, then undos. One row per (date, tier, user) — each tier has its own
+ *  leaderboard. */
 export const dailyScore = pgTable(
   "daily_score",
   {
     id: serial("id").primaryKey(),
-    date: text("date")
-      .notNull()
-      .references(() => dailyPuzzle.date, { onDelete: "cascade" }),
+    date: text("date").notNull(),
+    tier: integer("tier").notNull().default(1),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -121,7 +131,13 @@ export const dailyScore = pgTable(
     trace: jsonb("inputs").$type<TraceStep[]>().notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (t) => [uniqueIndex("daily_score_date_user").on(t.date, t.userId)],
+  (t) => [
+    uniqueIndex("daily_score_date_tier_user").on(t.date, t.tier, t.userId),
+    foreignKey({
+      columns: [t.date, t.tier],
+      foreignColumns: [dailyPuzzle.date, dailyPuzzle.tier],
+    }).onDelete("cascade"),
+  ],
 );
 
 // ─── Campaign leaderboard ────────────────────────────────────

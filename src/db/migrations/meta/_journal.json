@@ -29,6 +29,13 @@
       "when": 1784137574415,
       "tag": "0003_faithful_kang",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784211718494,
+      "tag": "0004_wealthy_rafael_vega",
+      "breakpoints": true
     }
   ]
 }

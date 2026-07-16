@@ -10,20 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LevelsRouteImport } from './routes/levels'
-import { Route as DailyRouteImport } from './routes/daily'
 import { Route as AlignRouteImport } from './routes/align'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LevelPlateRouteImport } from './routes/level.$plate'
+import { Route as DailyTierRouteImport } from './routes/daily.$tier'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const LevelsRoute = LevelsRouteImport.update({
   id: '/levels',
   path: '/levels',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DailyRoute = DailyRouteImport.update({
-  id: '/daily',
-  path: '/daily',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlignRoute = AlignRouteImport.update({
@@ -41,6 +36,11 @@ const LevelPlateRoute = LevelPlateRouteImport.update({
   path: '/level/$plate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DailyTierRoute = DailyTierRouteImport.update({
+  id: '/daily/$tier',
+  path: '/daily/$tier',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -50,16 +50,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/align': typeof AlignRoute
-  '/daily': typeof DailyRoute
   '/levels': typeof LevelsRoute
+  '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/align': typeof AlignRoute
-  '/daily': typeof DailyRoute
   '/levels': typeof LevelsRoute
+  '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -67,23 +67,34 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/align': typeof AlignRoute
-  '/daily': typeof DailyRoute
   '/levels': typeof LevelsRoute
+  '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/align' | '/daily' | '/levels' | '/level/$plate' | '/api/auth/$'
+    | '/'
+    | '/align'
+    | '/levels'
+    | '/daily/$tier'
+    | '/level/$plate'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/align' | '/daily' | '/levels' | '/level/$plate' | '/api/auth/$'
+  to:
+    | '/'
+    | '/align'
+    | '/levels'
+    | '/daily/$tier'
+    | '/level/$plate'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
     | '/align'
-    | '/daily'
     | '/levels'
+    | '/daily/$tier'
     | '/level/$plate'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
@@ -91,8 +102,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlignRoute: typeof AlignRoute
-  DailyRoute: typeof DailyRoute
   LevelsRoute: typeof LevelsRoute
+  DailyTierRoute: typeof DailyTierRoute
   LevelPlateRoute: typeof LevelPlateRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -104,13 +115,6 @@ declare module '@tanstack/react-router' {
       path: '/levels'
       fullPath: '/levels'
       preLoaderRoute: typeof LevelsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/daily': {
-      id: '/daily'
-      path: '/daily'
-      fullPath: '/daily'
-      preLoaderRoute: typeof DailyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/align': {
@@ -134,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LevelPlateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/daily/$tier': {
+      id: '/daily/$tier'
+      path: '/daily/$tier'
+      fullPath: '/daily/$tier'
+      preLoaderRoute: typeof DailyTierRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -147,8 +158,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlignRoute: AlignRoute,
-  DailyRoute: DailyRoute,
   LevelsRoute: LevelsRoute,
+  DailyTierRoute: DailyTierRoute,
   LevelPlateRoute: LevelPlateRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

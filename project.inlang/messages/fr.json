@@ -54,6 +54,11 @@
   "win_next": "Planche suivante ↵",
   "win_complete": "Le tirage est complet — pour l'instant.",
   "daily_tag": "Niveau du jour",
+  "daily_challenge_title": "Défi du jour",
+  "daily_challenge_sub": "difficulté montante",
+  "daily_tier_0": "Facile",
+  "daily_tier_1": "Moyen",
+  "daily_tier_2": "Difficile",
   "daily_back": "accueil",
   "daily_solved": [
     {

@@ -23,6 +23,9 @@ function SelectRoute() {
       onPick={(i) =>
         navigate({ to: "/level/$plate", params: { plate: String(i + 1) } })
       }
+      onDaily={(tier) =>
+        navigate({ to: "/daily/$tier", params: { tier: String(tier) } })
+      }
     />
   );
 }

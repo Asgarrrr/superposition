@@ -4,7 +4,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import { dailyPuzzle, dailyScore } from "../db/schema.ts";
 import { LEVELS } from "../engine/levels.ts";
@@ -16,6 +16,14 @@ import { validateTrace, validateTraceShape } from "./replay.ts";
 import type { Level, TraceStep } from "../engine/types.ts";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIERS = [0, 1, 2] as const;
+
+/** A tier index (0 easy · 1 medium · 2 hard), or throws. */
+function asTier(v: unknown): number {
+  if (typeof v === "number" && TIERS.includes(v as (typeof TIERS)[number]))
+    return v;
+  throw new Error("invalid tier");
+}
 
 /** A score is accepted for today, or yesterday as a grace window for a player
  *  who crosses UTC midnight mid-solve — never for an arbitrary day. */
@@ -25,40 +33,61 @@ function isSubmittableDay(date: string): boolean {
 
 export interface DailyPuzzle {
   date: string;
+  tier: number;
   level: Level;
   optimal: number;
 }
 
-// The fallback is fully determined by the date, so solve() it at most once per
-// date per server process instead of on every request to a cron-missed day.
+// The tiered fallback fans the level bank across three difficulty bands (by
+// solved length) so a cron-missed tier still gets a level of roughly the right
+// difficulty. Computed once per process (solving the whole bank), then cached.
+let bands: Level[][] | null = null;
+function difficultyBands(): Level[][] {
+  if (bands) return bands;
+  const scored = LEVELS.map((lv) => ({ lv, len: solve(lv)?.inputs.length ?? 0 }))
+    .sort((a, b) => a.len - b.len)
+    .map((s) => s.lv);
+  const n = Math.ceil(scored.length / 3);
+  bands = [scored.slice(0, n), scored.slice(n, 2 * n), scored.slice(2 * n)].map(
+    // guard against an empty band on a tiny bank — never hand back []
+    (band, i) => (band.length ? band : [scored[Math.min(i, scored.length - 1)]]),
+  );
+  return bands;
+}
+
+// The fallback is fully determined by (date, tier), so solve() it at most once
+// per key per server process instead of on every request to a cron-missed tier.
 const fallbackCache = new Map<string, DailyPuzzle>();
 
-/** Deterministic fallback: same date → same level, everywhere, with no DB row. */
-function fallbackPuzzle(date: string): DailyPuzzle {
-  const cached = fallbackCache.get(date);
+/** Deterministic fallback: same (date, tier) → same level, everywhere, no DB row. */
+function fallbackPuzzle(date: string, tier: number): DailyPuzzle {
+  const key = `${date}:${tier}`;
+  const cached = fallbackCache.get(key);
   if (cached) return cached;
   const dayNumber = Math.floor(Date.parse(`${date}T00:00:00Z`) / 86_400_000);
-  const base =
-    LEVELS[((dayNumber % LEVELS.length) + LEVELS.length) % LEVELS.length];
-  const level: Level = { ...base, id: `daily-${date}` };
+  const band = difficultyBands()[tier];
+  const base = band[((dayNumber % band.length) + band.length) % band.length];
+  const level: Level = { ...base, id: `daily-${date}-t${tier}` };
   const puzzle: DailyPuzzle = {
     date,
+    tier,
     level,
     optimal: solve(level)?.inputs.length ?? 0,
   };
-  fallbackCache.set(date, puzzle);
+  fallbackCache.set(key, puzzle);
   return puzzle;
 }
 
-/** A given day's puzzle: the DB row if the cron wrote it, else the fallback. */
-async function resolveDaily(date: string): Promise<DailyPuzzle> {
+/** A given day/tier's puzzle: the DB row if the cron wrote it, else the fallback. */
+async function resolveDaily(date: string, tier: number): Promise<DailyPuzzle> {
   const [row] = await db
     .select()
     .from(dailyPuzzle)
-    .where(eq(dailyPuzzle.date, date))
+    .where(and(eq(dailyPuzzle.date, date), eq(dailyPuzzle.tier, tier)))
     .limit(1);
-  if (row) return { date: row.date, level: row.level, optimal: row.optimal };
-  return fallbackPuzzle(date);
+  if (row)
+    return { date: row.date, tier: row.tier, level: row.level, optimal: row.optimal };
+  return fallbackPuzzle(date, tier);
 }
 
 async function currentUserId(): Promise<string | null> {
@@ -67,9 +96,12 @@ async function currentUserId(): Promise<string | null> {
   return session?.user.id ?? null;
 }
 
-export const getDailyPuzzle = createServerFn({ method: "GET" }).handler(
-  (): Promise<DailyPuzzle> => resolveDaily(utcDay()),
-);
+export const getDailyPuzzle = createServerFn({ method: "GET" })
+  .validator((data: unknown): { tier: number } => {
+    const d = data as { tier?: unknown } | null;
+    return { tier: asTier(d?.tier) };
+  })
+  .handler(({ data }): Promise<DailyPuzzle> => resolveDaily(utcDay(), data.tier));
 
 export interface SubmitResult {
   ok: boolean;
@@ -84,43 +116,48 @@ export interface SubmitResult {
  * per user wins the (date, user) slot: fewest moves, then fewest corrections.
  */
 export const submitDailyScore = createServerFn({ method: "POST" })
-  .validator((data: unknown): { trace: TraceStep[]; date: string } => {
-    const d = data as { trace?: unknown; date?: unknown } | null;
-    const trace = validateTraceShape(d?.trace);
-    if (typeof d?.date !== "string" || !DATE_RE.test(d.date))
-      throw new Error("invalid date");
-    return { trace, date: d.date };
-  })
+  .validator(
+    (data: unknown): { trace: TraceStep[]; date: string; tier: number } => {
+      const d = data as
+        | { trace?: unknown; date?: unknown; tier?: unknown }
+        | null;
+      const trace = validateTraceShape(d?.trace);
+      if (typeof d?.date !== "string" || !DATE_RE.test(d.date))
+        throw new Error("invalid date");
+      return { trace, date: d.date, tier: asTier(d?.tier) };
+    },
+  )
   .handler(async ({ data }): Promise<SubmitResult> => {
     const userId = await currentUserId();
     if (!userId) throw new Error("Not authenticated");
     if (!isSubmittableDay(data.date)) throw new Error("Puzzle no longer open");
 
-    const date = data.date;
-    const puzzle = await resolveDaily(date);
+    const { date, tier } = data;
+    const puzzle = await resolveDaily(date, tier);
     const result = validateTrace(puzzle.level, data.trace);
     if (!result.ok) throw new Error("Invalid solution");
 
-    // Guarantee the puzzle row exists (fallback days have none) so the score FK
-    // holds — this also pins the fallback as the day's official puzzle.
+    // Guarantee the puzzle row exists (fallback tiers have none) so the score FK
+    // holds — this also pins the fallback as this tier's official puzzle.
     await db
       .insert(dailyPuzzle)
-      .values({ date, level: puzzle.level, optimal: puzzle.optimal })
+      .values({ date, tier, level: puzzle.level, optimal: puzzle.optimal })
       .onConflictDoNothing();
 
-    // Keep the best result for this (date, user): fewer moves, or same moves
-    // with fewer corrections.
+    // Keep the best result for this (date, tier, user): fewer moves, or same
+    // moves with fewer corrections.
     await db
       .insert(dailyScore)
       .values({
         date,
+        tier,
         userId,
         moves: result.moves,
         undos: result.corrections,
         trace: data.trace,
       })
       .onConflictDoUpdate({
-        target: [dailyScore.date, dailyScore.userId],
+        target: [dailyScore.date, dailyScore.tier, dailyScore.userId],
         set: {
           moves: result.moves,
           undos: result.corrections,
@@ -153,15 +190,16 @@ export interface BoardData {
   mine: MyResult | null;
 }
 
-// optimal is fixed per date, so resolve the puzzle for it at most once per date
-// per process instead of on every board read (which is a daily_puzzle SELECT, or
-// the solver on a cron-missed day).
-const optimalByDate = new Map<string, number>();
-async function dailyOptimal(date: string): Promise<number> {
-  const cached = optimalByDate.get(date);
+// optimal is fixed per (date, tier), so resolve the puzzle for it at most once
+// per key per process instead of on every board read (which is a daily_puzzle
+// SELECT, or the solver on a cron-missed tier).
+const optimalByKey = new Map<string, number>();
+async function dailyOptimal(date: string, tier: number): Promise<number> {
+  const key = `${date}:${tier}`;
+  const cached = optimalByKey.get(key);
   if (cached !== undefined) return cached;
-  const { optimal } = await resolveDaily(date);
-  optimalByDate.set(date, optimal);
+  const { optimal } = await resolveDaily(date, tier);
+  optimalByKey.set(key, optimal);
   return optimal;
 }
 
@@ -172,18 +210,18 @@ async function dailyOptimal(date: string): Promise<number> {
  *  reading needs no account; the caller's standing is queried only with a
  *  session. */
 export const getDailyBoard = createServerFn({ method: "GET" })
-  .validator((data: unknown): { date: string } => {
-    const d = data as { date?: unknown } | null;
+  .validator((data: unknown): { date: string; tier: number } => {
+    const d = data as { date?: unknown; tier?: unknown } | null;
     if (typeof d?.date !== "string" || !DATE_RE.test(d.date))
       throw new Error("invalid date");
-    return { date: d.date };
+    return { date: d.date, tier: asTier(d?.tier) };
   })
   .handler(async ({ data }): Promise<BoardData> => {
-    const { date } = data;
-    const scope = eq(dailyScore.date, date);
+    const { date, tier } = data;
+    const scope = and(eq(dailyScore.date, date), eq(dailyScore.tier, tier))!;
     const userId = await currentUserId();
     const [optimal, rows, mine] = await Promise.all([
-      dailyOptimal(date),
+      dailyOptimal(date, tier),
       boardRows(dailyScore, scope),
       userId ? standing(dailyScore, scope, userId) : Promise.resolve(null),
     ]);

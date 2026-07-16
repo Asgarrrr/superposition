@@ -54,6 +54,11 @@
   "win_next": "Next board ↵",
   "win_complete": "The edition is complete — for now.",
   "daily_tag": "Daily level",
+  "daily_challenge_title": "Daily challenge",
+  "daily_challenge_sub": "rising difficulty",
+  "daily_tier_0": "Easy",
+  "daily_tier_1": "Medium",
+  "daily_tier_2": "Hard",
   "daily_back": "home",
   "daily_solved": [
     {

@@ -31,10 +31,12 @@ const railShape =
 const leftRailClass = `w-[min(92vw,520px)] ${railShape} xl:col-start-1 xl:justify-self-end`;
 const boardRailClass = `mt-8 w-[min(90vw,420px)] ${railShape} xl:col-start-3 xl:mt-0 xl:justify-self-start xl:self-stretch`;
 
-/** Daily mode: the level of the day, played for the shared leaderboard rather
- *  than the campaign. Swaps the HUD banner and the win overlay. */
+/** Daily mode: one tier of the day's challenge, played for the shared
+ *  per-tier leaderboard rather than the campaign. Swaps the HUD banner and the
+ *  win overlay. `tier` is 0 easy · 1 medium · 2 hard. */
 export interface DailyMode {
   date: string;
+  tier: number;
   optimal: number;
 }
 
@@ -124,7 +126,7 @@ export function PlayScreen({
           onToggleMute={onToggleMute}
           onExit={onExit}
           daily={daily?.date}
-          backLabel={daily ? m.daily_back() : undefined}
+          backLabel={daily ? m.hud_back() : undefined}
           className={leftRailClass}
         />
 
@@ -181,6 +183,7 @@ export function PlayScreen({
         {daily ? (
           <DailyBoard
             date={daily.date}
+            tier={daily.tier}
             solved={game.solved}
             moves={game.moves}
             wonTrace={game.wonTrace}

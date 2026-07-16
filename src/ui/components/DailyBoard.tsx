@@ -11,12 +11,14 @@ import { getDailyBoard, submitDailyScore } from "../../server/daily.ts";
 
 export function DailyBoard({
   date,
+  tier,
   solved,
   moves,
   wonTrace,
   className = "",
 }: {
   date: string;
+  tier: number;
   solved: boolean;
   moves: number;
   wonTrace: TraceStep[];
@@ -24,18 +26,18 @@ export function DailyBoard({
 }) {
   const submit = useCallback(
     async (trace: TraceStep[]) => {
-      await submitDailyScore({ data: { trace, date } });
+      await submitDailyScore({ data: { trace, date, tier } });
     },
-    [date],
+    [date, tier],
   );
   const source = useMemo<BoardSource>(
     () => ({
-      read: () => getDailyBoard({ data: { date } }),
+      read: () => getDailyBoard({ data: { date, tier } }),
       submit,
       title: m.daily_leaderboard_title(),
       emptyLabel: m.daily_leaderboard_empty(),
     }),
-    [submit, date],
+    [submit, date, tier],
   );
 
   return (

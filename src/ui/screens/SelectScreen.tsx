@@ -35,16 +35,22 @@ const rise = {
 // the same white flood the enter screen ends on: the halftone rosette resolves
 // while the edition develops in underneath, so the route swap reads as one
 // continuous gesture. False on a plain return — then it renders at rest.
+// Rising-difficulty glyphs for the three daily tiers (easy → hard).
+const TIER_DOTS = ["●○○", "●●○", "●●●"];
+
 export function SelectScreen({
   best,
   onPick,
+  onDaily,
   reveal = false,
 }: {
   best: Record<string, number>;
   onPick: (idx: number) => void;
+  onDaily: (tier: number) => void;
   reveal?: boolean;
 }) {
   const play = reveal && !reduced;
+  const tierLabels = [m.daily_tier_0(), m.daily_tier_1(), m.daily_tier_2()];
   return (
     <motion.div
       className="relative flex min-h-screen flex-col items-center bg-room px-4 pt-9 pb-12 font-mono text-paper select-none"
@@ -64,6 +70,41 @@ export function SelectScreen({
       >
         {m.select_edition({ count: LEVELS.length })}
       </motion.div>
+
+      {/* défi du jour — the masking-tape accent box, above the edition: three
+          tiers of the day, each its own shared leaderboard. Already unlocked;
+          a player can jump straight to the hard one. */}
+      <motion.div
+        variants={rise}
+        className="mb-8 w-[min(92vw,420px)] rounded-xs border border-tape/35 bg-tape/[0.06] px-4 py-3.5"
+      >
+        <div className="flex items-baseline justify-between">
+          <span className="font-display text-[15px] italic tracking-[0.02em] text-tape">
+            {m.daily_challenge_title()}
+          </span>
+          <span className="text-[9px] tracking-[0.28em] text-tape/55 uppercase">
+            {m.daily_challenge_sub()}
+          </span>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {tierLabels.map((label, t) => (
+            <button
+              key={t}
+              type="button"
+              className="cursor-pointer rounded-xs border border-tape/30 bg-tape/[0.04] px-2 py-2.5 text-center transition-colors hover:bg-tape/15"
+              onClick={() => onDaily(t)}
+            >
+              <span className="block font-mono text-[11px] tracking-wide text-tape/90">
+                {label}
+              </span>
+              <span className="mt-1 block text-[9px] tracking-[0.15em] text-tape/45">
+                {TIER_DOTS[t]}
+              </span>
+            </button>
+          ))}
+        </div>
+      </motion.div>
+
       <motion.div
         variants={plates}
         className="flex w-[min(92vw,420px)] flex-col gap-2"

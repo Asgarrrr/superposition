@@ -5,6 +5,7 @@
 
 import type { Level, MechanicId, Pos } from "../engine/types.ts";
 import { fmtInput, solve, solveWithout } from "./bfs.ts";
+import { levelSignature } from "./signature.ts";
 
 const rnd = (n: number) => Math.floor(Math.random() * n);
 
@@ -54,6 +55,7 @@ export interface Found {
   sol: string;
   proofs: string[];
   score: number;
+  sig: string; // symmetry-aware canonical signature (see signature.ts)
 }
 
 export interface HuntOpts {
@@ -61,10 +63,26 @@ export interface HuntOpts {
   size: number;
   minLen: number;
   budgetMs: number;
+  /** Signatures to skip: a candidate whose signature is here — an already-used
+   *  puzzle, or a mirror/rotation of one — is rejected, never returned. */
+  seen?: Set<string>;
+  /** Stop the instant a kept, new candidate is this short (or shorter). The
+   *  daily passes its per-tier `minLen` (the floor its "shortest ≥ minLen" pick
+   *  can reach), so it bails as soon as it can't do better rather than burning
+   *  the whole budget. Omit to search for the full `budgetMs`. */
+  stopAtLen?: number;
 }
 
-/** Searches for `budgetMs` and returns the certified levels found, best first. */
-export function hunt({ mods, size, minLen, budgetMs }: HuntOpts): {
+/** Searches for up to `budgetMs` and returns the certified levels found, best
+ *  first. Stops early if `stopAtLen` is met; skips anything in `seen`. */
+export function hunt({
+  mods,
+  size,
+  minLen,
+  budgetMs,
+  seen,
+  stopAtLen,
+}: HuntOpts): {
   found: Found[];
   tested: number;
 } {
@@ -91,13 +109,19 @@ export function hunt({ mods, size, minLen, budgetMs }: HuntOpts): {
       // ice / light: not required to be mandatory, they already change the texture
     }
     if (!allEssential) continue;
+    // reject a puzzle already used (or a symmetry of one) before keeping it
+    const sig = levelSignature(lv);
+    if (seen?.has(sig)) continue;
+    const len = full.inputs.length;
     found.push({
       lv,
-      len: full.inputs.length,
+      len,
       sol: full.inputs.map(fmtInput).join(" "),
       proofs,
-      score: full.inputs.length + proofs.length * 5,
+      score: len + proofs.length * 5,
+      sig,
     });
+    if (stopAtLen !== undefined && len <= stopAtLen) break;
   }
 
   found.sort((a, b) => b.score - a.score);
