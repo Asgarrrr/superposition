@@ -165,7 +165,7 @@ export function PlayScreen({
           className="order-first xl:order-none xl:col-start-2 xl:row-start-1"
           variants={vCaption}
         >
-          <Hud level={level} daily={!!daily} />
+          <Hud level={level} daily={!!daily} dailyTier={daily?.tier} />
         </motion.div>
 
         <motion.div

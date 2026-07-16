@@ -39,11 +39,15 @@ export function SelectScreen({
   onPick,
   onDaily,
   reveal = false,
+  weekendReady = false,
 }: {
   best: Record<string, number>;
   onPick: (idx: number) => void;
   onDaily: (tier: number) => void;
   reveal?: boolean;
+  // the server confirmed today's weekend épreuve exists — only then is the plate
+  // shown, so a click never dead-ends back to the selector
+  weekendReady?: boolean;
 }) {
   const play = reveal && !reduced;
   const tierLabels = [m.daily_tier_0(), m.daily_tier_1(), m.daily_tier_2()];
@@ -103,6 +107,51 @@ export function SelectScreen({
               </button>
             ))}
           </div>
+
+          {/* the weekend épreuve d'artiste — a full-width plate below the three,
+              in the printer's masking-tape gold rather than the tiers' paper, so
+              it reads at a glance as a rank above them. Weekend-only. */}
+          {weekendReady && (
+            <button
+              type="button"
+              onClick={() => onDaily(3)}
+              className="group relative mt-2 flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xs border border-tape/40 px-4 py-4 text-left transition-colors duration-200 hover:border-tape/70"
+              style={{
+                // a lit sheet, not a flat rectangle: a warm lamp catches the top
+                // corner and a hairline lip picks up the light
+                background:
+                  "radial-gradient(150% 170% at 14% -30%, rgba(232,184,75,0.12), rgba(232,184,75,0.035) 62%)",
+                boxShadow: "inset 0 1px 0 rgba(242,237,228,0.06)",
+              }}
+            >
+              {/* the proof mark pressed into the sheet — large and faint, struck
+                  a touch askew the way an artist's proof is hand-stamped */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 -rotate-[6deg] font-display text-[58px] leading-none italic text-tape/[0.09] transition-colors duration-200 select-none group-hover:text-tape/[0.15]"
+              >
+                {m.daily_ea_mark()}
+              </span>
+              <span
+                className="relative z-[1] flex-1 font-display text-[17px] italic tracking-[0.02em] text-tape"
+                style={{ textShadow: "0 1px 12px rgba(20,17,14,0.5)" }}
+              >
+                {m.daily_tier_3()}
+              </span>
+              <svg
+                viewBox="0 0 24 24"
+                className="relative z-[1] h-4 w-4 shrink-0 text-tape/50 transition-transform duration-200 group-hover:translate-x-0.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <polyline points="9 6 15 12 9 18" />
+              </svg>
+            </button>
+          )}
         </motion.div>
 
         <motion.div

@@ -7,7 +7,7 @@
 import { and, eq } from "drizzle-orm";
 import { db, pool } from "../db/index.ts";
 import { dailyPuzzle } from "../db/schema.ts";
-import { utcDay } from "../lib/day.ts";
+import { isWeekend, utcDay } from "../lib/day.ts";
 import { hunt } from "./hunt.ts";
 import { levelSignature } from "./signature.ts";
 import type { Level, MechanicId } from "../engine/types.ts";
@@ -35,7 +35,13 @@ const TIERS: {
   { tier: 0, label: "facile", mods: ["fusion", "scission"], size: 5, minLen: 8, budgetMs: 4000 }, // prettier-ignore
   { tier: 1, label: "moyen", mods: ["fusion", "scission"], size: 5, minLen: 16, budgetMs: 5000 }, // prettier-ignore
   { tier: 2, label: "difficile", mods: ["fusion", "scission", "glace"], size: 5, minLen: 22, budgetMs: 9000 }, // prettier-ignore
+  // tier 3 — the weekend "épreuve d'artiste": a 6×6 board (a whole extra rank of
+  // branching over the 5×5 tiers) with every ink in play, a long floor, and a
+  // fat budget since the bigger board is rarer to certify. Generated for weekend
+  // dates only (gated in the loop below); no bank fallback exists for it.
+  { tier: 3, label: "épreuve d'artiste", mods: ["fusion", "scission", "glace"], size: 6, minLen: 26, budgetMs: 45000 }, // prettier-ignore
 ];
+const WEEKEND_TIER = 3;
 const DAYS = Number(arg("days", "3")); // today + buffer
 
 // Every puzzle ever issued, by signature — so we never reissue one, nor a mere
@@ -46,7 +52,9 @@ const usedSigs = new Set<string>();
 async function loadHistory(): Promise<void> {
   const rows = await db.select({ level: dailyPuzzle.level }).from(dailyPuzzle);
   for (const r of rows) usedSigs.add(levelSignature(r.level));
-  console.log(`· ${usedSigs.size} past puzzle(s) loaded — will not repeat them`);
+  console.log(
+    `· ${usedSigs.size} past puzzle(s) loaded — will not repeat them`,
+  );
 }
 
 async function ensureTier(
@@ -63,7 +71,10 @@ async function ensureTier(
     return;
   }
 
-  const budgetMs = msOverride ? Number(msOverride) : cfg.budgetMs;
+  // a global --ms speed-up must not starve the weekend 6×6 (its hunt is tuned to
+  // need far more than the campaign tiers); it keeps its configured budget
+  const budgetMs =
+    msOverride && cfg.tier !== WEEKEND_TIER ? Number(msOverride) : cfg.budgetMs;
   // reject anything already used; stop early once we hit the tier's floor length
   // (can't beat it) instead of exhausting the budget
   const { found, tested } = hunt({
@@ -75,8 +86,14 @@ async function ensureTier(
     stopAtLen: cfg.minLen,
   });
   if (!found.length) {
+    // the weekend tier has NO bank fallback: a miss means no épreuve that
+    // weekend. Campaign tiers 0–2 are covered by the deterministic web fallback.
+    const note =
+      cfg.tier === WEEKEND_TIER
+        ? "no épreuve this weekend (this tier has no fallback)"
+        : "the web fallback will cover this tier";
     console.warn(
-      `! ${date} T${cfg.tier} (${cfg.label}) — no new certified level in ${budgetMs}ms (tested ${tested}); the web fallback will cover this tier`,
+      `! ${date} T${cfg.tier} (${cfg.label}) — no new certified level in ${budgetMs}ms (tested ${tested}); ${note}`,
     );
     return;
   }
@@ -100,8 +117,14 @@ async function ensureTier(
 
 try {
   await loadHistory();
-  for (let off = 0; off < DAYS; off++)
-    for (const cfg of TIERS) await ensureTier(utcDay(off), cfg);
+  for (let off = 0; off < DAYS; off++) {
+    const date = utcDay(off);
+    for (const cfg of TIERS) {
+      // the weekend tier only exists Sat/Sun; skip it on weekdays
+      if (cfg.tier === WEEKEND_TIER && !isWeekend(date)) continue;
+      await ensureTier(date, cfg);
+    }
+  }
 } catch (err) {
   console.error(err);
   await pool.end();

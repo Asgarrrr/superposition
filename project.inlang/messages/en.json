@@ -59,6 +59,10 @@
   "daily_tier_0": "Easy",
   "daily_tier_1": "Medium",
   "daily_tier_2": "Hard",
+  "daily_tier_3": "Artist's proof",
+  "daily_ea_mark": "A/P",
+  "daily_ea_sub": "weekend · 6×6 pull",
+  "daily_ea_tag": "the artist's proof — every ink, a wider board. A new one each weekend day.",
   "daily_back": "home",
   "daily_solved": [
     {

@@ -6,3 +6,11 @@ export function utcDay(offsetDays = 0): string {
     .toISOString()
     .slice(0, 10);
 }
+
+/** Is this UTC day (YYYY-MM-DD) a weekend — Saturday or Sunday? The weekend
+ *  "épreuve d'artiste" tier is keyed on this, on the same UTC day the daily
+ *  board already uses, so it's the same window for every player worldwide. */
+export function isWeekend(date: string): boolean {
+  const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return dow === 0 || dow === 6;
+}

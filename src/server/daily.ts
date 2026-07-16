@@ -10,15 +10,20 @@ import { dailyPuzzle, dailyScore } from "../db/schema.ts";
 import { LEVELS } from "../engine/levels.ts";
 import { solve } from "../solver/bfs.ts";
 import { auth } from "../lib/auth.ts";
-import { utcDay } from "../lib/day.ts";
+import { isWeekend, utcDay } from "../lib/day.ts";
 import { boardRows, standing } from "./leaderboard.ts";
 import { validateTrace, validateTraceShape } from "./replay.ts";
 import type { Level, TraceStep } from "../engine/types.ts";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const TIERS = [0, 1, 2] as const;
+const TIERS = [0, 1, 2, 3] as const;
 
-/** A tier index (0 easy · 1 medium · 2 hard), or throws. */
+// The weekend "épreuve d'artiste" — a 6×6 tier the cron writes only on Sat/Sun.
+// Unlike 0–2 it has NO bank fallback (the bank is all 5×5), so it exists only
+// when the generator wrote a row; a missing one is simply unavailable.
+const WEEKEND_TIER = 3;
+
+/** A tier index (0 easy · 1 medium · 2 hard · 3 weekend épreuve), or throws. */
 function asTier(v: unknown): number {
   if (typeof v === "number" && TIERS.includes(v as (typeof TIERS)[number]))
     return v;
@@ -44,13 +49,17 @@ export interface DailyPuzzle {
 let bands: Level[][] | null = null;
 function difficultyBands(): Level[][] {
   if (bands) return bands;
-  const scored = LEVELS.map((lv) => ({ lv, len: solve(lv)?.inputs.length ?? 0 }))
+  const scored = LEVELS.map((lv) => ({
+    lv,
+    len: solve(lv)?.inputs.length ?? 0,
+  }))
     .sort((a, b) => a.len - b.len)
     .map((s) => s.lv);
   const n = Math.ceil(scored.length / 3);
   bands = [scored.slice(0, n), scored.slice(n, 2 * n), scored.slice(2 * n)].map(
     // guard against an empty band on a tiny bank — never hand back []
-    (band, i) => (band.length ? band : [scored[Math.min(i, scored.length - 1)]]),
+    (band, i) =>
+      band.length ? band : [scored[Math.min(i, scored.length - 1)]],
   );
   return bands;
 }
@@ -61,6 +70,9 @@ const fallbackCache = new Map<string, DailyPuzzle>();
 
 /** Deterministic fallback: same (date, tier) → same level, everywhere, no DB row. */
 function fallbackPuzzle(date: string, tier: number): DailyPuzzle {
+  // the weekend tier has no bank fallback — its 6×6 monster exists only if the
+  // cron generated it, so a missing one must never be papered over with a 5×5
+  if (tier >= WEEKEND_TIER) throw new Error("weekend tier has no fallback");
   const key = `${date}:${tier}`;
   const cached = fallbackCache.get(key);
   if (cached) return cached;
@@ -78,16 +90,32 @@ function fallbackPuzzle(date: string, tier: number): DailyPuzzle {
   return puzzle;
 }
 
-/** A given day/tier's puzzle: the DB row if the cron wrote it, else the fallback. */
-async function resolveDaily(date: string, tier: number): Promise<DailyPuzzle> {
+/** The stored puzzle for a (date, tier), or null when the cron wrote none. */
+async function fetchRow(
+  date: string,
+  tier: number,
+): Promise<DailyPuzzle | null> {
   const [row] = await db
     .select()
     .from(dailyPuzzle)
     .where(and(eq(dailyPuzzle.date, date), eq(dailyPuzzle.tier, tier)))
     .limit(1);
-  if (row)
-    return { date: row.date, tier: row.tier, level: row.level, optimal: row.optimal };
-  return fallbackPuzzle(date, tier);
+  return row
+    ? { date: row.date, tier: row.tier, level: row.level, optimal: row.optimal }
+    : null;
+}
+
+/** A campaign-band tier (0–2): the DB row, else the deterministic bank fallback,
+ *  so /daily is always playable. NOT for the weekend tier (it has no fallback —
+ *  use `weekendRow`, which may be null). */
+async function resolveDaily(date: string, tier: number): Promise<DailyPuzzle> {
+  return (await fetchRow(date, tier)) ?? fallbackPuzzle(date, tier);
+}
+
+/** The weekend épreuve for a date: the DB row only, or null when the cron never
+ *  certified one. Never a 5×5 stand-in — callers degrade gracefully on null. */
+async function weekendRow(date: string): Promise<DailyPuzzle | null> {
+  return fetchRow(date, WEEKEND_TIER);
 }
 
 async function currentUserId(): Promise<string | null> {
@@ -99,9 +127,26 @@ async function currentUserId(): Promise<string | null> {
 export const getDailyPuzzle = createServerFn({ method: "GET" })
   .validator((data: unknown): { tier: number } => {
     const d = data as { tier?: unknown } | null;
-    return { tier: asTier(d?.tier) };
+    const tier = asTier(d?.tier);
+    // the weekend tier has no bank fallback; it's served only by getWeekendDaily,
+    // so reject it here rather than letting resolveDaily hit the fallback throw
+    if (tier === WEEKEND_TIER) throw new Error("invalid tier");
+    return { tier };
   })
-  .handler(({ data }): Promise<DailyPuzzle> => resolveDaily(utcDay(), data.tier));
+  .handler(({ data }): Promise<DailyPuzzle> =>
+    resolveDaily(utcDay(), data.tier),
+  );
+
+/** Today's weekend épreuve d'artiste, or null when it's a weekday or the cron
+ *  never wrote one. Never falls back to a bank level — the route redirects on
+ *  null rather than serving a stand-in. */
+export const getWeekendDaily = createServerFn({ method: "GET" }).handler(
+  async (): Promise<DailyPuzzle | null> => {
+    const date = utcDay();
+    if (!isWeekend(date)) return null;
+    return fetchRow(date, WEEKEND_TIER);
+  },
+);
 
 export interface SubmitResult {
   ok: boolean;
@@ -118,9 +163,11 @@ export interface SubmitResult {
 export const submitDailyScore = createServerFn({ method: "POST" })
   .validator(
     (data: unknown): { trace: TraceStep[]; date: string; tier: number } => {
-      const d = data as
-        | { trace?: unknown; date?: unknown; tier?: unknown }
-        | null;
+      const d = data as {
+        trace?: unknown;
+        date?: unknown;
+        tier?: unknown;
+      } | null;
       const trace = validateTraceShape(d?.trace);
       if (typeof d?.date !== "string" || !DATE_RE.test(d.date))
         throw new Error("invalid date");
@@ -133,7 +180,11 @@ export const submitDailyScore = createServerFn({ method: "POST" })
     if (!isSubmittableDay(data.date)) throw new Error("Puzzle no longer open");
 
     const { date, tier } = data;
-    const puzzle = await resolveDaily(date, tier);
+    const puzzle =
+      tier === WEEKEND_TIER
+        ? await weekendRow(date)
+        : await resolveDaily(date, tier);
+    if (!puzzle) throw new Error("Puzzle not available");
     const result = validateTrace(puzzle.level, data.trace);
     if (!result.ok) throw new Error("Invalid solution");
 
@@ -198,9 +249,15 @@ async function dailyOptimal(date: string, tier: number): Promise<number> {
   const key = `${date}:${tier}`;
   const cached = optimalByKey.get(key);
   if (cached !== undefined) return cached;
-  const { optimal } = await resolveDaily(date, tier);
-  optimalByKey.set(key, optimal);
-  return optimal;
+  const puzzle =
+    tier === WEEKEND_TIER
+      ? await weekendRow(date)
+      : await resolveDaily(date, tier);
+  // an absent weekend épreuve reads as an empty board (optimal 0); don't cache
+  // the miss, so it picks up the row once the cron writes it
+  if (!puzzle) return 0;
+  optimalByKey.set(key, puzzle.optimal);
+  return puzzle.optimal;
 }
 
 /** The board for a specific day (optimal, top 50, and — if signed in — the

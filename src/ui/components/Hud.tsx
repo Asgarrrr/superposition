@@ -10,17 +10,31 @@ import { levelHint } from "../copy.ts";
 export function Hud({
   level,
   daily,
+  dailyTier,
 }: {
   level: Level;
   daily?: boolean; // daily mode: swap the title for the daily tag
+  dailyTier?: number; // tier 3 = the weekend épreuve d'artiste, dressed apart
 }) {
+  const proof = dailyTier === 3;
+  const title = daily ? (proof ? m.daily_tier_3() : m.daily_tag()) : level.name;
+  const sub = proof ? m.daily_ea_tag() : levelHint(level.id);
   return (
     <div className="mb-4 flex w-[min(92vw,520px)] flex-col gap-1 border-b border-paper/10 pb-3 xl:mb-0">
-      <div className="font-display text-[26px] leading-none italic tracking-[0.02em]">
-        {daily ? m.daily_tag() : level.name}
+      <div className="flex items-baseline gap-2.5">
+        <span
+          className={`font-display text-[26px] leading-none italic tracking-[0.02em] ${proof ? "text-tape" : ""}`}
+        >
+          {title}
+        </span>
+        {proof && (
+          <span className="rounded-xs border border-tape/45 px-1.5 py-0.5 font-mono text-[10px] tracking-[0.08em] text-tape/80">
+            {m.daily_ea_mark()}
+          </span>
+        )}
       </div>
       <div className="mt-0.5 font-display text-base not-italic tracking-[0.01em] text-paper/45">
-        {levelHint(level.id)}
+        {sub}
       </div>
     </div>
   );

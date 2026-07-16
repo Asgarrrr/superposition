@@ -59,6 +59,10 @@
   "daily_tier_0": "Facile",
   "daily_tier_1": "Moyen",
   "daily_tier_2": "Difficile",
+  "daily_tier_3": "Épreuve d'artiste",
+  "daily_ea_mark": "E.A.",
+  "daily_ea_sub": "week-end · tirage 6×6",
+  "daily_ea_tag": "l'épreuve d'artiste — toutes les encres, un plateau élargi. Une nouvelle chaque jour du week-end.",
   "daily_back": "accueil",
   "daily_solved": [
     {
