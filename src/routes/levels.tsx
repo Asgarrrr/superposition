@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { SelectScreen } from "../ui/screens/SelectScreen.tsx";
 import { useBestScores } from "../ui/hooks/useBestScores.ts";
 import { getWeekendDaily } from "../server/daily.ts";
+import { useSession } from "../lib/auth-client.ts";
 import { clearReveal, peekReveal } from "../ui/transition.ts";
 
 // Level select — the edition of plates. Picking one routes to /level/$plate.
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/levels")({ component: SelectRoute });
 function SelectRoute() {
   const navigate = useNavigate();
   const { best } = useBestScores();
+  const { data: session } = useSession();
   // read the enter-screen hand-off once, on the first render (pure — no
   // mutation), latched in a ref; then clear it after commit so a plain return
   // to the selector never replays the reveal
@@ -36,6 +38,8 @@ function SelectRoute() {
       best={best}
       reveal={reveal.current}
       weekendReady={weekendReady}
+      signedIn={!!session}
+      onProfile={() => navigate({ to: "/profile/me" })}
       onPick={(i) =>
         navigate({ to: "/level/$plate", params: { plate: String(i + 1) } })
       }

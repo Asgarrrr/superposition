@@ -11,10 +11,14 @@ const csrfMiddleware = createCsrfMiddleware({
     ctx.handlerType === "serverFn" && ctx.request.method !== "GET",
 });
 
-// Superposition is a pure client-side game (AudioContext, localStorage,
-// keyboard/swipe). There is no server data, so server rendering is disabled
-// app-wide: routes render on the client, the shell is prerendered static HTML.
+// Superposition's components are client-only (AudioContext, localStorage,
+// keyboard/swipe), so no route renders its COMPONENT on the server. But the
+// public profile needs real per-request <head> tags for social crawlers, which
+// requires its loader + head to run server-side — and a child route can only be
+// as SSR-permissive as its parents. So the default is `data-only`: loaders and
+// head run on the server, components still render only on the client. The only
+// loaders in the app (daily, profile) are pure server-safe data reads.
 export const startInstance = createStart(() => ({
-  defaultSsr: false,
+  defaultSsr: "data-only",
   requestMiddleware: [csrfMiddleware],
 }));

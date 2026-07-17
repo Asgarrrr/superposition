@@ -8,6 +8,12 @@ import { paraglideVitePlugin } from "@inlang/paraglide-js";
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true, dedupe: ["react", "react-dom"] },
+  // The OG-image renderer (satori + native resvg) is server-only, loaded via a
+  // dynamic import in the /api/og handler. Keep it out of client pre-bundling:
+  // resvg ships a native .node binary the optimizer can't load, and satori's
+  // deps use the Node `Buffer` global that doesn't exist in the browser.
+  optimizeDeps: { exclude: ["@resvg/resvg-js", "satori"] },
+  ssr: { external: ["@resvg/resvg-js"] },
   plugins: [
     paraglideVitePlugin({
       project: "./project.inlang",

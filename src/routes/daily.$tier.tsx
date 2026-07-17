@@ -8,6 +8,10 @@ import { PlayScreen } from "../ui/screens/PlayScreen.tsx";
 import { usePersistedSound } from "../ui/hooks/useSound.ts";
 
 export const Route = createFileRoute("/daily/$tier")({
+  // client-only: the board is a live AudioContext/keyboard experience with no
+  // shareable head, so its loader runs on the client (the app-wide default is
+  // `data-only` for the profile's crawler tags — the game opts back out here).
+  ssr: false,
   // tiers 0-2 always resolve; tier 3 (the weekend épreuve d'artiste) resolves
   // only on Sat/Sun with a generated 6×6 — a weekday or missing one bounces to
   // the selector rather than serving a stand-in. Any other URL bounces too.

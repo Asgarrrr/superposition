@@ -12,8 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LevelsRouteImport } from './routes/levels'
 import { Route as AlignRouteImport } from './routes/align'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProfileMeRouteImport } from './routes/profile.me'
+import { Route as ProfileUsernameRouteImport } from './routes/profile.$username'
 import { Route as LevelPlateRouteImport } from './routes/level.$plate'
 import { Route as DailyTierRouteImport } from './routes/daily.$tier'
+import { Route as ApiOgUsernameRouteImport } from './routes/api/og/$username'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const LevelsRoute = LevelsRouteImport.update({
@@ -31,6 +34,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileMeRoute = ProfileMeRouteImport.update({
+  id: '/profile/me',
+  path: '/profile/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileUsernameRoute = ProfileUsernameRouteImport.update({
+  id: '/profile/$username',
+  path: '/profile/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LevelPlateRoute = LevelPlateRouteImport.update({
   id: '/level/$plate',
   path: '/level/$plate',
@@ -39,6 +52,11 @@ const LevelPlateRoute = LevelPlateRouteImport.update({
 const DailyTierRoute = DailyTierRouteImport.update({
   id: '/daily/$tier',
   path: '/daily/$tier',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOgUsernameRoute = ApiOgUsernameRouteImport.update({
+  id: '/api/og/$username',
+  path: '/api/og/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -53,7 +71,10 @@ export interface FileRoutesByFullPath {
   '/levels': typeof LevelsRoute
   '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
+  '/profile/$username': typeof ProfileUsernameRoute
+  '/profile/me': typeof ProfileMeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/og/$username': typeof ApiOgUsernameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,7 +82,10 @@ export interface FileRoutesByTo {
   '/levels': typeof LevelsRoute
   '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
+  '/profile/$username': typeof ProfileUsernameRoute
+  '/profile/me': typeof ProfileMeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/og/$username': typeof ApiOgUsernameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,7 +94,10 @@ export interface FileRoutesById {
   '/levels': typeof LevelsRoute
   '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
+  '/profile/$username': typeof ProfileUsernameRoute
+  '/profile/me': typeof ProfileMeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/og/$username': typeof ApiOgUsernameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -80,7 +107,10 @@ export interface FileRouteTypes {
     | '/levels'
     | '/daily/$tier'
     | '/level/$plate'
+    | '/profile/$username'
+    | '/profile/me'
     | '/api/auth/$'
+    | '/api/og/$username'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -88,7 +118,10 @@ export interface FileRouteTypes {
     | '/levels'
     | '/daily/$tier'
     | '/level/$plate'
+    | '/profile/$username'
+    | '/profile/me'
     | '/api/auth/$'
+    | '/api/og/$username'
   id:
     | '__root__'
     | '/'
@@ -96,7 +129,10 @@ export interface FileRouteTypes {
     | '/levels'
     | '/daily/$tier'
     | '/level/$plate'
+    | '/profile/$username'
+    | '/profile/me'
     | '/api/auth/$'
+    | '/api/og/$username'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -105,7 +141,10 @@ export interface RootRouteChildren {
   LevelsRoute: typeof LevelsRoute
   DailyTierRoute: typeof DailyTierRoute
   LevelPlateRoute: typeof LevelPlateRoute
+  ProfileUsernameRoute: typeof ProfileUsernameRoute
+  ProfileMeRoute: typeof ProfileMeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiOgUsernameRoute: typeof ApiOgUsernameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -131,6 +170,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/me': {
+      id: '/profile/me'
+      path: '/profile/me'
+      fullPath: '/profile/me'
+      preLoaderRoute: typeof ProfileMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/$username': {
+      id: '/profile/$username'
+      path: '/profile/$username'
+      fullPath: '/profile/$username'
+      preLoaderRoute: typeof ProfileUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/level/$plate': {
       id: '/level/$plate'
       path: '/level/$plate'
@@ -143,6 +196,13 @@ declare module '@tanstack/react-router' {
       path: '/daily/$tier'
       fullPath: '/daily/$tier'
       preLoaderRoute: typeof DailyTierRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/og/$username': {
+      id: '/api/og/$username'
+      path: '/api/og/$username'
+      fullPath: '/api/og/$username'
+      preLoaderRoute: typeof ApiOgUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -161,7 +221,10 @@ const rootRouteChildren: RootRouteChildren = {
   LevelsRoute: LevelsRoute,
   DailyTierRoute: DailyTierRoute,
   LevelPlateRoute: LevelPlateRoute,
+  ProfileUsernameRoute: ProfileUsernameRoute,
+  ProfileMeRoute: ProfileMeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiOgUsernameRoute: ApiOgUsernameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

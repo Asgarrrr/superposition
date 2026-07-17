@@ -38,12 +38,17 @@ export function SelectScreen({
   best,
   onPick,
   onDaily,
+  onProfile,
+  signedIn = false,
   reveal = false,
   weekendReady = false,
 }: {
   best: Record<string, number>;
   onPick: (idx: number) => void;
   onDaily: (tier: number) => void;
+  onProfile: () => void;
+  // a signed-in player gets a link to their own page; anonymous play hides it
+  signedIn?: boolean;
   reveal?: boolean;
   // the server confirmed today's weekend épreuve exists — only then is the plate
   // shown, so a click never dead-ends back to the selector
@@ -59,6 +64,15 @@ export function SelectScreen({
 
       {play && <RevealOverlay />}
       <LangToggle className="absolute top-4 right-4 z-20" />
+      {signedIn && (
+        <button
+          type="button"
+          onClick={onProfile}
+          className="absolute top-4 left-4 z-20 cursor-pointer text-[11px] tracking-[0.2em] text-paper/40 uppercase transition-colors hover:text-paper/70"
+        >
+          {m.profile_link()}
+        </button>
+      )}
 
       <motion.div
         className="relative z-10 flex min-h-screen flex-col items-center px-4 pt-11 pb-16"
