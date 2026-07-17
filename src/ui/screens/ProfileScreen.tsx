@@ -109,7 +109,7 @@ export function ProfileScreen({
         variants={sheet}
         initial={reduced ? false : "hidden"}
         animate="visible"
-        className="relative z-10 w-[min(94vw,620px)] overflow-hidden rounded-sm border border-paper/10 px-7 py-9 sm:px-12 sm:py-12"
+        className="relative z-10 w-[min(94vw,860px)] overflow-hidden rounded-sm border border-paper/10 px-7 py-9 sm:px-12 sm:py-12"
         style={{
           background:
             "radial-gradient(125% 130% at 50% -12%, var(--color-box-glow), var(--color-box) 58%, #17130f)",
@@ -150,12 +150,13 @@ export function ProfileScreen({
             </span>
             <span className="flex-1 border-b border-paper/12" />
           </div>
-          {history.days.length === 0 ? (
-            <p className="py-4 text-center text-[12px] text-paper/40">
+          {/* the grid is always shown — an empty year reads as a timeline
+              waiting to be filled, not a dead-end. The hint sits below it. */}
+          <ContributionGraph history={history} today={today} />
+          {history.days.length === 0 && (
+            <p className="mt-4 text-center text-[12px] text-paper/40">
               {m.profile_empty()}
             </p>
-          ) : (
-            <ContributionGraph history={history} today={today} />
           )}
         </motion.div>
       </motion.section>

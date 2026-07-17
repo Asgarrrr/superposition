@@ -1,13 +1,14 @@
-// A GitHub-style contribution grid for the daily puzzle: one square per UTC day,
-// columns are weeks (Monday-first), the shade reads how many tiers the player
-// solved that day. The rarest shade — all four tiers, only reachable on a
-// weekend — prints in tape amber, the game's "locked / done" seal, so a perfect
-// weekend stands out on the sheet. The grid always fills a fixed minimum window
-// so it reads as a full sheet even with only a handful of prints on it.
+// A GitHub-style contribution grid for the daily puzzle: one calendar year of
+// squares, columns are weeks (Monday-first), the shade reads how many tiers the
+// player solved that day. The rarest shade — all four tiers, only reachable on a
+// weekend — prints in tape amber, the game's "locked / done" seal. Year tabs
+// switch between the years the account spans; the grid is always shown, so a
+// blank year still reads as a timeline waiting to be filled.
 
+import { useState } from "react";
 import { m } from "../../paraglide/messages.js";
 import { getLocale } from "../../paraglide/runtime.js";
-import { buildWeeks } from "../../lib/contribGrid.ts";
+import { availableYears, buildYear } from "../../lib/contribGrid.ts";
 import type { DailyHistory } from "../../server/profile.ts";
 
 // index by tiers-solved (0–4); 0 is the empty base, 4 the amber lock. Empty is
@@ -27,7 +28,10 @@ export function ContributionGraph({
   history: DailyHistory;
   today: string;
 }) {
-  const weeks = buildWeeks(history.days, history.joinedAt, today);
+  const years = availableYears(history.joinedAt, today);
+  const [year, setYear] = useState(() => Number(today.slice(0, 4)));
+
+  const weeks = buildYear(history.days, year, today);
   const locale = getLocale();
   const month = new Intl.DateTimeFormat(locale, {
     month: "short",
@@ -63,52 +67,74 @@ export function ContributionGraph({
       : "";
 
   return (
-    <div className="overflow-x-auto">
-      <div className="flex w-max gap-2">
-        <div className="flex flex-col gap-[3px] pt-[21px]">
-          {[0, 1, 2, 3, 4, 5, 6].map((row) => (
-            <span
-              key={row}
-              className="h-[15px] pr-0.5 text-right font-mono text-[9px] leading-[15px] text-paper/30"
+    <div className="flex flex-col gap-2.5">
+      {years.length > 1 && (
+        <div className="flex flex-wrap justify-end gap-2 font-mono text-[11px] tracking-wide">
+          {years.map((y) => (
+            <button
+              key={y}
+              type="button"
+              onClick={() => setYear(y)}
+              className={`cursor-pointer tabular-nums transition-colors ${
+                y === year ? "text-tape" : "text-paper/35 hover:text-paper/70"
+              }`}
             >
-              {dayLabel(row)}
-            </span>
+              {y}
+            </button>
           ))}
         </div>
-        <div className="flex w-max flex-col gap-1.5">
-          <div className="flex h-[15px] gap-[3px]">
-            {labels.map((label, i) => (
+      )}
+
+      <div className="overflow-x-auto">
+        <div className="flex w-max gap-2">
+          <div className="flex flex-col gap-[2px] pt-[18px]">
+            {[0, 1, 2, 3, 4, 5, 6].map((row) => (
               <span
-                key={i}
-                className="w-[15px] font-mono text-[9px] text-paper/40"
+                key={row}
+                className="h-[12px] pr-0.5 text-right font-mono text-[9px] leading-[12px] text-paper/30"
               >
-                {label}
+                {dayLabel(row)}
               </span>
             ))}
           </div>
-          <div className="flex gap-[3px]">
-            {weeks.map((col, i) => (
-              <div key={i} className="flex flex-col gap-[3px]">
-                {col.map((cell, j) =>
-                  cell.spacer ? (
-                    <div key={j} className="size-[15px]" />
-                  ) : (
-                    <div
-                      key={j}
-                      className={`size-[15px] rounded-[3px] ring-inset transition-shadow hover:ring-1 hover:ring-paper/50 ${SHADE[cell.count] ?? SHADE[4]}`}
-                      title={`${full.format(new Date(`${cell.date}T00:00:00Z`))} · ${cell.count}`}
-                    />
-                  ),
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="mt-0.5 flex items-center gap-1.5 self-end font-mono text-[9px] text-paper/40">
-            <span>{m.profile_less()}</span>
-            {SHADE.map((shade, i) => (
-              <span key={i} className={`size-[13px] rounded-[3px] ${shade}`} />
-            ))}
-            <span>{m.profile_more()}</span>
+          <div className="flex w-max flex-col gap-1.5">
+            <div className="flex h-[12px] gap-[2px]">
+              {labels.map((label, i) => (
+                <span
+                  key={i}
+                  className="w-[12px] font-mono text-[9px] whitespace-nowrap text-paper/40"
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-[2px]">
+              {weeks.map((col, i) => (
+                <div key={i} className="flex flex-col gap-[2px]">
+                  {col.map((cell, j) =>
+                    cell.spacer ? (
+                      <div key={j} className="size-[12px]" />
+                    ) : (
+                      <div
+                        key={j}
+                        className={`size-[12px] rounded-[2px] ring-inset transition-shadow hover:ring-1 hover:ring-paper/50 ${SHADE[cell.count] ?? SHADE[4]}`}
+                        title={`${full.format(new Date(`${cell.date}T00:00:00Z`))} · ${cell.count}`}
+                      />
+                    ),
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="mt-0.5 flex items-center gap-1.5 self-end font-mono text-[9px] text-paper/40">
+              <span>{m.profile_less()}</span>
+              {SHADE.map((shade, i) => (
+                <span
+                  key={i}
+                  className={`size-[11px] rounded-[2px] ${shade}`}
+                />
+              ))}
+              <span>{m.profile_more()}</span>
+            </div>
           </div>
         </div>
       </div>

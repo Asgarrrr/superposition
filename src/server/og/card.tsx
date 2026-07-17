@@ -6,7 +6,7 @@
 import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import { historyByUsername } from "../profileData.ts";
-import { buildWeeks } from "../../lib/contribGrid.ts";
+import { buildYear } from "../../lib/contribGrid.ts";
 import { computeStreaks } from "../../lib/streak.ts";
 import { utcDay } from "../../lib/day.ts";
 import { instrumentItalic, instrumentRegular } from "./fonts.ts";
@@ -27,7 +27,7 @@ function Card({
 }: {
   name: string;
   streaks: { current: number; longest: number; total: number };
-  weeks: ReturnType<typeof buildWeeks>;
+  weeks: ReturnType<typeof buildYear>;
 }) {
   const stat = (value: number, label: string, accent = false) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -155,7 +155,8 @@ export async function ogResponse(username: string): Promise<Response> {
     history.days.map((d) => d.date),
     today,
   );
-  const weeks = buildWeeks(history.days, history.joinedAt, today);
+  // the card is a snapshot: show the current year, GitHub-style
+  const weeks = buildYear(history.days, Number(today.slice(0, 4)), today);
 
   const svg = await satori(
     <Card name={history.name} streaks={streaks} weeks={weeks} />,
