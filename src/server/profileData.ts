@@ -8,6 +8,7 @@
 import { asc, count, eq } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import { dailyScore, user } from "../db/schema.ts";
+import { USERNAME_RE } from "../lib/username.ts";
 
 export interface DailyHistory {
   name: string; // display name for the header
@@ -20,8 +21,6 @@ const FIELDS = {
   name: user.name,
   createdAt: user.createdAt,
 } as const;
-
-const USERNAME_RE = /^[a-zA-Z0-9_.]{3,20}$/;
 
 /** The completion history for one account row: for each day they solved at least
  *  one tier, how many tiers (1–4). */

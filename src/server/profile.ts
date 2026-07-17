@@ -16,8 +16,6 @@ import {
 
 export type { DailyHistory };
 
-const USERNAME_RE = /^[a-zA-Z0-9_.]{3,20}$/;
-
 async function currentUserId(): Promise<string | null> {
   const { headers } = getRequest();
   const session = await auth.api.getSession({ headers });
@@ -40,8 +38,8 @@ export const getMyDailyHistory = createServerFn({ method: "GET" }).handler(
 export const getUserDailyHistory = createServerFn({ method: "GET" })
   .validator((data: unknown): { username: string } => {
     const d = data as { username?: unknown } | null;
-    if (typeof d?.username !== "string" || !USERNAME_RE.test(d.username))
-      throw new Error("invalid username");
+    if (typeof d?.username !== "string") throw new Error("invalid username");
+    // the format is enforced once, in historyByUsername (a bad handle → null)
     return { username: d.username };
   })
   .handler(({ data }) => historyByUsername(data.username));

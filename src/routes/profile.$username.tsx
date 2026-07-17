@@ -35,8 +35,15 @@ export const Route = createFileRoute("/profile/$username")({
       longest: s.longest,
       total: s.total,
     });
-    // og:image must be absolute; BETTER_AUTH_URL is the app's public origin
-    const image = `${process.env.BETTER_AUTH_URL ?? ""}/api/og/${params.username}`;
+    // og:image must be absolute. head() runs on the server for the initial
+    // crawler request (where BETTER_AUTH_URL is the public origin) and again on
+    // the client for SPA navigation (where process.env is compiled to {}), so
+    // fall back to the live origin in the browser rather than a relative URL.
+    const origin =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : (process.env.BETTER_AUTH_URL ?? "");
+    const image = `${origin}/api/og/${params.username}`;
     return {
       meta: [
         { title },

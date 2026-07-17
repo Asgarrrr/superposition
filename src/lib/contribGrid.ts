@@ -16,6 +16,26 @@ export interface GridCell {
   spacer: boolean; // a pad cell: outside the year, or a future day not yet played
 }
 
+// The completion ramp, indexed by tiers solved (0 = empty base … 4 = amber lock).
+// Two representations of the SAME ramp, kept adjacent so a retint touches both:
+// the on-screen grid blends alpha over its panel (Tailwind opacity classes), the
+// OG card has no alpha-over-background so it needs pre-blended opaque hex. Keep
+// these two arrays visually in sync.
+export const SHADE_CLASSES = [
+  "bg-paper/[0.07]",
+  "bg-paper/25",
+  "bg-paper/45",
+  "bg-paper/70",
+  "bg-tape/90",
+] as const;
+export const SHADE_HEX = [
+  "#2a2620",
+  "#4a453c",
+  "#7d766a",
+  "#b8b0a2",
+  "#e8b84b",
+] as const;
+
 /** Monday-first weekday index (0 = Monday … 6 = Sunday). */
 function mondayIndex(date: string): number {
   return (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;

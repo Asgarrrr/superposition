@@ -5,21 +5,15 @@
 // switch between the years the account spans; the grid is always shown, so a
 // blank year still reads as a timeline waiting to be filled.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { m } from "../../paraglide/messages.js";
 import { getLocale } from "../../paraglide/runtime.js";
-import { availableYears, buildYear } from "../../lib/contribGrid.ts";
+import {
+  availableYears,
+  buildYear,
+  SHADE_CLASSES as SHADE,
+} from "../../lib/contribGrid.ts";
 import type { DailyHistory } from "../../server/profile.ts";
-
-// index by tiers-solved (0–4); 0 is the empty base, 4 the amber lock. Empty is
-// kept faintly visible so the grid still reads as a grid on a nearly blank sheet.
-const SHADE = [
-  "bg-paper/[0.07]",
-  "bg-paper/25",
-  "bg-paper/45",
-  "bg-paper/70",
-  "bg-tape/90",
-] as const;
 
 export function ContributionGraph({
   history,
@@ -33,20 +27,27 @@ export function ContributionGraph({
 
   const weeks = buildYear(history.days, year, today);
   const locale = getLocale();
-  const month = new Intl.DateTimeFormat(locale, {
-    month: "short",
-    timeZone: "UTC",
-  });
-  const weekday = new Intl.DateTimeFormat(locale, {
-    weekday: "short",
-    timeZone: "UTC",
-  });
-  const full = new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  // formatters are pure in `locale`; memoise so a year-tab click doesn't rebuild
+  // three ICU instances before laying out ~53 columns
+  const { month, weekday, full } = useMemo(
+    () => ({
+      month: new Intl.DateTimeFormat(locale, {
+        month: "short",
+        timeZone: "UTC",
+      }),
+      weekday: new Intl.DateTimeFormat(locale, {
+        weekday: "short",
+        timeZone: "UTC",
+      }),
+      full: new Intl.DateTimeFormat(locale, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      }),
+    }),
+    [locale],
+  );
 
   // a month label sits above the first column whose month differs from the one
   // labelled before it, mirroring GitHub's sparse month axis

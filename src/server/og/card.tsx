@@ -6,7 +6,7 @@
 import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import { historyByUsername } from "../profileData.ts";
-import { buildYear } from "../../lib/contribGrid.ts";
+import { buildYear, SHADE_HEX as SHADE } from "../../lib/contribGrid.ts";
 import { computeStreaks } from "../../lib/streak.ts";
 import { utcDay } from "../../lib/day.ts";
 import { instrumentItalic, instrumentRegular } from "./fonts.ts";
@@ -14,9 +14,6 @@ import { instrumentItalic, instrumentRegular } from "./fonts.ts";
 const W = 1200;
 const H = 630;
 
-// the on-screen ramp, pre-blended to opaque hex for the flat card (satori has no
-// alpha-over-background); index by tiers solved, 4 = the amber "done" lock
-const SHADE = ["#2a2620", "#4a453c", "#7d766a", "#b8b0a2", "#e8b84b"];
 const PAPER = "#f2ede4";
 const TAPE = "#e8b84b";
 
