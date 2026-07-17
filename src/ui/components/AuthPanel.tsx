@@ -14,7 +14,7 @@ export function AuthPanel() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -22,16 +22,22 @@ export function AuthPanel() {
     e.preventDefault();
     setBusy(true);
     setError("");
+    const handle = username.trim();
     const res =
       mode === "signin"
         ? await signIn.email({ email, password })
         : await signUp.email({
             email,
             password,
-            name: name.trim() || email.split("@")[0],
+            username: handle,
+            name: handle,
           });
     setBusy(false);
-    if (res.error) setError(m.auth_error());
+    if (res.error) {
+      // the username plugin reports a taken/invalid handle with a USERNAME_* code
+      const taken = res.error.code?.includes("USERNAME");
+      setError(taken ? m.auth_username_taken() : m.auth_error());
+    }
   };
 
   return (
@@ -43,10 +49,14 @@ export function AuthPanel() {
         <input
           className={FIELD}
           type="text"
-          placeholder={m.auth_name()}
-          value={name}
-          autoComplete="name"
-          onChange={(e) => setName(e.target.value)}
+          required
+          minLength={3}
+          maxLength={20}
+          pattern="[a-zA-Z0-9_.]+"
+          placeholder={m.auth_username()}
+          value={username}
+          autoComplete="username"
+          onChange={(e) => setUsername(e.target.value)}
         />
       )}
       <input

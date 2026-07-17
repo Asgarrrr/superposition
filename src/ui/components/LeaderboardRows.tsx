@@ -3,6 +3,7 @@
 // and the amber highlight on your own entry. Callers own the surrounding title
 // and container; this owns only the rows and the empty state.
 
+import { Link } from "@tanstack/react-router";
 import { m } from "../../paraglide/messages.js";
 import type { LeaderRow } from "../../server/daily.ts";
 
@@ -38,7 +39,19 @@ export function LeaderboardRows({
             {String(r.rank).padStart(2, "0")}
           </span>
           <span className="mx-2 flex-1 truncate">
-            {r.name}
+            {r.username ? (
+              // the name links to its player's public page; pre-plugin accounts
+              // (no handle yet) stay plain text
+              <Link
+                to="/profile/$username"
+                params={{ username: r.username }}
+                className="hover:text-paper hover:underline"
+              >
+                {r.name}
+              </Link>
+            ) : (
+              r.name
+            )}
             {r.userId === uid ? ` · ${m.daily_you()}` : ""}
           </span>
           <span className="flex shrink-0 items-baseline gap-1.5">

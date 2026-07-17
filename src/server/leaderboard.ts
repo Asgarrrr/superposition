@@ -20,6 +20,7 @@ export async function boardRows(
     .select({
       userId: table.userId,
       name: user.name,
+      username: user.username,
       moves: table.moves,
       undos: table.undos,
     })
@@ -32,6 +33,7 @@ export async function boardRows(
     rank: i + 1,
     userId: r.userId,
     name: r.name,
+    username: r.username,
     moves: r.moves,
     clean: r.undos === 0,
   }));

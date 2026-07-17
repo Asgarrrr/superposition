@@ -225,6 +225,7 @@ export interface LeaderRow {
   rank: number;
   userId: string;
   name: string;
+  username: string | null; // links the row to /profile/$username (null: pre-plugin)
   moves: number;
   clean?: boolean; // solved with no undo/reset (a "clean pull"); both boards set it
 }
