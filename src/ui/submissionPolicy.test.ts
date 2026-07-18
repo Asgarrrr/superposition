@@ -192,4 +192,77 @@ describe("decideSubmission", () => {
     ]);
     expect(submits).toEqual([first.trace, better.trace]);
   });
+
+  it("anti-blanchiment : l'amélioration échouée de A ne repart pas sous B, mais repart sous A", () => {
+    const first = solveOf(5);
+    const better = solveOf(3);
+    const { state, submits } = run([
+      { kind: "session", uid: "A" },
+      { kind: "solve", solve: first },
+      { kind: "submitted" },
+      { kind: "solve", solve: better },
+      { kind: "failed" }, // le pending survit…
+      { kind: "session", uid: null },
+      { kind: "session", uid: "B" }, // …mais B ne peut pas le revendiquer
+    ]);
+    expect(submits).toEqual([first.trace, better.trace]);
+    // le pending appartient toujours à A : son retour relance le post
+    const back = run([{ kind: "session", uid: "A" }], state);
+    expect(back.submits).toEqual([better.trace]);
+  });
+
+  it("anti-blanchiment : un solve hors session APRÈS un post n'est pas revendiqué par B", () => {
+    const s = solveOf(5);
+    const later = solveOf(3);
+    const { submits } = run([
+      { kind: "session", uid: "A" },
+      { kind: "solve", solve: s },
+      { kind: "submitted" },
+      { kind: "session", uid: null },
+      { kind: "solve", solve: later }, // hors session, mais A a déjà posté
+      { kind: "session", uid: "B" },
+    ]);
+    expect(submits).toEqual([s.trace]);
+  });
+
+  it("statut : échec → error, retry avec pending → submitting", () => {
+    const s = solveOf(3);
+    const failed = run([
+      { kind: "session", uid: "A" },
+      { kind: "solve", solve: s },
+      { kind: "failed" },
+    ]);
+    expect(failed.state.status).toBe("error");
+    const retried = run([{ kind: "retry" }], failed.state);
+    expect(retried.state.status).toBe("submitting");
+    expect(retried.submits).toEqual([s.trace]);
+  });
+
+  it("statut : un win annulé emporte l'erreur, retry sans pending reste idle", () => {
+    const s = solveOf(3);
+    const { state } = run([
+      { kind: "session", uid: "A" },
+      { kind: "solve", solve: s },
+      { kind: "failed" },
+      { kind: "solve", solve: null }, // le joueur annule le win
+    ]);
+    expect(state.status).toBe("idle");
+    const retried = run([{ kind: "retry" }], state);
+    expect(retried.state.status).toBe("idle"); // pas d'erreur fantôme
+    expect(retried.submits).toEqual([]);
+  });
+
+  it("statut : un post enchaîné après un succès garde submitting, puis idle", () => {
+    const first = solveOf(5);
+    const better = solveOf(3);
+    const chained = run([
+      { kind: "session", uid: "A" },
+      { kind: "solve", solve: first },
+      { kind: "solve", solve: better }, // en vol : mis en attente
+      { kind: "submitted" }, // enchaîne le post de better
+    ]);
+    expect(chained.state.status).toBe("submitting");
+    const done = run([{ kind: "submitted" }], chained.state);
+    expect(done.state.status).toBe("idle");
+  });
 });

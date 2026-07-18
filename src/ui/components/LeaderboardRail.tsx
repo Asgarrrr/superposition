@@ -8,7 +8,7 @@
 // rail only feeds it events and executes its decisions (the server derives
 // moves + corrections from the raw trace). Reading never needs an account.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, type Variants } from "motion/react";
 import type { TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
@@ -27,17 +27,15 @@ import type {
   MyResult,
 } from "../../server/leaderboard.ts";
 
-/** What differs between the campaign and daily rails. `read`/`submit` MUST be
- *  referentially stable per their own inputs (wrap in useCallback) — the rail
- *  keys its read effect on them. */
+/** What differs between the campaign and daily rails. `read` MUST be
+ *  referentially stable per its own inputs (wrap in useCallback) — the rail
+ *  keys its read effect on it; `submit` is read through a ref. */
 export interface BoardSource {
   read: () => Promise<BoardData>;
   submit: (trace: TraceStep[]) => Promise<void>;
   title: string;
   emptyLabel: string;
 }
-
-type Phase = "idle" | "submitting" | "error";
 
 export function LeaderboardRail({
   source,
@@ -50,51 +48,82 @@ export function LeaderboardRail({
   className?: string;
   variants?: Variants; // develop-in: inherits the parent's hidden→visible label
 }) {
-  const { read, submit, title, emptyLabel } = source;
+  const { read, title, emptyLabel } = source;
   const { data: session, isPending } = useSession();
   const uid = session?.user.id;
 
   const [optimal, setOptimal] = useState(0);
   const [rows, setRows] = useState<LeaderRow[]>([]);
   const [mine, setMine] = useState<MyResult | null>(null);
-  const [phase, setPhase] = useState<Phase>("idle");
+  // mirror of the policy's status — the policy is the machine, this only paints
+  const [phase, setPhase] = useState(initialSubmission.status);
   const [authOpen, setAuthOpen] = useState(false);
   // the policy's memory (what was posted, by whom) — a ref, not state: it must
   // survive sign-outs unchanged and never itself cause a render
   const policy = useRef(initialSubmission);
+  // latest-ref idiom: dispatch's async continuation reads the current source
+  // without the source's identity leaking into dispatch's own
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+  // stale-continuation guard: bumped when the account changes (and on unmount)
+  // so a refetch or status mirror issued under the previous account can't
+  // overwrite the fresh board
+  const generation = useRef(0);
+  useEffect(() => {
+    const gen = generation; // the counter object itself, not a DOM snapshot
+    return () => {
+      gen.current++;
+    };
+  }, [uid]);
 
   // close the sign-in gate as soon as a session lands
   useEffect(() => {
     if (uid) setAuthOpen(false);
   }, [uid]);
 
-  const apply = (b: BoardData) => {
+  const apply = useCallback((b: BoardData) => {
     setOptimal(b.optimal);
     setRows(b.rows);
     setMine(b.mine);
-  };
+  }, []);
 
-  // feed one event to the policy and execute its decision; success/failure
-  // loop back in as events so the policy sees the whole submission lifecycle
-  const dispatch = (event: SubmissionEvent) => {
-    const { state, submit: payload } = decideSubmission(policy.current, event);
-    policy.current = state;
-    if (!payload) return;
-    setPhase("submitting");
-    void (async () => {
-      try {
-        await submit(payload);
-      } catch {
-        dispatch({ kind: "failed" });
-        setPhase("error");
-        return;
-      }
-      dispatch({ kind: "submitted" });
-      setPhase("idle");
-      const b = await read().catch(() => null);
-      if (b) apply(b);
-    })();
-  };
+  // feed one event to the policy, mirror its status, and execute its decision;
+  // the post's outcome loops back in as an event so the policy sees the whole
+  // submission lifecycle. Identity is stable across renders — the solve effect
+  // keys on dispatch and must never replay a spent solve event — so anything
+  // unstable is read from refs at call time.
+  const dispatch = useCallback(
+    function dispatch(
+      event: SubmissionEvent,
+      gen: number = generation.current,
+    ) {
+      const { state, submit: payload } = decideSubmission(
+        policy.current,
+        event,
+      );
+      // the ledger always learns the outcome (it is the anti-laundering
+      // record), but a stale generation must not repaint the new account's UI
+      policy.current = state;
+      if (gen === generation.current) setPhase(state.status);
+      if (!payload) return;
+      void (async () => {
+        let outcome: SubmissionEvent;
+        try {
+          await sourceRef.current.submit(payload);
+          outcome = { kind: "submitted" };
+        } catch {
+          outcome = { kind: "failed" };
+        }
+        // no setPhase here: the mirrored status after this dispatch already
+        // reflects any chained post the policy just launched
+        dispatch(outcome, gen);
+        if (outcome.kind === "failed" || gen !== generation.current) return;
+        const b = await sourceRef.current.read().catch(() => null);
+        if (b && gen === generation.current) apply(b);
+      })();
+    },
+    [apply],
+  );
 
   // read the public board when the session resolves, the account changes, or
   // the source changes — never on a mid-solve move
@@ -109,21 +138,18 @@ export function LeaderboardRail({
     return () => {
       alive = false;
     };
-  }, [isPending, uid, read]);
+  }, [isPending, uid, read, apply]);
 
   // policy events: the solve edge (each win is a new object; null = undone) …
   useEffect(() => {
     dispatch({ kind: "solve", solve });
-    // dispatch is recreated per render but only closes over stable refs/setters
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solve]);
+  }, [solve, dispatch]);
 
   // … and the session resolving or changing accounts
   useEffect(() => {
     if (isPending) return;
     dispatch({ kind: "session", uid: uid ?? null });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPending, uid]);
+  }, [isPending, uid, dispatch]);
 
   return (
     <motion.aside

@@ -9,8 +9,10 @@
 //     in, provided nothing was posted before it;
 //   · per account the best result wins: fewer moves, then fewer corrections —
 //     an improved re-solve posts again, a worse or equal one doesn't;
-//   · a failed post leaves the solve submittable: retry (or a session change)
-//     posts it again.
+//   · a failed post leaves the solve submittable under the SAME account:
+//     retry (or that account's session event) posts it again;
+//   · the UI status (idle / submitting / error) lives here too, so the rail
+//     mirrors one machine instead of running a second one that can disagree.
 // The client's moves/undos here are advisory, used only to decide WHETHER to
 // post — the server re-derives both from the raw trace (see server/replay.ts).
 
@@ -45,6 +47,10 @@ export interface SubmissionState {
         readonly trace: TraceStep[];
       })
     | null;
+  /** What the UI should show. "submitting" ⇔ a post is on the wire; "error"
+   *  is set by `failed` and cleared when the pending changes, a submit
+   *  launches, a success lands, or the player retries. */
+  readonly status: "idle" | "submitting" | "error";
 }
 
 export const initialSubmission: SubmissionState = {
@@ -52,6 +58,7 @@ export const initialSubmission: SubmissionState = {
   posted: null,
   pending: null,
   inFlight: null,
+  status: "idle",
 };
 
 export type SubmissionEvent =
@@ -79,20 +86,24 @@ const stay = (state: SubmissionState): SubmissionDecision => ({
 function settle(state: SubmissionState): SubmissionDecision {
   const { uid, posted, pending, inFlight } = state;
   if (!pending || inFlight || !uid) return stay(state);
-  const freshAccount = !posted || posted.uid !== uid;
+  const launch: SubmissionDecision = {
+    state: { ...state, inFlight: { uid, ...pending }, status: "submitting" },
+    submit: pending.trace,
+  };
+  // nothing was ever posted → the first account to sign in claims the solve
+  if (!posted) return launch;
+  // posted under another account: never auto-claim, whatever the account's
+  // history — but keep the pending, so the account that owns the ledger can
+  // still retry its own failed improvement when it comes back
+  if (posted.uid !== uid) return stay(state);
   const improved =
-    !!posted &&
-    posted.uid === uid &&
-    (pending.moves < posted.moves ||
-      (pending.moves === posted.moves && pending.undos < posted.undos));
-  if (!freshAccount && !improved)
+    pending.moves < posted.moves ||
+    (pending.moves === posted.moves && pending.undos < posted.undos);
+  if (!improved)
     // evaluated and declined: the solve is spent, so it can't linger and be
     // claimed later under a different account
     return stay({ ...state, pending: null });
-  return {
-    state: { ...state, inFlight: { uid, ...pending } },
-    submit: pending.trace,
-  };
+  return launch;
 }
 
 export function decideSubmission(
@@ -101,19 +112,27 @@ export function decideSubmission(
 ): SubmissionDecision {
   switch (event.kind) {
     case "solve": {
-      // an undone win takes its unposted solve with it (a post already on the
-      // wire stands — the server has it either way)
-      if (!event.solve) return stay({ ...state, pending: null });
+      // the pending changes either way, so a stale error goes with it — but a
+      // post already on the wire stands (the server has it either way)
+      const status = state.inFlight ? state.status : "idle";
+      if (!event.solve) return stay({ ...state, pending: null, status });
       const { trace, moves } = event.solve;
       return settle({
         ...state,
         pending: { trace, moves, undos: undosOf(trace) },
+        status,
       });
     }
     case "session":
+      // the status carries over: an error survives a sign-out so the failed
+      // solve is still visibly retryable; a relaunch below overwrites it
       return settle({ ...state, uid: event.uid });
-    case "retry":
-      return settle(state);
+    case "retry": {
+      // the player acknowledged the error; either a post relaunches or there
+      // is nothing left to retry — never a stuck error footer
+      const status = state.inFlight ? state.status : "idle";
+      return settle({ ...state, status });
+    }
     case "submitted": {
       const f = state.inFlight;
       if (!f) return stay(state);
@@ -124,10 +143,13 @@ export function decideSubmission(
         // a NEWER solve may have landed while this one was on the wire — keep
         // it for evaluation; the one just posted is done
         pending: state.pending?.trace === f.trace ? null : state.pending,
+        // success clears any error; a chained launch sets submitting again
+        status: "idle",
       });
     }
     case "failed":
+      if (!state.inFlight) return stay(state);
       // nothing recorded as posted, so the pending solve stays submittable
-      return stay({ ...state, inFlight: null });
+      return stay({ ...state, inFlight: null, status: "error" });
   }
 }

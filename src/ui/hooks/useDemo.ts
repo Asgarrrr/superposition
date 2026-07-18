@@ -251,7 +251,9 @@ export function useGuidedDemo(
       } else {
         setArmed(false);
         setBump(null);
-        if (sig.fx === "merge") setBloom({ payload: next.m, t: Date.now() });
+        // `next.merged` restates what sig already knows, purely to narrow the type
+        if (sig.fx === "merge" && next.merged)
+          setBloom({ payload: next.m, t: Date.now() });
         else setBloom(null);
         setSt(next);
       }
