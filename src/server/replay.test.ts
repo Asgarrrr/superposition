@@ -78,4 +78,16 @@ describe("validateTrace — clean-solve detection", () => {
     const extra: TraceStep[] = [...solution, { kind: "move", dir: [1, 0] }];
     expect(validateTrace(level, extra).ok).toBe(false);
   });
+
+  // Security lock: an illegal move aborts the whole replay the moment it's
+  // applied, even if a later undo would have popped it — the shared fold must
+  // never accept a trace that ever went through an impossible state.
+  it("rejects an illegal move even when a later undo removes it", () => {
+    const trace: TraceStep[] = [
+      { kind: "split", dir: [1, 0] }, // illegal from the start position
+      { kind: "undo" },
+      ...solution,
+    ];
+    expect(validateTrace(level, trace).ok).toBe(false);
+  });
 });

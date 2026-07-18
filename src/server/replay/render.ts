@@ -8,11 +8,11 @@
 
 import { Resvg } from "@resvg/resvg-js";
 import type { GameState, Input, Level } from "../../engine/types.ts";
-import { initialState, isWin } from "../../engine/state.ts";
-import { applyInput } from "../../engine/successors.ts";
+import { isWin } from "../../engine/state.ts";
 import { LEVELS } from "../../engine/levels.ts";
 import { decodeTrace } from "../../lib/replayTrace.ts";
-import { isValidDay, utcDay } from "../../lib/day.ts";
+import { isReplayPublic, isValidDay } from "../../lib/day.ts";
+import { replayStates } from "../replay.ts";
 import { Lru } from "../../lib/lru.ts";
 import { encodeGif, type GifFrame } from "./gif.ts";
 import { frameSvg, PALETTE_HEX } from "./board-svg.ts";
@@ -73,20 +73,6 @@ export async function withRenderSlot<T>(
   } finally {
     activeRenders--;
   }
-}
-
-/** Replays the decoded line through the shared engine, collecting every state
- *  of the winning line. Null on any illegal move or a non-winning final state —
- *  the same verdict the anti-cheat reaches, just keeping the states for frames. */
-function replayStates(level: Level, inputs: Input[]): GameState[] | null {
-  const states: GameState[] = [initialState(level)];
-  for (const inp of inputs) {
-    const next = applyInput(states[states.length - 1], level, inp);
-    if (!next) return null;
-    states.push(next);
-  }
-  if (!isWin(states[states.length - 1], level)) return null;
-  return states;
 }
 
 /** Nearest fixed-palette index for an RGB triple, memoised — resvg antialiases,
@@ -169,10 +155,13 @@ async function replayGif(
   const cached = RENDER_CACHE.get(cacheKey);
   if (cached) return gifResponse(cached);
 
-  const states = replayStates(level, inputs);
-  if (!states) return notFound();
+  // Same verdict the anti-cheat reaches, but we keep the states for frames: a
+  // legal line that wins, else 404.
+  const run = replayStates(level, inputs);
+  if (!run || !isWin(run.states[run.states.length - 1], level))
+    return notFound();
 
-  const gif = await withRenderSlot(() => renderGifBytes(level, states));
+  const gif = await withRenderSlot(() => renderGifBytes(level, run.states));
   if (!gif) return tooBusy();
 
   RENDER_CACHE.set(cacheKey, gif);
@@ -228,9 +217,9 @@ export async function replayResponse(splat: string): Promise<Response> {
     if (!isValidDay(date) || !Number.isInteger(tier) || tier < 0 || tier > 3)
       return notFound();
     // anti-spoil: a daily replay is public only once its day has fully passed
-    if (date >= utcDay()) return new Response("Not yet", { status: 403 });
-    const { replayPuzzle } = await import("../daily.ts");
-    const puzzle = await replayPuzzle(date, tier);
+    if (!isReplayPublic(date)) return new Response("Not yet", { status: 403 });
+    const { puzzleFor } = await import("../daily.ts");
+    const puzzle = await puzzleFor(date, tier);
     if (!puzzle) return notFound();
     return replayGif(`d:${date}:${tier}|${raw}`, puzzle.level, inputs);
   }

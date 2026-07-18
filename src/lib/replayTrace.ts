@@ -20,17 +20,47 @@ export const MAX_REPLAY_STEPS = 60;
 
 const dirIndex = (dir: Pos): number => DIRS.findIndex((d) => eq(d, dir));
 
+/**
+ * Folds a raw play trace into a stack under the correction rules: a plain input
+ * pushes, `undo` pops (never past the seed floor), `reset` clears back to the
+ * seed. `push` maps the current top and the input to the next value, or returns
+ * null to abort the whole fold (an illegal move) — so an illegal input
+ * invalidates the trace even if a later undo would have removed it. Returns the
+ * final stack (seed first) and the number of corrections spent, or null on an
+ * aborted push. The single owner of the undo/reset collapse, shared by the
+ * winning-line extractor (client) and the anti-cheat's state stack (server).
+ */
+export function foldTrace<T>(
+  seed: T[],
+  trace: TraceStep[],
+  push: (top: T, step: Input) => T | null,
+): { stack: T[]; corrections: number } | null {
+  const stack = [...seed];
+  const floor = seed.length;
+  let corrections = 0;
+  for (const step of trace) {
+    if (step.kind === "undo") {
+      if (stack.length > floor) stack.pop();
+      corrections++;
+    } else if (step.kind === "reset") {
+      stack.length = floor;
+      corrections++;
+    } else {
+      const next = push(stack[stack.length - 1], step);
+      if (next === null) return null;
+      stack.push(next);
+    }
+  }
+  return { stack, corrections };
+}
+
 /** The winning line of a raw play trace: corrections resolved away (undo pops
  *  the last input, reset clears), leaving exactly the inputs that reach the
  *  win — the same collapse the anti-cheat's state stack performs, on inputs. */
 export function winningLine(trace: TraceStep[]): Input[] {
-  const line: Input[] = [];
-  for (const step of trace) {
-    if (step.kind === "reset") line.length = 0;
-    else if (step.kind === "undo") line.pop();
-    else line.push(step);
-  }
-  return line;
+  // push never fails here (inputs aren't engine-validated at this stage), so the
+  // fold never aborts — the non-null assertion is total.
+  return foldTrace<Input>([], trace, (_top, step) => step)!.stack;
 }
 
 /** Encodes a clean input line to a compact token string. Throws on a malformed

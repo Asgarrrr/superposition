@@ -127,10 +127,11 @@ async function weekendRow(date: string): Promise<DailyPuzzle | null> {
 
 /** The puzzle for a (date, tier), resolved exactly as play does — the stored
  *  row, or the deterministic bank fallback for the campaign tiers; the weekend
- *  épreuve only when the cron wrote one (else null). Reused by the replay-GIF
- *  endpoint so a shared replay reconstructs the very board that was played,
- *  never one the client asserts. */
-export function replayPuzzle(
+ *  épreuve only when the cron wrote one (else null). The single resolver behind
+ *  score submission, the leaderboard's optimal, and the replay-GIF endpoint, so
+ *  every path reconstructs the very board that was played, never one the client
+ *  asserts. */
+export function puzzleFor(
   date: string,
   tier: number,
 ): Promise<DailyPuzzle | null> {
@@ -193,10 +194,7 @@ export const submitDailyScore = createServerFn({ method: "POST" })
     if (!isSubmittableDay(data.date)) throw new Error("Puzzle no longer open");
 
     const { date, tier } = data;
-    const puzzle =
-      tier === WEEKEND_TIER
-        ? await weekendRow(date)
-        : await resolveDaily(date, tier);
+    const puzzle = await puzzleFor(date, tier);
     if (!puzzle) throw new Error("Puzzle not available");
     const result = validateTrace(puzzle.level, data.trace);
     if (!result.ok) throw new Error("Invalid solution");
@@ -234,10 +232,7 @@ async function dailyOptimal(date: string, tier: number): Promise<number> {
   const key = `${date}:${tier}`;
   const cached = optimalByKey.get(key);
   if (cached !== undefined) return cached;
-  const puzzle =
-    tier === WEEKEND_TIER
-      ? await weekendRow(date)
-      : await resolveDaily(date, tier);
+  const puzzle = await puzzleFor(date, tier);
   // an absent weekend épreuve reads as an empty board (optimal 0); don't cache
   // the miss, so it picks up the row once the cron writes it
   if (!puzzle) return 0;

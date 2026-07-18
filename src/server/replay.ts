@@ -7,6 +7,7 @@
 import type { GameState, Level, TraceStep } from "../engine/types.ts";
 import { initialState, isWin } from "../engine/state.ts";
 import { applyInput } from "../engine/successors.ts";
+import { foldTrace } from "../lib/replayTrace.ts";
 
 /** Shape-check one applied input (known kind + numeric [row, col] direction).
  * Shared by every submitted-shape validator; throws on the first malformation. */
@@ -36,36 +37,49 @@ export interface TraceResult {
 
 const TRACE_REJECT: TraceResult = { ok: false, moves: 0, corrections: 0 };
 
+export interface ReplayRun {
+  states: GameState[]; // initial state first, then one per surviving input
+  corrections: number; // undos + resets spent along the way
+}
+
 /**
- * Replays a full play trace on a state stack: an input pushes, an undo pops, a
- * reset returns to the initial state. Accepts only a trace whose FINAL state
- * wins. Returns the winning line's move count and the number of corrections —
- * so the server, not the client, decides whether a solve was clean.
+ * Replays a trace through the engine on a state stack — an input pushes, an undo
+ * pops, a reset returns to the initial state — collecting every surviving state.
+ * Returns null on the first illegal move, so an illegal input invalidates the
+ * trace even if a later undo would have removed it. Does NOT check the final
+ * state wins: callers decide the acceptance rule. The single engine-side owner
+ * of the replay, shared by validateTrace (anti-cheat) and the replay-GIF
+ * renderer (render.ts), which turns the collected states into frames.
+ */
+export function replayStates(
+  level: Level,
+  trace: TraceStep[],
+): ReplayRun | null {
+  const run = foldTrace<GameState>([initialState(level)], trace, (top, step) =>
+    applyInput(top, level, step),
+  );
+  return run && { states: run.stack, corrections: run.corrections };
+}
+
+/**
+ * Replays a full play trace and accepts it only when its FINAL state wins.
+ * Returns the winning line's move count and the number of corrections — so the
+ * server, not the client, decides whether a solve was clean.
  */
 export function validateTrace(level: Level, trace: TraceStep[]): TraceResult {
   if (!Array.isArray(trace) || trace.length === 0 || trace.length > MAX_TRACE)
     return TRACE_REJECT;
 
-  const stack: GameState[] = [initialState(level)];
-  let corrections = 0;
-  for (const step of trace) {
-    if (step.kind === "undo") {
-      if (stack.length > 1) stack.pop();
-      corrections++;
-      continue;
-    }
-    if (step.kind === "reset") {
-      stack.length = 1; // back to the initial state
-      corrections++;
-      continue;
-    }
-    const next = applyInput(stack[stack.length - 1], level, step);
-    if (!next) return TRACE_REJECT; // illegal / impossible move
-    stack.push(next);
-  }
+  const run = replayStates(level, trace);
+  if (!run) return TRACE_REJECT;
 
-  if (!isWin(stack[stack.length - 1], level)) return TRACE_REJECT;
-  return { ok: true, moves: stack.length - 1, corrections };
+  const final = run.states[run.states.length - 1];
+  if (!isWin(final, level)) return TRACE_REJECT;
+  return {
+    ok: true,
+    moves: run.states.length - 1,
+    corrections: run.corrections,
+  };
 }
 
 /**

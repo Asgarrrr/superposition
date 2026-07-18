@@ -27,6 +27,17 @@ export function shiftDay(date: string, offset: number): string {
     .slice(0, 10);
 }
 
+/** May a daily replay for `date` be shown publicly? Only once its day has fully
+ *  passed (UTC): rendering a still-live daily would spoil it. The one predicate
+ *  behind both the server's 403 gate (render.ts) and the client's share-button
+ *  guard, so the two can't drift. `today` defaults to the current UTC day. */
+export function isReplayPublic(
+  date: string,
+  today: string = utcDay(),
+): boolean {
+  return date < today;
+}
+
 /** Is this UTC day (YYYY-MM-DD) a weekend — Saturday or Sunday? The weekend
  *  "épreuve d'artiste" tier is keyed on this, on the same UTC day the daily
  *  board already uses, so it's the same window for every player worldwide. */

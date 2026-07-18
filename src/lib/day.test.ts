@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidDay } from "./day.ts";
+import { isReplayPublic, isValidDay } from "./day.ts";
 
 // `isValidDay(date)` accepts only real UTC calendar days in YYYY-MM-DD form.
 // It backstops the daily/replay endpoints: a shape-only check waves through
@@ -23,5 +23,22 @@ describe("isValidDay", () => {
     expect(isValidDay("2024-02-29T00:00:00Z")).toBe(false);
     expect(isValidDay("abcd-ef-gh")).toBe(false);
     expect(isValidDay("")).toBe(false);
+  });
+});
+
+// `isReplayPublic(date, today)` is the one anti-spoil predicate behind the
+// server's 403 gate and the client's share-button guard: a daily replay is
+// public only once its day has fully passed (UTC).
+describe("isReplayPublic", () => {
+  const today = "2026-07-18";
+
+  it("is public for any strictly past day", () => {
+    expect(isReplayPublic("2026-07-17", today)).toBe(true);
+    expect(isReplayPublic("2020-01-01", today)).toBe(true);
+  });
+
+  it("is NOT public for today or any future day", () => {
+    expect(isReplayPublic(today, today)).toBe(false);
+    expect(isReplayPublic("2026-07-19", today)).toBe(false);
   });
 });
