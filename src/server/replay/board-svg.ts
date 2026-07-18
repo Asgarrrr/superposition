@@ -131,9 +131,16 @@ export function frameSvg(level: Level, st: GameState, won: boolean): string {
   parts.push(
     `<rect x="6" y="6" width="${span - 12}" height="${span - 12}" rx="8" fill="${BOX}"/>`,
   );
+  // the drifting magenta grid is clipped to the box, mirroring the live board
+  // where the whole shifted ink layer sits under an `overflow-hidden` frame
+  parts.push(
+    `<defs><clipPath id="box"><rect x="6" y="6" width="${span - 12}" height="${span - 12}" rx="8"/></clipPath></defs>`,
+  );
 
-  // cyan layer sits in board coordinates; magenta layer drifts by `off`
+  // cyan layer sits in board coordinates; magenta layer drifts by `off` — both
+  // grids exist at all times (like the two ink films), only magenta's moves
   parts.push(grid(n, CYAN_DIM, [0, 0]));
+  parts.push(`<g clip-path="url(#box)">${grid(n, MAGENTA_DIM, off)}</g>`);
   parts.push(walls(level.a.walls, CYAN_DIM, [0, 0]));
   parts.push(walls(level.b.walls, MAGENTA_DIM, off));
   parts.push(goal(level.a.goal, CYAN_DIM));
