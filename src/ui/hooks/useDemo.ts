@@ -15,6 +15,7 @@ import { add, eq, sub } from "../../engine/grid.ts";
 import { m } from "../../paraglide/messages.js";
 import { type Demo, type DemoBeat } from "../demos.ts";
 import { vibrate } from "../haptics.ts";
+import { inputSignature } from "../signatures.ts";
 import type { SoundFx } from "./useSound.ts";
 import type { Pulse } from "./useGame.ts";
 
@@ -228,11 +229,12 @@ export function useGuidedDemo(
       if (!beat || !demo || !st) return;
       const next = applyInput(st, demo.level, { kind: beat.input.kind, dir });
       setNudge(null);
+      const sig = inputSignature(st, next, beat.input.kind, demo.level);
+      fx[sig.fx]();
+      if (sig.vibrate !== null) vibrate(sig.vibrate);
       if (next === null) {
         setBump({ payload: dir, t: Date.now() });
         setBloom(null);
-        fx.block();
-        vibrate(25);
         if (beat.free) {
           // free beat: the refusal is itself a lesson — invite another try,
           // and stay armed so the next arrow goes through as told. The hint
@@ -250,24 +252,9 @@ export function useGuidedDemo(
       } else {
         setArmed(false);
         setBump(null);
-        if (!st.merged && next.merged) {
+        if (!st.merged && next.merged)
           setBloom({ payload: next.m, t: Date.now() });
-          fx.merge();
-          vibrate([10, 20, 40]);
-        } else {
-          setBloom(null);
-          if (beat.input.kind === "split") {
-            fx.split();
-            vibrate([15, 30, 15]);
-          } else if (beat.input.kind === "shift") {
-            fx.shift();
-            vibrate(40);
-          } else if (demo.level.mods.includes("glace")) {
-            fx.slide();
-          } else {
-            fx.move();
-          }
-        }
+        else setBloom(null);
         setSt(next);
       }
       // the payoff stays until the player continues — no timer sets the pace

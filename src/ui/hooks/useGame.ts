@@ -15,6 +15,7 @@ import { applyInput } from "../../engine/successors.ts";
 import { eq } from "../../engine/grid.ts";
 import { m } from "../../paraglide/messages.js";
 import { vibrate } from "../haptics.ts";
+import { inputSignature } from "../signatures.ts";
 import type { SoundFx } from "./useSound.ts";
 
 export interface Pulse {
@@ -64,9 +65,10 @@ export function useGame(
     const kind: Input["kind"] = alt ? (st.merged ? "split" : "shift") : "move";
     setAltArmed(false);
     const next = applyInput(st, level, { kind, dir: d });
+    const sig = inputSignature(st, next, kind, level);
+    fx[sig.fx]();
+    if (sig.vibrate !== null) vibrate(sig.vibrate);
     if (!next) {
-      fx.block();
-      vibrate(25);
       setBump({ payload: d, t: Date.now() });
       if (kind === "split") setFlash(m.flash_no_split());
       if (kind === "shift") setFlash(m.flash_no_shift({ max: MAX_SHIFT }));
@@ -75,18 +77,9 @@ export function useGame(
     }
     // a merge is the headline event — announce it even when a shift caused it
     if (!st.merged && next.merged) {
-      fx.merge();
-      vibrate([10, 20, 40]);
       setBloom({ payload: next.m, t: Date.now() });
       setTimeout(() => setBloom(null), 600);
-    } else if (kind === "shift") {
-      fx.shift();
-      vibrate(40);
-    } else if (kind === "split") {
-      fx.split();
-      vibrate([15, 30, 15]);
-    } else if (level.mods.includes("glace")) fx.slide();
-    else fx.move();
+    }
     // ice ink trails: from the cell left behind to the cell reached
     const ice = level.mods.includes("glace") && !st.merged && !next.merged;
     setTrails({
