@@ -120,6 +120,13 @@
   animation: sp-guide 1.3s ease-in-out infinite;
 }
 
+/* le tampon posé : une seule frappe partagée par la victoire, le daily et la
+   carte-titre du tutoriel — le délai reste inline (animation-delay). Le repos
+   à -8° vit ici pour que reduced-motion pose le tampon sans le claquer. */
+.sp-stamped {
+  animation: sp-stamp 700ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
 /* refus doux : la consigne fait « non » de la tête — vu ET entendu, jamais
    punitif. Retriggé en re-montant l'élément (key={nudge.t}). */
 @keyframes sp-nudge {
@@ -161,6 +168,10 @@
   .sp-nudge,
   .sp-march {
     animation: none;
+  }
+  .sp-stamped {
+    animation: none;
+    transform: rotate(-8deg);
   }
 }
 

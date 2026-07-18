@@ -38,7 +38,7 @@ export function Board({
   armed?: boolean; // ✕ armed on a merged pawn: preview where the split sends each ink
   demo?: boolean; // tutorial sandbox: frame the box in tape so it reads apart
   guideGhosts?: { a: Pos[]; b: Pos[] } | null; // tutorial: landing preview of the guided push
-  guides?: { from: Pos; to: Pos; tone: "a" | "b" | "w" }[] | null; // tutorial: marching arrows drawing the gesture
+  guides?: { from: Pos; to: Pos; tone: "a" | "b" | "w" }[] | null; // tutorial: marching arrows drawing the gesture, in BOARD coordinates (this overlay is not shifted by `off` — magenta film positions must arrive pre-converted)
   iceTrailA: { from: Pos } | null;
   iceTrailB: { from: Pos } | null;
   onTouchStart: (e: React.TouchEvent) => void;
@@ -213,7 +213,6 @@ export function Board({
               : tone === "b"
                 ? "var(--color-ink-magenta)"
                 : "var(--color-paper)";
-          // arrowhead: two short strokes swept back from the tip
           const head = 9;
           const [hx, hy] = [ex - ux * head, ey - uy * head];
           const [px, py] = [-uy, ux];

@@ -226,7 +226,6 @@ export function PlayScreen({
             // gesture, and every payoff waits for the player: a tap anywhere,
             // an arrow, or Enter continues. On handoff the tape frame fades
             // before the real level develops in.
-            // biome-ignore lint: the whole surface doubles the continue button
             <div onClick={guided.next}>
               <Board
                 demo={guided.phase !== "handoff"}
@@ -255,15 +254,8 @@ export function PlayScreen({
                       {m.controls_demo_tag()}
                     </span>
                     <div
-                      className="rounded-sm border-[2.5px] border-tape px-5 py-2.5 font-mono text-[19px] tracking-[0.26em] text-tape uppercase"
-                      style={
-                        reduced
-                          ? { transform: "rotate(-8deg)" }
-                          : {
-                              animation:
-                                "sp-stamp 700ms cubic-bezier(0.2,1.4,0.4,1) 250ms both",
-                            }
-                      }
+                      className="sp-stamped rounded-sm border-[2.5px] border-tape px-5 py-2.5 font-mono text-[19px] tracking-[0.26em] text-tape uppercase"
+                      style={{ animationDelay: "250ms" }}
                     >
                       {demo?.title()}
                     </div>

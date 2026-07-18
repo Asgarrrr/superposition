@@ -108,7 +108,6 @@ export function useGuidedDemo(
   const [idx, setIdx] = useState(0);
   const [st, setSt] = useState<GameState | null>(demo?.start ?? null);
   const [phase, setPhase] = useState<DemoPhase>("title");
-  const [waiting, setWaiting] = useState(false);
   const [armed, setArmed] = useState(false);
   const [bump, setBump] = useState<Pulse | null>(null);
   const [bloom, setBloom] = useState<Pulse | null>(null);
@@ -118,25 +117,31 @@ export function useGuidedDemo(
   done.current = onDone;
   const holdTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const hintTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const stampTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // a payoff on screen is what gates the tutorial: derived, so no path can
+  // desync the pause from the caption that explains it
+  const waiting = payoff?.kind === "done";
 
   // reset whenever the demo changes (new level, replay, or cleared)
   useEffect(() => {
     clearTimeout(holdTimer.current);
     clearTimeout(hintTimer.current);
+    clearTimeout(stampTimer.current);
     setIdx(0);
     setSt(demo?.start ?? null);
     setPhase("title");
-    setWaiting(false);
     setArmed(false);
     setBump(null);
     setBloom(null);
     setNudge(null);
     setPayoff(null);
     // the title card's stamp slams at ~55% of its 700ms animation (250ms delay)
-    if (demo) hintTimer.current = setTimeout(() => fx.stamp(), 600);
+    if (demo) stampTimer.current = setTimeout(() => fx.stamp(), 600);
     return () => {
       clearTimeout(holdTimer.current);
       clearTimeout(hintTimer.current);
+      clearTimeout(stampTimer.current);
     };
   }, [demo, fx]);
 
@@ -159,10 +164,15 @@ export function useGuidedDemo(
   // ── on-board hints, read straight off the engine so they can't drift ──
   // Ghost rings mark landings; marching arrows draw the gesture itself.
   // Armed gestures reveal their arrows once armed (the ✕/⇄ pulse leads).
+  // Two coordinate frames: `ghosts` render inside InkLayer B, which the world
+  // offset already translates, so they stay in B-film coordinates; `guides`
+  // render in the unshifted board overlay, so every magenta position gets
+  // `+ off` (that sum IS the cell the player sees the ink on).
   let ghosts: { a: Pos[]; b: Pos[] } | null = null;
   const guides: DemoGuide[] = [];
   if (beat && st && demo) {
     const cur = cells(st);
+    const curB = add(cur.b, st.off); // magenta's board cell
     if (beat.input.kind === "move" && wantDir) {
       const next = applyInput(st, demo.level, { kind: "move", dir: wantDir });
       if (next) {
@@ -178,15 +188,16 @@ export function useGuidedDemo(
           if (!eq(to.a, cur.a))
             guides.push({ from: cur.a, to: to.a, tone: "a" });
           if (!eq(to.b, cur.b))
-            guides.push({ from: cur.b, to: to.b, tone: "b" });
+            guides.push({ from: curB, to: add(to.b, st.off), tone: "b" });
         }
-      } else {
+      } else if (st.merged) {
         // the scripted blocked lesson: draw the attempted push anyway
-        guides.push({
-          from: cur.a,
-          to: add(cur.a, wantDir),
-          tone: st.merged ? "w" : "a",
-        });
+        guides.push({ from: cur.a, to: add(cur.a, wantDir), tone: "w" });
+      } else {
+        // both inks are pinned — draw both attempts, so the caption's subject
+        // (the walled-in ink) gets its arrow too
+        guides.push({ from: cur.a, to: add(cur.a, wantDir), tone: "a" });
+        guides.push({ from: curB, to: add(curB, wantDir), tone: "b" });
       }
     } else if (beat.input.kind === "split" && armed) {
       // one diverging arrow pair per legal split — cyan follows, magenta mirrors
@@ -194,12 +205,11 @@ export function useGuidedDemo(
         if (inp.kind !== "split" || next.merged) continue;
         if (wantDir && !eq(inp.dir, wantDir)) continue;
         guides.push({ from: cur.a, to: next.a, tone: "a" });
-        guides.push({ from: cur.b, to: next.b, tone: "b" });
+        guides.push({ from: curB, to: add(next.b, st.off), tone: "b" });
       }
     } else if (beat.input.kind === "shift" && armed && wantDir) {
       // the film slides under the pawns: the magenta ink will appear here
-      const bBoard = st.merged ? cur.b : add(cur.b, st.off);
-      guides.push({ from: bBoard, to: add(bBoard, wantDir), tone: "b" });
+      guides.push({ from: curB, to: add(curB, wantDir), tone: "b" });
     }
   }
 
@@ -263,7 +273,6 @@ export function useGuidedDemo(
       // the payoff stays until the player continues — no timer sets the pace
       clearTimeout(hintTimer.current);
       setPayoff({ text: beat.done(), kind: "done" });
-      setWaiting(true);
       setIdx(idx + 1);
     },
     [beat, demo, fx, idx, st],
@@ -272,15 +281,24 @@ export function useGuidedDemo(
   /** Continue: past the title card, past a payoff, or out of the handoff. */
   const next = useCallback(() => {
     if (!demo) return;
-    if (phase === "title") return setPhase("play");
-    if (phase === "handoff") return done.current(); // an eager hand cuts it short
+    if (phase === "title") {
+      // dismissing the card also cancels its pending stamp sound
+      clearTimeout(stampTimer.current);
+      return setPhase("play");
+    }
+    if (phase === "handoff") {
+      // an eager hand cuts it short — and must not let the timer fire a second
+      // done on a consumer less idempotent than PlayScreen's
+      clearTimeout(holdTimer.current);
+      return done.current();
+    }
     if (!waiting) return;
     setPayoff(null);
     setNudge(null);
-    setWaiting(false);
     if (idx >= demo.beats.length) {
       // the hand returns: the tape frame fades, then the real level develops in
       setPhase("handoff");
+      clearTimeout(holdTimer.current);
       holdTimer.current = setTimeout(() => done.current(), HOLD);
     }
   }, [demo, idx, phase, waiting]);
@@ -306,13 +324,27 @@ export function useGuidedDemo(
 
   const arm = useCallback(() => {
     if (!demo) return;
-    if (phase !== "play" || waiting) return next();
+    if (phase !== "play" || waiting) {
+      next();
+      // tapping ⇄/✕ over a payoff continues AND arms when the upcoming beat
+      // needs it — the control the guidance is about to spotlight must not
+      // read as dead on its first press
+      const upcoming = demo.beats[idx];
+      if (
+        phase === "play" &&
+        waiting &&
+        upcoming &&
+        upcoming.input.kind !== "move"
+      )
+        setArmed(true);
+      return;
+    }
     if (!beat) return;
     // one-way while guiding: a double tap on the lit control must not silently
     // disarm and appear to regress the tutorial
     if (needsArm) setArmed(true);
     else reject(beat.input.dir); // ✕ pressed when a plain push is expected
-  }, [beat, demo, needsArm, next, phase, reject, waiting]);
+  }, [beat, demo, idx, needsArm, next, phase, reject, waiting]);
 
   const skip = useCallback(() => done.current(), []);
 
