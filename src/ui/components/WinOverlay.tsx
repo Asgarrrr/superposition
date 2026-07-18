@@ -24,10 +24,12 @@ export function WinOverlay({
 }) {
   // the copy confirmation is a records moment — one of the rare tape licences
   const [copied, setCopied] = useState(false);
+  // null when the line is too long for the replay endpoint (see replayLink) —
+  // the action is then absent, like a hinted run's.
+  const gifUrl = trace ? campaignReplayUrl(plate, trace) : null;
   const onShareGif = async () => {
-    if (!trace) return;
-    const url = campaignReplayUrl(plate, trace);
-    if ((await shareOrCopy(url)) === "copied") {
+    if (!gifUrl) return;
+    if ((await shareOrCopy(gifUrl)) === "copied") {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -66,7 +68,7 @@ export function WinOverlay({
           {m.win_complete()}
         </div>
       )}
-      {trace && (
+      {gifUrl && (
         <button
           type="button"
           onClick={onShareGif}

@@ -42,13 +42,13 @@ export function DailyOverlay({
   };
 
   // the replay GIF exists only once the puzzle's day has fully passed (UTC) —
-  // rendering a still-live daily would spoil it, so the server 403s it. Until
-  // then we show a discreet "tomorrow" note rather than a dead button.
+  // rendering a still-live daily would spoil it, so the server 403s it.
   const gifReady = date < utcDay();
+  // null when the line is too long for the replay endpoint (see replayLink).
+  const gifUrl = trace ? dailyReplayUrl(date, tier, trace) : null;
   const onShareGif = async () => {
-    if (!trace) return;
-    const url = dailyReplayUrl(date, tier, trace);
-    if ((await shareOrCopy(url)) === "copied") {
+    if (!gifUrl) return;
+    if ((await shareOrCopy(gifUrl)) === "copied") {
       setGifCopied(true);
       setTimeout(() => setGifCopied(false), 2000);
     }
@@ -83,22 +83,20 @@ export function DailyOverlay({
       >
         {copied ? m.daily_share_copied() : m.daily_share_button()}
       </button>
-      {gifReady ? (
-        trace && (
-          <button
-            type="button"
-            onClick={onShareGif}
-            className={`font-mono text-[10px] tracking-[0.14em] uppercase transition-colors ${
-              gifCopied ? "text-tape" : "text-paper/35 hover:text-paper/70"
-            }`}
-          >
-            {gifCopied ? m.replay_gif_copied() : m.replay_gif()}
-          </button>
-        )
-      ) : (
-        <div className="font-mono text-[10px] tracking-[0.14em] text-paper/25 uppercase">
-          {m.replay_gif_soon()}
-        </div>
+      {/* Nothing before the day closes: the trace lives only in this session,
+          so no surface could honour a "GIF tomorrow" promise. The action
+          returns on its own in the grace window (loaded before, solved after
+          midnight UTC), where gifReady is already true. */}
+      {gifReady && gifUrl && (
+        <button
+          type="button"
+          onClick={onShareGif}
+          className={`font-mono text-[10px] tracking-[0.14em] uppercase transition-colors ${
+            gifCopied ? "text-tape" : "text-paper/35 hover:text-paper/70"
+          }`}
+        >
+          {gifCopied ? m.replay_gif_copied() : m.replay_gif()}
+        </button>
       )}
     </div>
   );
