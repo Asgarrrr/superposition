@@ -41,10 +41,13 @@ describe("démos — invariants moteur", () => {
     expect(Math.abs(s.a[1])).toBeGreaterThan(1);
   });
 
-  it("intro_decalage décale le monde puis le réaligne", () => {
+  it("intro_decalage : la poussée garde l'écart, le glissement du monde fusionne", () => {
     const { steps } = demoSteps(byId("intro_decalage"));
-    expect(steps[0].state.off).toEqual([0, 1]); // le film magenta glisse
-    expect(steps[1].state.off).toEqual([0, 0]); // puis se réaligne
+    const after = split(steps[0].state); // push: both move, still apart
+    expect(after.a).not.toEqual(after.b);
+    expect(after.off).toEqual([0, 0]);
+    expect(steps[1].merged).toBe(true); // the shift ITSELF triggers the merge
+    expect(steps[1].state.off).toEqual([0, -1]);
   });
 
   it("chaque étape non bloquée fait avancer l’état", () => {
@@ -93,7 +96,9 @@ describe("démos — beats guidés", () => {
     expect(legal).toBeGreaterThan(0);
   });
 
-  it("décalage libre : chaque geste monde se réaligne par son inverse", () => {
+  it("décalage : aucune poussée seule ne fusionne depuis le départ", () => {
+    // the choreography's premise — pushes preserve the board gap, only the
+    // world gesture closes it
     const d = byId("intro_decalage");
     for (const dir of [
       [-1, 0],
@@ -101,13 +106,8 @@ describe("démos — beats guidés", () => {
       [0, -1],
       [0, 1],
     ] as const) {
-      const there = applyInput(d.start, d.level, { kind: "shift", dir });
-      if (there === null) continue;
-      const back = applyInput(there, d.level, {
-        kind: "shift",
-        dir: [-dir[0], -dir[1]],
-      });
-      expect(back?.off).toEqual([0, 0]);
+      const next = applyInput(d.start, d.level, { kind: "move", dir });
+      if (next !== null) expect(next.merged).toBe(false);
     }
   });
 

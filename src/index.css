@@ -141,12 +141,25 @@
   animation: sp-nudge 280ms ease-out;
 }
 
+/* flèches guides : le geste dessiné sur le plateau, en pointillés qui
+   avancent vers l'atterrissage */
+@keyframes sp-march {
+  to {
+    stroke-dashoffset: -13;
+  }
+}
+.sp-march {
+  stroke-dasharray: 7 6;
+  animation: sp-march 650ms linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sp-guide {
     animation: none;
     box-shadow: 0 0 0 3px rgba(232, 184, 75, 0.3);
   }
-  .sp-nudge {
+  .sp-nudge,
+  .sp-march {
     animation: none;
   }
 }

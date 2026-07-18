@@ -23,6 +23,7 @@ export function Board({
   armed = false,
   demo = false,
   guideGhosts = null,
+  guides = null,
   iceTrailA,
   iceTrailB,
   onTouchStart,
@@ -37,6 +38,7 @@ export function Board({
   armed?: boolean; // ✕ armed on a merged pawn: preview where the split sends each ink
   demo?: boolean; // tutorial sandbox: frame the box in tape so it reads apart
   guideGhosts?: { a: Pos[]; b: Pos[] } | null; // tutorial: landing preview of the guided push
+  guides?: { from: Pos; to: Pos; tone: "a" | "b" | "w" }[] | null; // tutorial: marching arrows drawing the gesture
   iceTrailA: { from: Pos } | null;
   iceTrailB: { from: Pos } | null;
   onTouchStart: (e: React.TouchEvent) => void;
@@ -192,6 +194,43 @@ export function Board({
             />
           ))}
         </motion.g>
+        {/* tutorial arrows: the gesture drawn where it will act, marching from
+            each ink toward its landing — pulled back from both cell centres so
+            pawn and ghost ring stay readable under the arrowhead */}
+        {guides?.map(({ from, to, tone }, i) => {
+          const [x1, y1] = cellCenter(from);
+          const [x2, y2] = cellCenter(to);
+          const len = Math.hypot(x2 - x1, y2 - y1);
+          if (len === 0) return null;
+          const [ux, uy] = [(x2 - x1) / len, (y2 - y1) / len];
+          const sx = x1 + ux * (CELL * 0.34);
+          const sy = y1 + uy * (CELL * 0.34);
+          const ex = x2 - ux * (CELL * 0.36);
+          const ey = y2 - uy * (CELL * 0.36);
+          const color =
+            tone === "a"
+              ? "var(--color-ink-cyan)"
+              : tone === "b"
+                ? "var(--color-ink-magenta)"
+                : "var(--color-paper)";
+          // arrowhead: two short strokes swept back from the tip
+          const head = 9;
+          const [hx, hy] = [ex - ux * head, ey - uy * head];
+          const [px, py] = [-uy, ux];
+          return (
+            <g
+              key={`${i}-${from[0]}-${from[1]}`}
+              stroke={color}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              opacity="0.85"
+            >
+              <line className="sp-march" x1={sx} y1={sy} x2={ex} y2={ey} />
+              <line x1={ex} y1={ey} x2={hx + px * 5.5} y2={hy + py * 5.5} />
+              <line x1={ex} y1={ey} x2={hx - px * 5.5} y2={hy - py * 5.5} />
+            </g>
+          );
+        })}
         {bloom && (
           <circle
             cx={cellCenter(bloom.payload)[0]}

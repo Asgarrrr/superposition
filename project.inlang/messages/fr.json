@@ -58,10 +58,11 @@
   "demo_lumiere_pass": "Les encres passent. Seul le blanc est arrêté.",
   "demo_glace_push": "Pousse → — et regarde jusqu'où ça glisse.",
   "demo_glace_done": "Glace. Tout glisse jusqu'à l'obstacle.",
-  "demo_shift_do": "⇄ puis une direction (ou Maj+flèche) — glisse le film magenta.",
-  "demo_shift_off": "Les croix de repérage se décalent.",
-  "demo_shift_back": "Refais le geste en sens inverse pour réaligner.",
-  "demo_shift_aligned": "Réaligné — les croix se superposent.",
+  "demo_shift_futile": "Pousse ← — ils bougent ensemble, l'écart reste.",
+  "demo_shift_futile_done": "Aucune poussée ne les réunira. Il faut autre chose.",
+  "demo_shift_do": "⇄ puis ← (ou Maj+flèche) — glisse le monde lui-même.",
+  "demo_shift_done": "Fusion. Glisser le monde rend l'impossible possible.",
+  "demo_continue": "continuer ↵",
   "win_stamp": "Bon à tirer",
   "win_summary": [
     {

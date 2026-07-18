@@ -156,7 +156,8 @@ export function PlayScreen({
     toggleAlt,
     exit: onExit,
     next: () => {
-      if (!demoActive && game.solved) onNext?.();
+      if (demoActive) return guided.next(); // Enter continues the tutorial
+      if (game.solved) onNext?.();
     },
   });
 
@@ -221,62 +222,77 @@ export function PlayScreen({
         >
           {demoActive && guided.st && guided.level ? (
             // the tutorial runs through the real Board; the player drives it on
-            // rails. A title card names the mechanic, the caption speaks in two
-            // voices (instruction, then payoff), and on handoff the tape frame
-            // fades before the real level develops in.
-            <Board
-              demo={guided.phase !== "handoff"}
-              level={guided.level}
-              st={guided.st}
-              solved={false}
-              bump={guided.bump}
-              bloom={guided.bloom}
-              armed={guided.armed}
-              guideGhosts={guided.ghosts}
-              iceTrailA={null}
-              iceTrailB={null}
-              {...swipe}
-            >
-              {guided.phase === "title" ? (
-                <motion.div
-                  className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2"
-                  style={{ background: "rgba(18,16,14,0.55)" }}
-                  initial={reduced ? false : { opacity: 0, scale: 0.97 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.45, ease: PRINT_EASE }}
-                >
-                  <span className="rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
-                    {m.controls_demo_tag()}
-                  </span>
-                  <span className="font-display text-3xl tracking-[0.04em] text-paper">
-                    {demo?.title()}
-                  </span>
-                  <span className="font-display text-[13px] text-paper/60">
-                    {demo?.sub()}
-                  </span>
-                </motion.div>
-              ) : (
-                guided.caption && (
-                  <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
-                    <div
-                      // remount on each refusal so the headshake retriggers
-                      key={guided.nudge?.t ?? "still"}
-                      className={`flex max-w-[88%] items-center gap-2 rounded-xs px-3 py-1.5 text-center font-display text-[13px] leading-snug tracking-[0.01em] ${
-                        guided.nudge ? "sp-nudge" : ""
-                      } ${captionTone[guided.caption.kind]}`}
-                      style={{ background: "rgba(18,16,14,0.78)" }}
-                    >
-                      {guided.caption.kind === "say" && (
-                        <span className="shrink-0 rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
-                          {m.controls_demo_tag()}
-                        </span>
-                      )}
-                      {guided.caption.text}
+            // rails. A title card names the mechanic, marching arrows draw each
+            // gesture, and every payoff waits for the player: a tap anywhere,
+            // an arrow, or Enter continues. On handoff the tape frame fades
+            // before the real level develops in.
+            // biome-ignore lint: the whole surface doubles the continue button
+            <div onClick={guided.next}>
+              <Board
+                demo={guided.phase !== "handoff"}
+                level={guided.level}
+                st={guided.st}
+                solved={false}
+                bump={guided.bump}
+                bloom={guided.bloom}
+                armed={guided.armed}
+                guideGhosts={guided.ghosts}
+                guides={guided.guides}
+                iceTrailA={null}
+                iceTrailB={null}
+                {...swipe}
+              >
+                {guided.phase === "title" ? (
+                  <motion.div
+                    className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2"
+                    style={{ background: "rgba(18,16,14,0.55)" }}
+                    initial={reduced ? false : { opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.45, ease: PRINT_EASE }}
+                  >
+                    <span className="rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
+                      {m.controls_demo_tag()}
+                    </span>
+                    <span className="font-display text-3xl tracking-[0.04em] text-paper">
+                      {demo?.title()}
+                    </span>
+                    <span className="font-display text-[13px] text-paper/60">
+                      {demo?.sub()}
+                    </span>
+                    <span className="mt-4 animate-pulse font-mono text-[10px] tracking-[0.14em] text-tape/80 uppercase">
+                      {m.demo_continue()}
+                    </span>
+                  </motion.div>
+                ) : (
+                  guided.caption && (
+                    <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
+                      <div
+                        // remount on each refusal so the headshake retriggers
+                        key={guided.nudge?.t ?? "still"}
+                        className={`flex max-w-[88%] flex-col items-center gap-1 rounded-xs px-3 py-1.5 text-center font-display text-[13px] leading-snug tracking-[0.01em] ${
+                          guided.nudge ? "sp-nudge" : ""
+                        } ${captionTone[guided.caption.kind]}`}
+                        style={{ background: "rgba(18,16,14,0.78)" }}
+                      >
+                        <div className="flex items-center gap-2">
+                          {guided.caption.kind === "say" && (
+                            <span className="shrink-0 rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
+                              {m.controls_demo_tag()}
+                            </span>
+                          )}
+                          {guided.caption.text}
+                        </div>
+                        {guided.waiting && (
+                          <span className="animate-pulse font-mono text-[10px] tracking-[0.14em] text-tape/80 uppercase">
+                            {m.demo_continue()}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )
-              )}
-            </Board>
+                  )
+                )}
+              </Board>
+            </div>
           ) : (
             <Board
               level={level}

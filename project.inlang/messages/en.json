@@ -58,10 +58,11 @@
   "demo_lumiere_pass": "The inks pass. Only the white is stopped.",
   "demo_glace_push": "Push → — and watch how far it slides.",
   "demo_glace_done": "Ice. Everything slides until it hits.",
-  "demo_shift_do": "⇄ then a direction (or Shift+arrow) — slide the magenta film.",
-  "demo_shift_off": "The registration marks go off.",
-  "demo_shift_back": "Do the reverse gesture to realign.",
-  "demo_shift_aligned": "Realigned — the marks line up.",
+  "demo_shift_futile": "Push ← — they move together, the gap stays.",
+  "demo_shift_futile_done": "No push will ever join them. Something else is needed.",
+  "demo_shift_do": "⇄ then ← (or Shift+arrow) — slide the world itself.",
+  "demo_shift_done": "Merged. Sliding the world makes the impossible possible.",
+  "demo_continue": "continue ↵",
   "win_stamp": "Ready to print",
   "win_summary": [
     {

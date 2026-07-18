@@ -17,13 +17,11 @@ import { m } from "../paraglide/messages.js";
 /** One scripted gesture. `input` is the canonical script (drives demoSteps and
  *  the guidance arrow); `free` lets the tutorial accept ANY direction of the
  *  same kind (the engine arbitrates — an illegal choice bumps instead of
- *  advancing); `realign` expects the reverse of the previously chosen
- *  direction. `say` is the instruction shown before the gesture, `done` the
- *  payoff line shown right after it fires. */
+ *  advancing). `say` is the instruction shown before the gesture, `done` the
+ *  payoff line the player reads at their own pace after it fires. */
 export interface DemoBeat {
   input: Input;
   free?: boolean;
-  realign?: boolean;
   say: () => string;
   done: () => string;
 }
@@ -131,32 +129,32 @@ export const DEMOS: Demo[] = [
       },
     ],
   },
-  // decalage: any world gesture slides the magenta film (marks go off), then
-  // the reverse gesture realigns it.
+  // decalage: the mechanic's real power. A push moves both inks — the gap
+  // never closes. Then the world gesture slides the magenta film one cell and
+  // the slide ITSELF triggers the merge (the engine's a == b + off' rule):
+  // an alignment no push could ever reach.
   {
     id: "intro_decalage",
     covers: ["decalage"],
     level: board({
       size: 5,
       mods: ["fusion", "scission", "decalage"],
-      a: { start: [2, 1], goal: [0, 0], walls: [] },
+      a: { start: [2, 2], goal: [0, 0], walls: [] },
       b: { start: [2, 3], goal: [0, 0], walls: [] },
     }),
-    start: { merged: false, a: [2, 1], b: [2, 3], off: [0, 0] },
+    start: { merged: false, a: [2, 2], b: [2, 3], off: [0, 0] },
     title: m.demo_title_decalage,
     sub: m.demo_sub_decalage,
     beats: [
       {
-        input: { kind: "shift", dir: R },
-        free: true,
-        say: m.demo_shift_do,
-        done: m.demo_shift_off,
+        input: { kind: "move", dir: L }, // both slide left: the gap survives
+        say: m.demo_shift_futile,
+        done: m.demo_shift_futile_done,
       },
       {
-        input: { kind: "shift", dir: L },
-        realign: true, // the reverse of whatever the player chose
-        say: m.demo_shift_back,
-        done: m.demo_shift_aligned,
+        input: { kind: "shift", dir: L }, // the film slides under them → merge
+        say: m.demo_shift_do,
+        done: m.demo_shift_done,
       },
     ],
   },
