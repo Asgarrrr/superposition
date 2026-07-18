@@ -27,7 +27,16 @@ const csrfMiddleware = createCsrfMiddleware({
 const localeMiddleware = createMiddleware({ type: "request" }).server(
   async ({ request, next }) => {
     const { paraglideMiddleware } = await import("./paraglide/server.js");
-    return paraglideMiddleware(request, () => next());
+    return paraglideMiddleware(request, async () => {
+      const result = await next();
+      // The SSR'd document varies by the resolved locale — the PARAGLIDE_LOCALE
+      // cookie, or Accept-Language on a first visit before the cookie is set — so
+      // tell shared caches not to serve one visitor's language to another. Set
+      // here (handlerType "router") because this is the one middleware on the
+      // document response that already knows the locale is request-derived.
+      result.response.headers.append("Vary", "Cookie, Accept-Language");
+      return result;
+    });
   },
 );
 

@@ -26,6 +26,13 @@ const config = defineConfig({
       // on the server and from navigator.languages on the client — the same
       // browser preference — so the SSR HTML matches hydration. setLocale
       // (LangToggle) writes the cookie, keeping the choice server-visible.
+      //
+      // The cookie's own attributes aren't configurable here: paraglide's
+      // generated runtime writes PARAGLIDE_LOCALE with a ~400-day max-age and
+      // SameSite=Lax (the browser default, since the string sets no SameSite),
+      // no Secure/HttpOnly — it must be JS-readable for client-side locale
+      // resolution. Fine for a language preference; noted so nobody hunts for a
+      // knob that doesn't exist.
       strategy: ["cookie", "preferredLanguage", "baseLocale"],
     }),
     tailwindcss(),

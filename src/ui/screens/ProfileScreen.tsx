@@ -4,6 +4,7 @@
 // and the grid framed under a section rule. Presentational: the /profile routes
 // own the session gate and the history fetch and hand a resolved history down.
 
+import { useEffect } from "react";
 import { motion, type Variants } from "motion/react";
 import { m } from "../../paraglide/messages.js";
 import { getLocale } from "../../paraglide/runtime.js";
@@ -29,6 +30,17 @@ const rise: Variants = {
     transition: { duration: 0.6, ease: PRINT_EASE },
   },
 };
+
+// framer-motion serialises `initial` into the SSR HTML: with "hidden" the server
+// ships the sheet (and, via variant propagation, its children) at opacity 0, so a
+// human sees a blank page until hydration. This route is the only one rendered
+// server-side, so the server mount — and the first client render that hydrates it
+// — must start already visible (`initial={false}`); only later client-side
+// navigations to a profile play the entrance. The flag sits at module scope,
+// which resets per server request, so SSR always takes the visible branch and the
+// hydrating render matches it (no mismatch, no reduced-motion flash either since
+// the branch no longer depends on `reduced`). An effect flips it once mounted.
+let hydrated = false;
 
 // the name pulled twice, cyan then magenta, a hair out of register — the same
 // print the wordmark makes, so a player's page carries the game's signature
@@ -83,6 +95,13 @@ export function ProfileScreen({
   today: string;
   onBack: () => void;
 }) {
+  // true on the server render and the client render that hydrates it, false on
+  // every subsequent client navigation — gates the entrance animation (below).
+  const firstMount = !hydrated;
+  useEffect(() => {
+    hydrated = true;
+  }, []);
+
   const streaks = computeStreaks(
     history.days.map((d) => d.date),
     today,
@@ -107,7 +126,7 @@ export function ProfileScreen({
 
       <motion.section
         variants={sheet}
-        initial={reduced ? false : "hidden"}
+        initial={firstMount || reduced ? false : "hidden"}
         animate="visible"
         className="relative z-10 w-[min(94vw,860px)] overflow-hidden rounded-sm border border-paper/10 px-7 py-9 sm:px-12 sm:py-12"
         style={{
