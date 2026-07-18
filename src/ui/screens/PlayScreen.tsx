@@ -253,13 +253,13 @@ export function PlayScreen({
                     <span className="rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
                       {m.controls_demo_tag()}
                     </span>
-                    <span className="font-display text-3xl tracking-[0.04em] text-paper">
+                    <span className="font-display text-4xl tracking-[0.04em] text-paper">
                       {demo?.title()}
                     </span>
-                    <span className="font-display text-[13px] text-paper/60">
+                    <span className="font-display text-[17px] text-paper/75">
                       {demo?.sub()}
                     </span>
-                    <span className="mt-4 animate-pulse font-mono text-[10px] tracking-[0.14em] text-tape/80 uppercase">
+                    <span className="mt-4 animate-pulse font-mono text-[11px] tracking-[0.14em] text-tape/80 uppercase">
                       {m.demo_continue()}
                     </span>
                   </motion.div>
@@ -269,7 +269,7 @@ export function PlayScreen({
                       <div
                         // remount on each refusal so the headshake retriggers
                         key={guided.nudge?.t ?? "still"}
-                        className={`flex max-w-[88%] flex-col items-center gap-1 rounded-xs px-3 py-1.5 text-center font-display text-[13px] leading-snug tracking-[0.01em] ${
+                        className={`flex max-w-[92%] flex-col items-center gap-1 rounded-xs px-3.5 py-2 text-center font-display text-[16px] leading-snug tracking-[0.01em] ${
                           guided.nudge ? "sp-nudge" : ""
                         } ${captionTone[guided.caption.kind]}`}
                         style={{ background: "rgba(18,16,14,0.78)" }}
@@ -283,7 +283,7 @@ export function PlayScreen({
                           {guided.caption.text}
                         </div>
                         {guided.waiting && (
-                          <span className="animate-pulse font-mono text-[10px] tracking-[0.14em] text-tape/80 uppercase">
+                          <span className="animate-pulse font-mono text-[11px] tracking-[0.14em] text-tape/80 uppercase">
                             {m.demo_continue()}
                           </span>
                         )}
