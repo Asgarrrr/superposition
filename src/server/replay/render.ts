@@ -218,7 +218,7 @@ export async function replayResponse(splat: string): Promise<Response> {
       return notFound();
     // anti-spoil: a daily replay is public only once its day has fully passed
     if (!isReplayPublic(date)) return new Response("Not yet", { status: 403 });
-    const { puzzleFor } = await import("../daily.ts");
+    const { puzzleFor } = await import("../dailyPuzzle.ts");
     const puzzle = await puzzleFor(date, tier);
     if (!puzzle) return notFound();
     return replayGif(`d:${date}:${tier}|${raw}`, puzzle.level, inputs);
