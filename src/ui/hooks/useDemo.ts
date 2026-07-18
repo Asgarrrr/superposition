@@ -132,11 +132,13 @@ export function useGuidedDemo(
     setBloom(null);
     setNudge(null);
     setPayoff(null);
+    // the title card's stamp slams at ~55% of its 700ms animation (250ms delay)
+    if (demo) hintTimer.current = setTimeout(() => fx.stamp(), 600);
     return () => {
       clearTimeout(holdTimer.current);
       clearTimeout(hintTimer.current);
     };
-  }, [demo]);
+  }, [demo, fx]);
 
   const beat: DemoBeat | null =
     demo && phase === "play" && !waiting && idx < demo.beats.length

@@ -243,23 +243,34 @@ export function PlayScreen({
                 {...swipe}
               >
                 {guided.phase === "title" ? (
+                  // the mechanic's name arrives like the win screen's "Bon à
+                  // tirer": an amber stamp slammed onto the veiled print
                   <motion.div
-                    className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2"
-                    style={{ background: "rgba(18,16,14,0.55)" }}
-                    initial={reduced ? false : { opacity: 0, scale: 0.97 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.45, ease: PRINT_EASE }}
+                    className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-room/80 backdrop-blur-xs"
+                    initial={reduced ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.35, ease: PRINT_EASE }}
                   >
                     <span className="rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
                       {m.controls_demo_tag()}
                     </span>
-                    <span className="font-display text-4xl tracking-[0.04em] text-paper">
+                    <div
+                      className="rounded-sm border-[2.5px] border-tape px-5 py-2.5 font-mono text-[19px] tracking-[0.26em] text-tape uppercase"
+                      style={
+                        reduced
+                          ? { transform: "rotate(-8deg)" }
+                          : {
+                              animation:
+                                "sp-stamp 700ms cubic-bezier(0.2,1.4,0.4,1) 250ms both",
+                            }
+                      }
+                    >
                       {demo?.title()}
-                    </span>
-                    <span className="font-display text-[17px] text-paper/75">
+                    </div>
+                    <span className="mt-1 font-display text-[17px] text-paper/75">
                       {demo?.sub()}
                     </span>
-                    <span className="mt-4 animate-pulse font-mono text-[11px] tracking-[0.14em] text-tape/80 uppercase">
+                    <span className="mt-3 animate-pulse font-mono text-[11px] tracking-[0.14em] text-tape/80 uppercase">
                       {m.demo_continue()}
                     </span>
                   </motion.div>
