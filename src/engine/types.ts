@@ -47,6 +47,8 @@ export interface MoveCtx {
 export interface Mechanic {
   id: MechanicId;
   hooks: {
+    /** At most ONE active mechanic may define this — movement has no
+     * composition order, and successors() throws if two are active. */
     resolveMove?: (pos: Pos, dir: Pos, ctx: MoveCtx) => Pos;
     mergedWalls?: (level: Level) => Pos[];
     enablesMerge?: boolean;
