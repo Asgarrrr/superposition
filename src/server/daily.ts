@@ -3,16 +3,20 @@
 // deterministic pick from the level bank so /daily is always playable.
 
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import { dailyPuzzle, dailyScore } from "../db/schema.ts";
 import { LEVELS } from "../engine/levels.ts";
 import { solve } from "../solver/bfs.ts";
-import { auth } from "../lib/auth.ts";
 import { isWeekend, utcDay } from "../lib/day.ts";
-import { boardRows, standing } from "./leaderboard.ts";
+import {
+  boardRows,
+  currentUserId,
+  standing,
+  upsertBestScore,
+} from "./leaderboard.ts";
 import { validateTrace, validateTraceShape } from "./replay.ts";
+import type { BoardData } from "./leaderboard.ts";
 import type { Level, TraceStep } from "../engine/types.ts";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -118,12 +122,6 @@ async function weekendRow(date: string): Promise<DailyPuzzle | null> {
   return fetchRow(date, WEEKEND_TIER);
 }
 
-async function currentUserId(): Promise<string | null> {
-  const { headers } = getRequest();
-  const session = await auth.api.getSession({ headers });
-  return session?.user.id ?? null;
-}
-
 export const getDailyPuzzle = createServerFn({ method: "GET" })
   .validator((data: unknown): { tier: number } => {
     const d = data as { tier?: unknown } | null;
@@ -195,52 +193,22 @@ export const submitDailyScore = createServerFn({ method: "POST" })
       .values({ date, tier, level: puzzle.level, optimal: puzzle.optimal })
       .onConflictDoNothing();
 
-    // Keep the best result for this (date, tier, user): fewer moves, or same
-    // moves with fewer corrections.
-    await db
-      .insert(dailyScore)
-      .values({
+    // Keep the best result for this (date, tier, user) per the shared rule.
+    await upsertBestScore(
+      dailyScore,
+      [dailyScore.date, dailyScore.tier, dailyScore.userId],
+      {
         date,
         tier,
         userId,
         moves: result.moves,
         undos: result.corrections,
         trace: data.trace,
-      })
-      .onConflictDoUpdate({
-        target: [dailyScore.date, dailyScore.tier, dailyScore.userId],
-        set: {
-          moves: result.moves,
-          undos: result.corrections,
-          trace: data.trace,
-          createdAt: new Date(),
-        },
-        where: sql`${dailyScore.moves} > ${result.moves} OR (${dailyScore.moves} = ${result.moves} AND ${dailyScore.undos} > ${result.corrections})`,
-      });
+      },
+    );
 
     return { ok: true, moves: result.moves };
   });
-
-export interface LeaderRow {
-  rank: number;
-  userId: string;
-  name: string;
-  username: string | null; // links the row to /profile/$username (null: pre-plugin)
-  moves: number;
-  clean?: boolean; // solved with no undo/reset (a "clean pull"); both boards set it
-}
-
-export interface MyResult {
-  moves: number;
-  rank: number;
-}
-
-/** One board's worth of data, mirrored by the campaign (see campaign.ts). */
-export interface BoardData {
-  optimal: number;
-  rows: LeaderRow[];
-  mine: MyResult | null;
-}
 
 // optimal is fixed per (date, tier), so resolve the puzzle for it at most once
 // per key per process instead of on every board read (which is a daily_puzzle

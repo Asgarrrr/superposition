@@ -13,7 +13,11 @@ import { m } from "../../paraglide/messages.js";
 import { AuthPanel } from "./AuthPanel.tsx";
 import { LeaderboardRows } from "./LeaderboardRows.tsx";
 import { useSession } from "../../lib/auth-client.ts";
-import type { BoardData, LeaderRow, MyResult } from "../../server/daily.ts";
+import type {
+  BoardData,
+  LeaderRow,
+  MyResult,
+} from "../../server/leaderboard.ts";
 
 /** What differs between the campaign and daily rails. `read`/`submit` MUST be
  *  referentially stable per their own inputs (wrap in useCallback) — the rail

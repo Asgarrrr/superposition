@@ -6,8 +6,7 @@
 // here we only wrap it in server functions and gate the private one on a session.
 
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
-import { auth } from "../lib/auth.ts";
+import { currentUserId } from "./leaderboard.ts";
 import {
   historyById,
   historyByUsername,
@@ -15,12 +14,6 @@ import {
 } from "./profileData.ts";
 
 export type { DailyHistory };
-
-async function currentUserId(): Promise<string | null> {
-  const { headers } = getRequest();
-  const session = await auth.api.getSession({ headers });
-  return session?.user.id ?? null;
-}
 
 /** The signed-in player's own history. Throws when unauthenticated. */
 export const getMyDailyHistory = createServerFn({ method: "GET" }).handler(

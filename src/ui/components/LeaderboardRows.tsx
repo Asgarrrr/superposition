@@ -5,7 +5,7 @@
 
 import { Link } from "@tanstack/react-router";
 import { m } from "../../paraglide/messages.js";
-import type { LeaderRow } from "../../server/daily.ts";
+import type { LeaderRow } from "../../server/leaderboard.ts";
 
 export function LeaderboardRows({
   rows,
