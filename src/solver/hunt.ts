@@ -4,6 +4,7 @@
 // unsolvable). Pure/importable — no argv, no printing.
 
 import type { Level, MechanicId, Pos } from "../engine/types.ts";
+import { MECHANICS } from "../engine/mechanics/registry.ts";
 import { fmtInput, solve, solveWithout } from "./bfs.ts";
 import { levelSignature } from "./signature.ts";
 
@@ -99,14 +100,15 @@ export function hunt({
     const proofs: string[] = [];
     let allEssential = true;
     for (const mo of mods) {
-      const removed: MechanicId[] =
-        mo === "fusion" ? ["fusion", "scission"] : [mo];
-      if (solveWithout(lv, removed) === null) proofs.push(mo + " obligatoire");
-      else if (mo === "fusion" || mo === "scission" || mo === "decalage") {
+      const { removedWith, mustBeNeeded } = MECHANICS[mo];
+      if (solveWithout(lv, removedWith ?? [mo]) === null)
+        proofs.push(mo + " obligatoire");
+      else if (mustBeNeeded) {
         allEssential = false;
         break;
       }
-      // ice / light: not required to be mandatory, they already change the texture
+      // non-mustBeNeeded mechanics (ice / light) may be avoidable — they
+      // already change the texture of play, so we keep the level anyway
     }
     if (!allEssential) continue;
     // reject a puzzle already used (or a symmetry of one) before keeping it

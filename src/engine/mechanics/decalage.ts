@@ -5,6 +5,7 @@ import { MAX_SHIFT, merges } from "../state.ts";
 /** Slides layer B by one cell under the pawns. The worlds must end up aligned. */
 export const decalage: Mechanic = {
   id: "decalage",
+  mustBeNeeded: true,
   hooks: {
     extraSuccessors: (state, level) => {
       if (state.merged) return []; // once merged, the worlds move as one
