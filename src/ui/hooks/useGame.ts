@@ -14,6 +14,7 @@ import { initialState, isWin, MAX_SHIFT } from "../../engine/state.ts";
 import { applyInput } from "../../engine/successors.ts";
 import { eq } from "../../engine/grid.ts";
 import { m } from "../../paraglide/messages.js";
+import { altGesture } from "../altGesture.ts";
 import { vibrate } from "../haptics.ts";
 import { inputSignature } from "../signatures.ts";
 import type { SoundFx } from "./useSound.ts";
@@ -55,14 +56,13 @@ export function useGame(
   useEffect(() => cancelStamp, []);
 
   const solved = isWin(st, level);
-  // the alt gesture only exists where the level supports it (mirrors
-  // PlayScreen's altLabel) — otherwise Shift/arm falls back to a move
-  const altAvailable = st.merged || level.mods.includes("decalage");
+  // null when the level offers no secondary gesture: Shift/arm falls back to move
+  const altKind = altGesture(st, level);
 
   const play = (d: Pos, wantAlt = false) => {
     if (solved) return;
-    const alt = (wantAlt || altArmed) && altAvailable;
-    const kind: Input["kind"] = alt ? (st.merged ? "split" : "shift") : "move";
+    const kind: Input["kind"] =
+      (wantAlt || altArmed) && altKind ? altKind : "move";
     setAltArmed(false);
     const next = applyInput(st, level, { kind, dir: d });
     const sig = inputSignature(st, next, kind, level);
@@ -134,7 +134,7 @@ export function useGame(
     moves,
     solved,
     altArmed,
-    toggleAlt: () => altAvailable && setAltArmed((v) => !v),
+    toggleAlt: () => altKind !== null && setAltArmed((v) => !v),
     flash,
     bump,
     bloom,

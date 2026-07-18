@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { motion, type Variants } from "motion/react";
 import type { GameState, Level, Pos } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
+import { altGesture } from "../altGesture.ts";
 import { ruleLine } from "../ruleLine.ts";
 import { type Demo, levelDemo, pickDemo } from "../demos.ts";
 import { Board } from "../components/Board.tsx";
@@ -80,14 +81,17 @@ export interface DailyMode {
   optimal: number;
 }
 
-/** The alternate gesture a board state offers: split when merged, world on
- *  decalage levels — one source for both the real controls and the tutorial. */
-const altLabelFor = (st: GameState, level: Level) =>
-  st.merged
-    ? m.controls_split()
-    : level.mods.includes("decalage")
-      ? m.controls_world()
-      : null;
+// the label for the state's alt gesture — the rule itself lives in altGesture.ts
+const altLabelFor = (st: GameState, level: Level) => {
+  switch (altGesture(st, level)) {
+    case "split":
+      return m.controls_split();
+    case "shift":
+      return m.controls_world();
+    case null:
+      return null;
+  }
+};
 
 // the caption speaks in four voices; keep the mapping exhaustive and visible
 const captionTone: Record<DemoCaption["kind"], string> = {

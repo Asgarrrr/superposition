@@ -13,6 +13,7 @@ import type { GameState, Level, Pos } from "../../engine/types.ts";
 import { applyInput, successors } from "../../engine/successors.ts";
 import { add, eq, sub } from "../../engine/grid.ts";
 import { m } from "../../paraglide/messages.js";
+import { isAltKind } from "../altGesture.ts";
 import { type Demo, type DemoBeat } from "../demos.ts";
 import { vibrate } from "../haptics.ts";
 import { inputSignature } from "../signatures.ts";
@@ -150,9 +151,7 @@ export function useGuidedDemo(
     demo && phase === "play" && !waiting && idx < demo.beats.length
       ? demo.beats[idx]
       : null;
-  const needsArm = beat
-    ? beat.input.kind === "split" || beat.input.kind === "shift"
-    : false;
+  const needsArm = beat ? isAltKind(beat.input.kind) : false;
   // the direction the script expects: null on free beats (any works)
   const wantDir: Pos | null = !beat ? null : beat.free ? null : beat.input.dir;
 
