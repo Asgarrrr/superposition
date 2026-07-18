@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { SelectScreen } from "../ui/screens/SelectScreen.tsx";
+import { InstallBanner } from "../ui/components/InstallBanner.tsx";
 import { useBestScores } from "../ui/hooks/useBestScores.ts";
 import { getWeekendDaily } from "../server/daily.ts";
 import { useSession } from "../lib/auth-client.ts";
@@ -34,18 +35,21 @@ function SelectRoute() {
   }, []);
 
   return (
-    <SelectScreen
-      best={best}
-      reveal={reveal.current}
-      weekendReady={weekendReady}
-      signedIn={!!session}
-      onProfile={() => navigate({ to: "/profile/me" })}
-      onPick={(i) =>
-        navigate({ to: "/level/$plate", params: { plate: String(i + 1) } })
-      }
-      onDaily={(tier) =>
-        navigate({ to: "/daily/$tier", params: { tier: String(tier) } })
-      }
-    />
+    <>
+      <SelectScreen
+        best={best}
+        reveal={reveal.current}
+        weekendReady={weekendReady}
+        signedIn={!!session}
+        onProfile={() => navigate({ to: "/profile/me" })}
+        onPick={(i) =>
+          navigate({ to: "/level/$plate", params: { plate: String(i + 1) } })
+        }
+        onDaily={(tier) =>
+          navigate({ to: "/daily/$tier", params: { tier: String(tier) } })
+        }
+      />
+      <InstallBanner />
+    </>
   );
 }

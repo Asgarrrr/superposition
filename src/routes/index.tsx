@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { EnterScreen } from "../ui/screens/EnterScreen.tsx";
+import { InstallBanner } from "../ui/components/InstallBanner.tsx";
 import { armReveal } from "../ui/transition.ts";
 
 // Landing page — the "align to enter" title screen. Solving it opens the light
@@ -11,11 +12,14 @@ function IndexRoute() {
   // arm the reveal so /levels opens out of the same white flood — one-shot, so
   // a plain return to the selector never replays it
   return (
-    <EnterScreen
-      onStart={() => {
-        armReveal();
-        navigate({ to: "/levels" });
-      }}
-    />
+    <>
+      <EnterScreen
+        onStart={() => {
+          armReveal();
+          navigate({ to: "/levels" });
+        }}
+      />
+      <InstallBanner />
+    </>
   );
 }
