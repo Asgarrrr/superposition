@@ -3,7 +3,7 @@
 
 import { useCallback, useState } from "react";
 import { motion, type Variants } from "motion/react";
-import type { Level, Pos } from "../../engine/types.ts";
+import type { GameState, Level, Pos } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { ruleLine } from "../ruleLine.ts";
 import { type Demo, levelDemo, pickDemo } from "../demos.ts";
@@ -16,7 +16,11 @@ import { LevelBoard } from "../components/LevelBoard.tsx";
 import { Room } from "../components/Room.tsx";
 import { WinOverlay } from "../components/WinOverlay.tsx";
 import { DailyOverlay } from "../components/DailyOverlay.tsx";
-import { useGuidedDemo, useSeenDemos } from "../hooks/useDemo.ts";
+import {
+  type DemoCaption,
+  useGuidedDemo,
+  useSeenDemos,
+} from "../hooks/useDemo.ts";
 import { useGame } from "../hooks/useGame.ts";
 import { useKeyboard } from "../hooks/useKeyboard.ts";
 import type { SoundFx } from "../hooks/useSound.ts";
@@ -75,6 +79,23 @@ export interface DailyMode {
   tier: number;
   optimal: number;
 }
+
+/** The alternate gesture a board state offers: split when merged, world on
+ *  decalage levels — one source for both the real controls and the tutorial. */
+const altLabelFor = (st: GameState, level: Level) =>
+  st.merged
+    ? m.controls_split()
+    : level.mods.includes("decalage")
+      ? m.controls_world()
+      : null;
+
+// the caption speaks in four voices; keep the mapping exhaustive and visible
+const captionTone: Record<DemoCaption["kind"], string> = {
+  say: "text-paper/85",
+  done: "text-tape",
+  hint: "text-ink-magenta",
+  hand: "text-tape",
+};
 
 export function PlayScreen({
   level,
@@ -139,18 +160,10 @@ export function PlayScreen({
     },
   });
 
-  const altLabel = game.st.merged
-    ? m.controls_split()
-    : level.mods.includes("decalage")
-      ? m.controls_world()
-      : null;
-
+  const altLabel = altLabelFor(game.st, level);
   // the alt control the tutorial expects, from the sandbox state/mechanic
-  const guidedAltLabel = guided.st?.merged
-    ? m.controls_split()
-    : demo?.level.mods.includes("decalage")
-      ? m.controls_world()
-      : null;
+  const guidedAltLabel =
+    guided.st && demo ? altLabelFor(guided.st, demo.level) : null;
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center px-4 pt-20 pb-10 font-mono text-paper select-none xl:py-10">
@@ -250,13 +263,7 @@ export function PlayScreen({
                       key={guided.nudge?.t ?? "still"}
                       className={`flex max-w-[88%] items-center gap-2 rounded-xs px-3 py-1.5 text-center font-display text-[13px] leading-snug tracking-[0.01em] ${
                         guided.nudge ? "sp-nudge" : ""
-                      } ${
-                        guided.caption.kind === "hint"
-                          ? "text-ink-magenta"
-                          : guided.caption.kind === "say"
-                            ? "text-paper/85"
-                            : "text-tape"
-                      }`}
+                      } ${captionTone[guided.caption.kind]}`}
                       style={{ background: "rgba(18,16,14,0.78)" }}
                     >
                       {guided.caption.kind === "say" && (

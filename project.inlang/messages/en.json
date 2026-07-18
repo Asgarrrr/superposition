@@ -19,13 +19,8 @@
   "hud_level": "level",
   "hud_moves_word": [
     {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
       "match": {
         "countPlural=one": "move",
         "countPlural=other": "moves"
@@ -75,9 +70,7 @@
         "input count",
         "local countPlural = count: plural"
       ],
-      "selectors": [
-        "countPlural"
-      ],
+      "selectors": ["countPlural"],
       "match": {
         "countPlural=one": "board {plate} · {count} move",
         "countPlural=other": "board {plate} · {count} moves"
@@ -100,13 +93,8 @@
   "daily_back": "home",
   "daily_solved": [
     {
-      "declarations": [
-        "input count",
-        "local countPlural = count: plural"
-      ],
-      "selectors": [
-        "countPlural"
-      ],
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
       "match": {
         "countPlural=one": "Solved · {count} move",
         "countPlural=other": "Solved · {count} moves"

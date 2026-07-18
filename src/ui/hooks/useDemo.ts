@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GameState, Level, Pos } from "../../engine/types.ts";
 import { applyInput } from "../../engine/successors.ts";
+import { eq, sub } from "../../engine/grid.ts";
 import { m } from "../../paraglide/messages.js";
 import { type Demo, type DemoBeat } from "../demos.ts";
 import { vibrate } from "../haptics.ts";
@@ -22,7 +23,6 @@ const TITLE_MS = 1700; // the mechanic's name card, before the first instruction
 const PAYOFF_MS = 1200; // the "what just happened" line after a gesture
 const HOLD = 1400; // "à toi de jouer", while the tape frame fades
 
-const eqDir = (a: Pos, b: Pos) => a[0] === b[0] && a[1] === b[1];
 const neg = (d: Pos): Pos => [-d[0], -d[1]];
 
 /** Ids of demos already played, persisted so they don't replay by default. */
@@ -108,11 +108,24 @@ export function useGuidedDemo(
   const later = (fn: () => void, ms: number) => {
     timers.current.push(setTimeout(fn, ms));
   };
+  // one payoff-clear timer at a time: a quick next gesture must not have the
+  // previous beat's timer wipe its fresh payoff line
+  const payoffTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const showPayoff = (p: DemoCaption, thenClear = true) => {
+    clearTimeout(payoffTimer.current);
+    setPayoff(p);
+    if (thenClear)
+      payoffTimer.current = setTimeout(() => {
+        setPayoff(null);
+        setNudge(null); // the refusal shake must not outlive its caption
+      }, PAYOFF_MS);
+  };
 
   // reset whenever the demo changes (new level, replay, or cleared)
   useEffect(() => {
     for (const t of timers.current) clearTimeout(t);
     timers.current = [];
+    clearTimeout(payoffTimer.current);
     setIdx(0);
     setSt(demo?.start ?? null);
     setPhase("title");
@@ -131,6 +144,7 @@ export function useGuidedDemo(
       );
     return () => {
       for (const t of timers.current) clearTimeout(t);
+      clearTimeout(payoffTimer.current);
     };
   }, [demo]);
 
@@ -165,14 +179,12 @@ export function useGuidedDemo(
     const next = applyInput(st, demo.level, { kind: "move", dir: wantDir });
     if (next) {
       const [na, nb] = next.merged
-        ? [next.m, [next.m[0] - next.off[0], next.m[1] - next.off[1]] as Pos]
+        ? [next.m, sub(next.m, next.off)]
         : [next.a, next.b];
-      const [ca, cb] = st.merged
-        ? [st.m, [st.m[0] - st.off[0], st.m[1] - st.off[1]] as Pos]
-        : [st.a, st.b];
+      const [ca, cb] = st.merged ? [st.m, sub(st.m, st.off)] : [st.a, st.b];
       ghosts = {
-        a: eqDir(na, ca) ? [] : [na],
-        b: eqDir(nb, cb) ? [] : [nb],
+        a: eq(na, ca) ? [] : [na],
+        b: eq(nb, cb) ? [] : [nb],
       };
     }
   }
@@ -191,22 +203,22 @@ export function useGuidedDemo(
     (dir: Pos) => {
       if (!beat || !demo || !st) return;
       const next = applyInput(st, demo.level, { kind: beat.input.kind, dir });
-      setArmed(false);
       setNudge(null);
       if (next === null) {
-        // the engine refuses this direction
         setBump({ payload: dir, t: Date.now() });
         setBloom(null);
         fx.block();
         vibrate(25);
         if (beat.free) {
-          // free beat: the refusal is itself a lesson — invite another try
-          setPayoff({ text: m.demo_try_other(), kind: "hint" });
-          later(() => setPayoff(null), PAYOFF_MS);
+          // free beat: the refusal is itself a lesson — invite another try,
+          // and stay armed so the next arrow goes through as told
+          showPayoff({ text: m.demo_try_other(), kind: "hint" });
           return;
         }
         // the scripted blocked lesson (white on light): feedback + advance
+        setArmed(false);
       } else {
+        setArmed(false);
         setBump(null);
         if (beat.input.kind === "shift") lastShift.current = dir;
         if (!st.merged && next.merged) {
@@ -229,19 +241,19 @@ export function useGuidedDemo(
         }
         setSt(next);
       }
-      setPayoff({ text: beat.done(), kind: "done" });
       const nextIdx = idx + 1;
       setIdx(nextIdx);
       if (nextIdx >= demo.beats.length) {
-        // payoff settles, the hand returns, the tape frame fades, then the
-        // real level develops in
+        // payoff settles, the hand returns (phase fallback shows the handoff
+        // line), the tape frame fades, then the real level develops in
+        showPayoff({ text: beat.done(), kind: "done" }, false);
         later(() => {
-          setPayoff({ text: m.demo_handoff(), kind: "hand" });
+          setPayoff(null);
           setPhase("handoff");
         }, PAYOFF_MS);
         later(() => done.current(), PAYOFF_MS + HOLD);
       } else {
-        later(() => setPayoff(null), PAYOFF_MS);
+        showPayoff({ text: beat.done(), kind: "done" });
       }
     },
     [beat, demo, fx, idx, st],
@@ -253,14 +265,15 @@ export function useGuidedDemo(
     (dir: Pos, alt = false) => {
       if (!demo) return;
       if (phase === "title") return setPhase("play"); // impatient: skip the card
+      if (phase === "handoff") return done.current(); // an eager hand cuts the beat short
       if (!beat) return;
       if (beat.input.kind === "move") {
         // Shift+arrow is the split/world gesture — a plain push is expected
-        if (alt || !eqDir(beat.input.dir, dir)) return reject(dir);
+        if (alt || !eq(beat.input.dir, dir)) return reject(dir);
         return accept(dir);
       }
       if (!armed && !alt) return reject(dir);
-      if (wantDir && !eqDir(wantDir, dir)) return reject(dir);
+      if (wantDir && !eq(wantDir, dir)) return reject(dir);
       accept(dir);
     },
     [accept, armed, beat, demo, phase, reject, wantDir],
@@ -268,8 +281,11 @@ export function useGuidedDemo(
 
   const arm = useCallback(() => {
     if (phase === "title") return setPhase("play");
+    if (phase === "handoff") return done.current();
     if (!beat) return;
-    if (needsArm) setArmed((a) => !a);
+    // one-way while guiding: a double tap on the lit control must not silently
+    // disarm and appear to regress the tutorial
+    if (needsArm) setArmed(true);
     else reject(beat.input.dir); // ✕ pressed when a plain push is expected
   }, [beat, needsArm, phase, reject]);
 
