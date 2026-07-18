@@ -1,6 +1,18 @@
 // The daily puzzle's primary-key format (YYYY-MM-DD, UTC), shared by the cron
 // writer and the RPC reader so the two can't drift.
 
+/** Is `date` a real UTC calendar day in YYYY-MM-DD form? A shape check alone
+ *  (a bare `\d{4}-\d{2}-\d{2}` regex) waves through impossible dates like
+ *  `2020-13-45` or `2024-02-31`, which then poison `Date.parse` downstream
+ *  (NaN day-number → bogus level) and surface as a 500. Parse in UTC and
+ *  require the round-trip back to the same string, so only true days pass. */
+export function isValidDay(date: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const t = Date.parse(`${date}T00:00:00Z`);
+  if (Number.isNaN(t)) return false;
+  return new Date(t).toISOString().slice(0, 10) === date;
+}
+
 export function utcDay(offsetDays = 0): string {
   return new Date(Date.now() + offsetDays * 86_400_000)
     .toISOString()

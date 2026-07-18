@@ -12,7 +12,7 @@ import { initialState, isWin } from "../../engine/state.ts";
 import { applyInput } from "../../engine/successors.ts";
 import { LEVELS } from "../../engine/levels.ts";
 import { decodeTrace } from "../../lib/replayTrace.ts";
-import { utcDay } from "../../lib/day.ts";
+import { isValidDay, utcDay } from "../../lib/day.ts";
 import { replayPuzzle } from "../daily.ts";
 import { encodeGif, type GifFrame } from "./gif.ts";
 import { frameSvg, PALETTE_HEX } from "./board-svg.ts";
@@ -20,7 +20,6 @@ import { frameSvg, PALETTE_HEX } from "./board-svg.ts";
 const RENDER_WIDTH = 300; // ~300px, per the share spec
 const FRAME_CS = 50; // ~2 frames/s
 const LAST_CS = 250; // a longer beat on the solved plate
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const PALETTE_RGB = PALETTE_HEX.map((hex) => [
   parseInt(hex.slice(1, 3), 16),
@@ -139,7 +138,7 @@ export async function replayResponse(splat: string): Promise<Response> {
   if (segs[0] === "d" && segs.length === 4) {
     const date = segs[1];
     const tier = Number(segs[2]);
-    if (!DATE_RE.test(date) || !Number.isInteger(tier) || tier < 0 || tier > 3)
+    if (!isValidDay(date) || !Number.isInteger(tier) || tier < 0 || tier > 3)
       return notFound();
     // anti-spoil: a daily replay is public only once its day has fully passed
     if (date >= utcDay()) return new Response("Not yet", { status: 403 });

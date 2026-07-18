@@ -8,7 +8,7 @@ import { db } from "../db/index.ts";
 import { dailyPuzzle, dailyScore } from "../db/schema.ts";
 import { LEVELS } from "../engine/levels.ts";
 import { solve } from "../solver/bfs.ts";
-import { isWeekend, utcDay } from "../lib/day.ts";
+import { isValidDay, isWeekend, utcDay } from "../lib/day.ts";
 import { computeStreaks } from "../lib/streak.ts";
 import {
   boardRows,
@@ -20,7 +20,6 @@ import { validateTrace, validateTraceShape } from "./replay.ts";
 import type { BoardData } from "./leaderboard.ts";
 import type { Level, TraceStep } from "../engine/types.ts";
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIERS = [0, 1, 2, 3] as const;
 
 // The weekend "épreuve d'artiste" — a 6×6 tier the cron writes only on Sat/Sun.
@@ -180,7 +179,7 @@ export const submitDailyScore = createServerFn({ method: "POST" })
         tier?: unknown;
       } | null;
       const trace = validateTraceShape(d?.trace);
-      if (typeof d?.date !== "string" || !DATE_RE.test(d.date))
+      if (typeof d?.date !== "string" || !isValidDay(d.date))
         throw new Error("invalid date");
       return { trace, date: d.date, tier: asTier(d?.tier) };
     },
@@ -251,7 +250,7 @@ async function dailyOptimal(date: string, tier: number): Promise<number> {
 export const getDailyBoard = createServerFn({ method: "GET" })
   .validator((data: unknown): { date: string; tier: number } => {
     const d = data as { date?: unknown; tier?: unknown } | null;
-    if (typeof d?.date !== "string" || !DATE_RE.test(d.date))
+    if (typeof d?.date !== "string" || !isValidDay(d.date))
       throw new Error("invalid date");
     return { date: d.date, tier: asTier(d?.tier) };
   })
