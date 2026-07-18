@@ -16,6 +16,7 @@ import { Route as ProfileMeRouteImport } from './routes/profile.me'
 import { Route as ProfileUsernameRouteImport } from './routes/profile.$username'
 import { Route as LevelPlateRouteImport } from './routes/level.$plate'
 import { Route as DailyTierRouteImport } from './routes/daily.$tier'
+import { Route as ApiReplaySplatRouteImport } from './routes/api/replay/$'
 import { Route as ApiOgUsernameRouteImport } from './routes/api/og/$username'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -54,6 +55,11 @@ const DailyTierRoute = DailyTierRouteImport.update({
   path: '/daily/$tier',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiReplaySplatRoute = ApiReplaySplatRouteImport.update({
+  id: '/api/replay/$',
+  path: '/api/replay/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOgUsernameRoute = ApiOgUsernameRouteImport.update({
   id: '/api/og/$username',
   path: '/api/og/$username',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/profile/me': typeof ProfileMeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/og/$username': typeof ApiOgUsernameRoute
+  '/api/replay/$': typeof ApiReplaySplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/profile/me': typeof ProfileMeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/og/$username': typeof ApiOgUsernameRoute
+  '/api/replay/$': typeof ApiReplaySplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/profile/me': typeof ProfileMeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/og/$username': typeof ApiOgUsernameRoute
+  '/api/replay/$': typeof ApiReplaySplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/profile/me'
     | '/api/auth/$'
     | '/api/og/$username'
+    | '/api/replay/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/profile/me'
     | '/api/auth/$'
     | '/api/og/$username'
+    | '/api/replay/$'
   id:
     | '__root__'
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/profile/me'
     | '/api/auth/$'
     | '/api/og/$username'
+    | '/api/replay/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,6 +157,7 @@ export interface RootRouteChildren {
   ProfileMeRoute: typeof ProfileMeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiOgUsernameRoute: typeof ApiOgUsernameRoute
+  ApiReplaySplatRoute: typeof ApiReplaySplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DailyTierRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/replay/$': {
+      id: '/api/replay/$'
+      path: '/api/replay/$'
+      fullPath: '/api/replay/$'
+      preLoaderRoute: typeof ApiReplaySplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/og/$username': {
       id: '/api/og/$username'
       path: '/api/og/$username'
@@ -225,6 +245,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileMeRoute: ProfileMeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiOgUsernameRoute: ApiOgUsernameRoute,
+  ApiReplaySplatRoute: ApiReplaySplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

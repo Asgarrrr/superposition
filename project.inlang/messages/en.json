@@ -118,6 +118,9 @@
   "daily_optimal": "optimal · {optimal}",
   "daily_share_button": "Share",
   "daily_share_copied": "Copied",
+  "replay_gif": "Replay GIF",
+  "replay_gif_copied": "Link copied",
+  "replay_gif_soon": "GIF available tomorrow",
   "daily_share_header": "Superposition — {date} · tier {tier}",
   "daily_share_moves": [
     {

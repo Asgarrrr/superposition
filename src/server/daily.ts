@@ -123,6 +123,18 @@ async function weekendRow(date: string): Promise<DailyPuzzle | null> {
   return fetchRow(date, WEEKEND_TIER);
 }
 
+/** The puzzle for a (date, tier), resolved exactly as play does — the stored
+ *  row, or the deterministic bank fallback for the campaign tiers; the weekend
+ *  épreuve only when the cron wrote one (else null). Reused by the replay-GIF
+ *  endpoint so a shared replay reconstructs the very board that was played,
+ *  never one the client asserts. */
+export function replayPuzzle(
+  date: string,
+  tier: number,
+): Promise<DailyPuzzle | null> {
+  return tier === WEEKEND_TIER ? weekendRow(date) : resolveDaily(date, tier);
+}
+
 export const getDailyPuzzle = createServerFn({ method: "GET" })
   .validator((data: unknown): { tier: number } => {
     const d = data as { tier?: unknown } | null;

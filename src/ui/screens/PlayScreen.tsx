@@ -338,6 +338,7 @@ export function PlayScreen({
                     moves={game.moves}
                     optimal={daily.optimal}
                     streak={streak}
+                    trace={game.solve?.trace}
                   />
                 ) : (
                   <WinOverlay
@@ -345,6 +346,7 @@ export function PlayScreen({
                     moves={game.moves}
                     best={best}
                     hinted={game.hints > 0}
+                    trace={game.solve?.trace}
                     onNext={onNext}
                   />
                 ))}

@@ -4,9 +4,11 @@
 // pure celebration — the daily counterpart to WinOverlay.
 
 import { useState } from "react";
-import type { Level } from "../../engine/types.ts";
+import type { Level, TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
+import { utcDay } from "../../lib/day.ts";
 import { buildDailyShare, shareOrCopy } from "../dailyShare.ts";
+import { dailyReplayUrl } from "../replayLink.ts";
 import { Wordmark } from "./Wordmark.tsx";
 
 export function DailyOverlay({
@@ -16,6 +18,7 @@ export function DailyOverlay({
   moves,
   optimal,
   streak = 0,
+  trace,
 }: {
   level: Level;
   date: string;
@@ -23,16 +26,31 @@ export function DailyOverlay({
   moves: number;
   optimal: number;
   streak?: number; // current daily streak; a discreet reminder when > 0
+  trace?: TraceStep[]; // raw solve trace, for the shareable replay GIF
 }) {
   // the copy confirmation is a records moment — one of the rare licences for
   // the tape accent; it self-clears so the button rests in paper again.
   const [copied, setCopied] = useState(false);
+  const [gifCopied, setGifCopied] = useState(false);
   const onShare = async () => {
     const url = `${window.location.origin}/daily/${tier}`;
     const text = buildDailyShare({ level, date, tier, moves, optimal, url });
     if ((await shareOrCopy(text)) === "copied") {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  // the replay GIF exists only once the puzzle's day has fully passed (UTC) —
+  // rendering a still-live daily would spoil it, so the server 403s it. Until
+  // then we show a discreet "tomorrow" note rather than a dead button.
+  const gifReady = date < utcDay();
+  const onShareGif = async () => {
+    if (!trace) return;
+    const url = dailyReplayUrl(date, tier, trace);
+    if ((await shareOrCopy(url)) === "copied") {
+      setGifCopied(true);
+      setTimeout(() => setGifCopied(false), 2000);
     }
   };
 
@@ -65,6 +83,23 @@ export function DailyOverlay({
       >
         {copied ? m.daily_share_copied() : m.daily_share_button()}
       </button>
+      {gifReady ? (
+        trace && (
+          <button
+            type="button"
+            onClick={onShareGif}
+            className={`font-mono text-[10px] tracking-[0.14em] uppercase transition-colors ${
+              gifCopied ? "text-tape" : "text-paper/35 hover:text-paper/70"
+            }`}
+          >
+            {gifCopied ? m.replay_gif_copied() : m.replay_gif()}
+          </button>
+        )
+      ) : (
+        <div className="font-mono text-[10px] tracking-[0.14em] text-paper/25 uppercase">
+          {m.replay_gif_soon()}
+        </div>
+      )}
     </div>
   );
 }
