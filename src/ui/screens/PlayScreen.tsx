@@ -208,30 +208,67 @@ export function PlayScreen({
         >
           {demoActive && guided.st && guided.level ? (
             // the tutorial runs through the real Board; the player drives it on
-            // rails, with an on-board caption naming the gesture
+            // rails. A title card names the mechanic, the caption speaks in two
+            // voices (instruction, then payoff), and on handoff the tape frame
+            // fades before the real level develops in.
             <Board
-              demo
+              demo={guided.phase !== "handoff"}
               level={guided.level}
               st={guided.st}
               solved={false}
               bump={guided.bump}
               bloom={guided.bloom}
               armed={guided.armed}
+              guideGhosts={guided.ghosts}
               iceTrailA={null}
               iceTrailB={null}
               {...swipe}
             >
-              <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
-                <div
-                  className="flex max-w-[88%] items-center gap-2 rounded-xs px-3 py-1.5 text-center font-display text-[13px] leading-snug tracking-[0.01em] text-paper/85"
-                  style={{ background: "rgba(18,16,14,0.78)" }}
+              {guided.phase === "title" ? (
+                <motion.div
+                  className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2"
+                  style={{ background: "rgba(18,16,14,0.55)" }}
+                  initial={reduced ? false : { opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.45, ease: PRINT_EASE }}
                 >
-                  <span className="shrink-0 rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
+                  <span className="rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
                     {m.controls_demo_tag()}
                   </span>
-                  {ruleLine(guided.st, guided.level)}
-                </div>
-              </div>
+                  <span className="font-display text-3xl tracking-[0.04em] text-paper">
+                    {demo?.title()}
+                  </span>
+                  <span className="font-display text-[13px] text-paper/60">
+                    {demo?.sub()}
+                  </span>
+                </motion.div>
+              ) : (
+                guided.caption && (
+                  <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
+                    <div
+                      // remount on each refusal so the headshake retriggers
+                      key={guided.nudge?.t ?? "still"}
+                      className={`flex max-w-[88%] items-center gap-2 rounded-xs px-3 py-1.5 text-center font-display text-[13px] leading-snug tracking-[0.01em] ${
+                        guided.nudge ? "sp-nudge" : ""
+                      } ${
+                        guided.caption.kind === "hint"
+                          ? "text-ink-magenta"
+                          : guided.caption.kind === "say"
+                            ? "text-paper/85"
+                            : "text-tape"
+                      }`}
+                      style={{ background: "rgba(18,16,14,0.78)" }}
+                    >
+                      {guided.caption.kind === "say" && (
+                        <span className="shrink-0 rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
+                          {m.controls_demo_tag()}
+                        </span>
+                      )}
+                      {guided.caption.text}
+                    </div>
+                  </div>
+                )
+              )}
             </Board>
           ) : (
             <Board
@@ -277,13 +314,15 @@ export function PlayScreen({
                 guiding
                 highlight={guided.guidance}
               />
-              <button
-                type="button"
-                onClick={guided.skip}
-                className="mt-3 font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
-              >
-                {m.demo_skip()}
-              </button>
+              {guided.phase !== "handoff" && (
+                <button
+                  type="button"
+                  onClick={guided.skip}
+                  className="mt-3 font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
+                >
+                  {m.demo_skip()}
+                </button>
+              )}
             </>
           ) : (
             <>

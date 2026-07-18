@@ -22,6 +22,7 @@ export function Board({
   bloom,
   armed = false,
   demo = false,
+  guideGhosts = null,
   iceTrailA,
   iceTrailB,
   onTouchStart,
@@ -35,6 +36,7 @@ export function Board({
   bloom: Pulse | null;
   armed?: boolean; // ✕ armed on a merged pawn: preview where the split sends each ink
   demo?: boolean; // tutorial sandbox: frame the box in tape so it reads apart
+  guideGhosts?: { a: Pos[]; b: Pos[] } | null; // tutorial: landing preview of the guided push
   iceTrailA: { from: Pos } | null;
   iceTrailB: { from: Pos } | null;
   onTouchStart: (e: React.TouchEvent) => void;
@@ -71,6 +73,10 @@ export function Board({
     }
     return { a, b };
   }, [armed, st, level]);
+  // the guided push's landing cells ride the same ghost channel as the split
+  // preview, so both hints share one visual vocabulary
+  const ghostsA = guideGhosts ? [...ghosts.a, ...guideGhosts.a] : ghosts.a;
+  const ghostsB = guideGhosts ? [...ghosts.b, ...guideGhosts.b] : ghosts.b;
 
   const span = boardSpan(level.size);
   const pa = st.merged ? st.m : st.a;
@@ -123,7 +129,7 @@ export function Board({
         size={level.size}
         shift={[0, 0]}
         iceTrail={iceTrailA}
-        splitGhosts={ghosts.a}
+        splitGhosts={ghostsA}
       />
       <InkLayer
         color="var(--color-ink-magenta)"
@@ -135,7 +141,7 @@ export function Board({
         size={level.size}
         shift={st.off}
         iceTrail={iceTrailB}
-        splitGhosts={ghosts.b}
+        splitGhosts={ghostsB}
       />
 
       <svg

@@ -19,8 +19,13 @@
   "hud_level": "level",
   "hud_moves_word": [
     {
-      "declarations": ["input count", "local countPlural = count: plural"],
-      "selectors": ["countPlural"],
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
       "match": {
         "countPlural=one": "move",
         "countPlural=other": "moves"
@@ -38,6 +43,30 @@
   "controls_demo": "↻ demo",
   "controls_demo_tag": "demo",
   "demo_skip": "skip demo",
+  "demo_handoff": "Your turn.",
+  "demo_try_other": "Blocked — it would leave the frame. Try another way.",
+  "demo_title_fusion": "Merge",
+  "demo_sub_fusion": "Two inks. Together: one white.",
+  "demo_title_lumiere": "Light",
+  "demo_sub_lumiere": "White squares stop only the white.",
+  "demo_title_glace": "Ice",
+  "demo_sub_glace": "Everything slides until it hits.",
+  "demo_title_decalage": "Offset",
+  "demo_sub_decalage": "The world itself can slide.",
+  "demo_fusion_push": "Push ← — the edge holds cyan, magenta catches up.",
+  "demo_fusion_merged": "Merged. Two inks, one white.",
+  "demo_fusion_split": "✕ then any direction (or Shift+arrow) — cyan follows, magenta mirrors.",
+  "demo_fusion_split_done": "Split. Each goes its own way.",
+  "demo_lumiere_push": "Push → into the white square.",
+  "demo_lumiere_blocked": "Blocked — light stops the white piece.",
+  "demo_lumiere_split": "✕ then → — split through the light.",
+  "demo_lumiere_pass": "The inks pass. Only the white is stopped.",
+  "demo_glace_push": "Push → — and watch how far it slides.",
+  "demo_glace_done": "Ice. Everything slides until it hits.",
+  "demo_shift_do": "⇄ then a direction (or Shift+arrow) — slide the magenta film.",
+  "demo_shift_off": "The registration marks go off.",
+  "demo_shift_back": "Do the reverse gesture to realign.",
+  "demo_shift_aligned": "Realigned — the marks line up.",
   "win_stamp": "Ready to print",
   "win_summary": [
     {
@@ -46,7 +75,9 @@
         "input count",
         "local countPlural = count: plural"
       ],
-      "selectors": ["countPlural"],
+      "selectors": [
+        "countPlural"
+      ],
       "match": {
         "countPlural=one": "board {plate} · {count} move",
         "countPlural=other": "board {plate} · {count} moves"
@@ -69,8 +100,13 @@
   "daily_back": "home",
   "daily_solved": [
     {
-      "declarations": ["input count", "local countPlural = count: plural"],
-      "selectors": ["countPlural"],
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
       "match": {
         "countPlural=one": "Solved · {count} move",
         "countPlural=other": "Solved · {count} moves"

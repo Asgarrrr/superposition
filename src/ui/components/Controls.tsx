@@ -20,10 +20,11 @@ export function Controls({
   onUndo: () => void;
   onReset: () => void;
   guiding?: boolean; // tutorial: hide undo/reset, light the guided control
-  highlight?: { arm: boolean; dir: Pos | null }; // which control to pulse
+  highlight?: { arm: boolean; dir: Pos | null; any?: boolean }; // which control to pulse (`any`: every arrow — pick one)
 }) {
   const lit = (d: Pos) =>
-    highlight?.dir && highlight.dir[0] === d[0] && highlight.dir[1] === d[1];
+    highlight?.any ||
+    (highlight?.dir && highlight.dir[0] === d[0] && highlight.dir[1] === d[1]);
   // arrow keycap: seated on the light table, presses down under the tip
   const dir = (d: Pos, glyph: string) => (
     <button

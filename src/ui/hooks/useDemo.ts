@@ -1,20 +1,29 @@
 // The first-encounter tutorial: on the ideal sandbox board, the player performs
-// the mechanic's signature gesture themselves, on rails — only the scripted
-// gesture advances, guided by a lit-up control and an on-board caption. State,
-// feedback (bump/bloom) and sound mirror real play so it renders through the
-// real Board; the scripted steps come from the engine (demoSteps).
+// the mechanic's signature gesture themselves, on rails — a title card names
+// the mechanic, each beat shows its instruction, the gesture fires with the
+// real feedback (bump/bloom/sound), a payoff line names what just happened,
+// and a handoff beat returns the hand. Free beats accept ANY direction and let
+// the engine arbitrate (an illegal choice bumps and invites another try), so
+// the player verifies the rule in the direction THEY picked. All state changes
+// go through applyInput — the tutorial cannot show a rule the engine wouldn't
+// apply.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { GameState, Level, Pos } from "../../engine/types.ts";
-import { type Demo, demoSteps } from "../demos.ts";
+import { applyInput } from "../../engine/successors.ts";
+import { m } from "../../paraglide/messages.js";
+import { type Demo, type DemoBeat } from "../demos.ts";
 import { vibrate } from "../haptics.ts";
 import type { SoundFx } from "./useSound.ts";
 import type { Pulse } from "./useGame.ts";
 
 const SEEN_KEY = "superposition.demos-seen";
-const HOLD = 1200; // let the last gesture's payoff settle before handing over
+const TITLE_MS = 1700; // the mechanic's name card, before the first instruction
+const PAYOFF_MS = 1200; // the "what just happened" line after a gesture
+const HOLD = 1400; // "à toi de jouer", while the tape frame fades
 
 const eqDir = (a: Pos, b: Pos) => a[0] === b[0] && a[1] === b[1];
+const neg = (d: Pos): Pos => [-d[0], -d[1]];
 
 /** Ids of demos already played, persisted so they don't replay by default. */
 export function useSeenDemos() {
@@ -42,24 +51,40 @@ export function useSeenDemos() {
 }
 
 /** Which control to light up next. `arm`: the ✕/world control must be pressed
- *  first; `dir`: the arrow to press (after arming, or for a plain move). */
+ *  first; `dir`: the arrow to press; `any`: every arrow works — pick one. */
 export interface DemoGuidance {
   arm: boolean;
   dir: Pos | null;
+  any: boolean;
+}
+
+export type DemoPhase = "title" | "play" | "handoff";
+
+/** The caption under the tape frame: an instruction (`say`), a payoff naming
+ *  what just fired (`done`), a try-again hint (`hint`), or the handoff. */
+export interface DemoCaption {
+  text: string;
+  kind: "say" | "done" | "hint" | "hand";
 }
 
 interface GuidedDemo {
   active: boolean;
+  phase: DemoPhase;
   level: Level | null;
   st: GameState | null;
   armed: boolean;
   bump: Pulse | null;
   bloom: Pulse | null;
+  nudge: Pulse | null; // a wrong input: shake the caption, retrigger the pulse
+  caption: DemoCaption | null;
+  ghosts: { a: Pos[]; b: Pos[] } | null; // landing preview for a fixed push
   guidance: DemoGuidance;
   press: (dir: Pos, alt?: boolean) => void;
   arm: () => void;
   skip: () => void;
 }
+
+const NO_GUIDE: DemoGuidance = { arm: false, dir: null, any: false };
 
 /** Play `demo` (null = idle) as an on-rails tutorial, calling `onDone` when the
  *  last gesture is performed or the player skips. */
@@ -68,99 +93,209 @@ export function useGuidedDemo(
   fx: SoundFx,
   onDone: () => void,
 ): GuidedDemo {
-  const steps = useMemo(() => (demo ? demoSteps(demo).steps : []), [demo]);
   const [idx, setIdx] = useState(0);
   const [st, setSt] = useState<GameState | null>(demo?.start ?? null);
+  const [phase, setPhase] = useState<DemoPhase>("title");
   const [armed, setArmed] = useState(false);
   const [bump, setBump] = useState<Pulse | null>(null);
   const [bloom, setBloom] = useState<Pulse | null>(null);
+  const [nudge, setNudge] = useState<Pulse | null>(null);
+  const [payoff, setPayoff] = useState<DemoCaption | null>(null);
+  const lastShift = useRef<Pos | null>(null); // the free shift the player chose
   const done = useRef(onDone);
   done.current = onDone;
-  const finish = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const later = (fn: () => void, ms: number) => {
+    timers.current.push(setTimeout(fn, ms));
+  };
 
   // reset whenever the demo changes (new level, replay, or cleared)
   useEffect(() => {
-    clearTimeout(finish.current);
+    for (const t of timers.current) clearTimeout(t);
+    timers.current = [];
     setIdx(0);
     setSt(demo?.start ?? null);
+    setPhase("title");
     setArmed(false);
     setBump(null);
     setBloom(null);
-    return () => clearTimeout(finish.current);
+    setNudge(null);
+    setPayoff(null);
+    lastShift.current = null;
+    if (demo)
+      timers.current.push(
+        setTimeout(
+          () => setPhase((p) => (p === "title" ? "play" : p)),
+          TITLE_MS,
+        ),
+      );
+    return () => {
+      for (const t of timers.current) clearTimeout(t);
+    };
   }, [demo]);
 
-  const step = demo && idx < steps.length ? steps[idx] : null;
-  const expected = step?.input ?? null;
-  const needsArm = expected?.kind === "split" || expected?.kind === "shift";
+  const beat: DemoBeat | null =
+    demo && phase === "play" && idx < demo.beats.length
+      ? demo.beats[idx]
+      : null;
+  const needsArm = beat
+    ? beat.input.kind === "split" || beat.input.kind === "shift"
+    : false;
+  // the direction the script expects: null on free beats (any), the reverse of
+  // the player's own gesture on realign beats
+  const wantDir: Pos | null = !beat
+    ? null
+    : beat.free
+      ? null
+      : beat.realign && lastShift.current
+        ? neg(lastShift.current)
+        : beat.input.dir;
 
-  const guidance: DemoGuidance = !expected
-    ? { arm: false, dir: null }
+  const guidance: DemoGuidance = !beat
+    ? NO_GUIDE
     : needsArm && !armed
-      ? { arm: true, dir: null }
-      : { arm: false, dir: expected.dir };
+      ? { arm: true, dir: null, any: false }
+      : { arm: false, dir: wantDir, any: wantDir === null };
 
-  const accept = useCallback(() => {
-    const s = steps[idx];
-    if (!s || !demo) return;
-    setSt(s.state);
-    setArmed(false);
-    // feedback + sound, mirroring useGame's vocabulary
-    if (s.blocked) {
-      setBump({ payload: s.input.dir, t: Date.now() });
-      setBloom(null);
-      fx.block();
-      vibrate(25);
-    } else {
-      setBump(null);
-      if (s.merged && s.state.merged) {
-        setBloom({ payload: s.state.m, t: Date.now() });
-        fx.merge();
-        vibrate([10, 20, 40]);
-      } else {
+  // landing preview for a fixed push: where the engine will put each ink, read
+  // straight off applyInput so it can't drift from the rule. (Split beats get
+  // the armed split preview; free beats have nothing to pin down.)
+  let ghosts: { a: Pos[]; b: Pos[] } | null = null;
+  if (beat && st && demo && beat.input.kind === "move" && wantDir) {
+    const next = applyInput(st, demo.level, { kind: "move", dir: wantDir });
+    if (next) {
+      const [na, nb] = next.merged
+        ? [next.m, [next.m[0] - next.off[0], next.m[1] - next.off[1]] as Pos]
+        : [next.a, next.b];
+      const [ca, cb] = st.merged
+        ? [st.m, [st.m[0] - st.off[0], st.m[1] - st.off[1]] as Pos]
+        : [st.a, st.b];
+      ghosts = {
+        a: eqDir(na, ca) ? [] : [na],
+        b: eqDir(nb, cb) ? [] : [nb],
+      };
+    }
+  }
+
+  // a wrong input: never silent — shake the caption, retrigger the guide pulse
+  const reject = useCallback(
+    (dir: Pos) => {
+      setNudge({ payload: dir, t: Date.now() });
+      fx.tick();
+      vibrate(10);
+    },
+    [fx],
+  );
+
+  const accept = useCallback(
+    (dir: Pos) => {
+      if (!beat || !demo || !st) return;
+      const next = applyInput(st, demo.level, { kind: beat.input.kind, dir });
+      setArmed(false);
+      setNudge(null);
+      if (next === null) {
+        // the engine refuses this direction
+        setBump({ payload: dir, t: Date.now() });
         setBloom(null);
-        if (s.input.kind === "split") {
-          fx.split();
-          vibrate([15, 30, 15]);
-        } else if (s.input.kind === "shift") {
-          fx.shift();
-          vibrate(40);
-        } else if (demo.level.mods.includes("glace")) {
-          fx.slide();
-        } else {
-          fx.move();
+        fx.block();
+        vibrate(25);
+        if (beat.free) {
+          // free beat: the refusal is itself a lesson — invite another try
+          setPayoff({ text: m.demo_try_other(), kind: "hint" });
+          later(() => setPayoff(null), PAYOFF_MS);
+          return;
         }
+        // the scripted blocked lesson (white on light): feedback + advance
+      } else {
+        setBump(null);
+        if (beat.input.kind === "shift") lastShift.current = dir;
+        if (!st.merged && next.merged) {
+          setBloom({ payload: next.m, t: Date.now() });
+          fx.merge();
+          vibrate([10, 20, 40]);
+        } else {
+          setBloom(null);
+          if (beat.input.kind === "split") {
+            fx.split();
+            vibrate([15, 30, 15]);
+          } else if (beat.input.kind === "shift") {
+            fx.shift();
+            vibrate(40);
+          } else if (demo.level.mods.includes("glace")) {
+            fx.slide();
+          } else {
+            fx.move();
+          }
+        }
+        setSt(next);
       }
-    }
-    const next = idx + 1;
-    setIdx(next);
-    if (next >= steps.length) {
-      finish.current = setTimeout(() => done.current(), HOLD);
-    }
-  }, [demo, fx, idx, steps]);
+      setPayoff({ text: beat.done(), kind: "done" });
+      const nextIdx = idx + 1;
+      setIdx(nextIdx);
+      if (nextIdx >= demo.beats.length) {
+        // payoff settles, the hand returns, the tape frame fades, then the
+        // real level develops in
+        later(() => {
+          setPayoff({ text: m.demo_handoff(), kind: "hand" });
+          setPhase("handoff");
+        }, PAYOFF_MS);
+        later(() => done.current(), PAYOFF_MS + HOLD);
+      } else {
+        later(() => setPayoff(null), PAYOFF_MS);
+      }
+    },
+    [beat, demo, fx, idx, st],
+  );
 
   // `alt` (Shift+arrow, or a swipe while armed) arms and plays in one gesture,
   // so the secondary action works from the keyboard, not only the ✕ button.
   const press = useCallback(
     (dir: Pos, alt = false) => {
-      if (!expected || (needsArm && !armed && !alt)) return;
-      if (eqDir(expected.dir, dir)) accept();
+      if (!demo) return;
+      if (phase === "title") return setPhase("play"); // impatient: skip the card
+      if (!beat) return;
+      if (beat.input.kind === "move") {
+        // Shift+arrow is the split/world gesture — a plain push is expected
+        if (alt || !eqDir(beat.input.dir, dir)) return reject(dir);
+        return accept(dir);
+      }
+      if (!armed && !alt) return reject(dir);
+      if (wantDir && !eqDir(wantDir, dir)) return reject(dir);
+      accept(dir);
     },
-    [accept, armed, expected, needsArm],
+    [accept, armed, beat, demo, phase, reject, wantDir],
   );
 
   const arm = useCallback(() => {
-    if (needsArm && !armed) setArmed(true);
-  }, [armed, needsArm]);
+    if (phase === "title") return setPhase("play");
+    if (!beat) return;
+    if (needsArm) setArmed((a) => !a);
+    else reject(beat.input.dir); // ✕ pressed when a plain push is expected
+  }, [beat, needsArm, phase, reject]);
 
   const skip = useCallback(() => done.current(), []);
 
+  const caption: DemoCaption | null =
+    phase === "title"
+      ? null
+      : (payoff ??
+        (beat
+          ? { text: beat.say(), kind: "say" }
+          : phase === "handoff"
+            ? { text: m.demo_handoff(), kind: "hand" }
+            : null));
+
   return {
     active: !!demo,
+    phase,
     level: demo?.level ?? null,
     st,
     armed,
     bump,
     bloom,
+    nudge,
+    caption,
+    ghosts,
     guidance,
     press,
     arm,

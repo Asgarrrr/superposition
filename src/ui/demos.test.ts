@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { GameState } from "../engine/types.ts";
+import { applyInput } from "../engine/successors.ts";
 import { DEMOS, demoSteps, pickDemo } from "./demos.ts";
 import { LEVELS } from "../engine/levels.ts";
 
@@ -55,6 +56,67 @@ describe("démos — invariants moteur", () => {
         else expect(s.state).toBe(prev);
         prev = s.state;
       }
+    }
+  });
+});
+
+describe("démos — beats guidés", () => {
+  it("chaque démo a un titre, un sous-titre, et une consigne + payoff par beat", () => {
+    for (const d of DEMOS) {
+      expect(d.title().length).toBeGreaterThan(0);
+      expect(d.sub().length).toBeGreaterThan(0);
+      for (const b of d.beats) {
+        expect(b.say().length).toBeGreaterThan(0);
+        expect(b.done().length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("scission libre : chaque direction légale diverge, les autres sont refusées par le moteur", () => {
+    const d = byId("intro_fusion");
+    const { steps } = demoSteps(d);
+    const merged = steps[0].state; // after the push-left merge
+    expect(merged.merged).toBe(true);
+    let legal = 0;
+    for (const dir of [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ] as const) {
+      const next = applyInput(merged, d.level, { kind: "split", dir });
+      if (next === null) continue; // engine-refused: an ink would leave the board
+      legal++;
+      const s = split(next);
+      expect(s.a).not.toEqual(s.b); // cyan follows, magenta mirrors: they diverge
+    }
+    expect(legal).toBeGreaterThan(0);
+  });
+
+  it("décalage libre : chaque geste monde se réaligne par son inverse", () => {
+    const d = byId("intro_decalage");
+    for (const dir of [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ] as const) {
+      const there = applyInput(d.start, d.level, { kind: "shift", dir });
+      if (there === null) continue;
+      const back = applyInput(there, d.level, {
+        kind: "shift",
+        dir: [-dir[0], -dir[1]],
+      });
+      expect(back?.off).toEqual([0, 0]);
+    }
+  });
+
+  it("seule la leçon lumière contient un geste bloqué scripté", () => {
+    for (const d of DEMOS) {
+      const blocked = demoSteps(d)
+        .steps.map((s, i) => (s.blocked ? i : -1))
+        .filter((i) => i >= 0);
+      expect(blocked).toEqual(d.id === "intro_lumiere" ? [0] : []);
     }
   });
 });

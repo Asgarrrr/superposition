@@ -120,6 +120,37 @@
   animation: sp-guide 1.3s ease-in-out infinite;
 }
 
+/* refus doux : la consigne fait « non » de la tête — vu ET entendu, jamais
+   punitif. Retriggé en re-montant l'élément (key={nudge.t}). */
+@keyframes sp-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  55% {
+    transform: translateX(3px);
+  }
+  80% {
+    transform: translateX(-2px);
+  }
+}
+.sp-nudge {
+  animation: sp-nudge 280ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-guide {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(232, 184, 75, 0.3);
+  }
+  .sp-nudge {
+    animation: none;
+  }
+}
+
 /* grab-knob idle pulse — CSS so it can't be reset by React re-renders /
    StrictMode remounts the way a JS repeat animation was */
 @keyframes sp-knob-pulse {
