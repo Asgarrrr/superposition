@@ -41,13 +41,17 @@ describe("démos — invariants moteur", () => {
     expect(Math.abs(s.a[1])).toBeGreaterThan(1);
   });
 
-  it("intro_decalage : la poussée garde l'écart, le glissement du monde fusionne", () => {
-    const { steps } = demoSteps(byId("intro_decalage"));
-    const after = split(steps[0].state); // push: both move, still apart
-    expect(after.a).not.toEqual(after.b);
-    expect(after.off).toEqual([0, 0]);
+  it("intro_decalage : poussée murée, le glissement fusionne, le blanc traverse", () => {
+    const demo = byId("intro_decalage");
+    const { steps } = demoSteps(demo);
+    expect(steps[0].blocked).toBe(true); // both pawns pinned: the door is shut
     expect(steps[1].merged).toBe(true); // the shift ITSELF triggers the merge
     expect(steps[1].state.off).toEqual([0, -1]);
+    const last = steps[2].state;
+    if (!last.merged) throw new Error("expected a merged state");
+    expect(last.m).toEqual([2, 3]); // the white pawn stands where walls were
+    const walled = [...demo.level.a.walls, ...demo.level.b.walls];
+    expect(walled).toContainEqual([2, 3]); // …an ink-walled cell in A's film
   });
 
   it("chaque étape non bloquée fait avancer l’état", () => {
@@ -111,12 +115,14 @@ describe("démos — beats guidés", () => {
     }
   });
 
-  it("seule la leçon lumière contient un geste bloqué scripté", () => {
+  it("les gestes bloqués scriptés sont exactement les leçons lumière et décalage", () => {
     for (const d of DEMOS) {
       const blocked = demoSteps(d)
         .steps.map((s, i) => (s.blocked ? i : -1))
         .filter((i) => i >= 0);
-      expect(blocked).toEqual(d.id === "intro_lumiere" ? [0] : []);
+      expect(blocked).toEqual(
+        d.id === "intro_lumiere" || d.id === "intro_decalage" ? [0] : [],
+      );
     }
   });
 });

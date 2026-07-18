@@ -129,32 +129,47 @@ export const DEMOS: Demo[] = [
       },
     ],
   },
-  // decalage: the mechanic's real power. A push moves both inks — the gap
-  // never closes. Then the world gesture slides the magenta film one cell and
-  // the slide ITSELF triggers the merge (the engine's a == b + off' rule):
-  // an alignment no push could ever reach.
+  // decalage: the mechanic's real power — reaching the unreachable. Magenta
+  // sits walled into a pocket with a cyan wall shutting the door: the push is
+  // engine-blocked (both pawns pinned). One world gesture slides the film and
+  // the slide ITSELF triggers the merge (a == b + off'): the enclave came to
+  // you. Then the white pawn walks straight through the ink walls — the access
+  // no push could ever have.
   {
     id: "intro_decalage",
     covers: ["decalage"],
     level: board({
       size: 5,
       mods: ["fusion", "scission", "decalage"],
-      a: { start: [2, 2], goal: [0, 0], walls: [] },
-      b: { start: [2, 3], goal: [0, 0], walls: [] },
+      a: { start: [2, 2], goal: [0, 0], walls: [[2, 3]] },
+      b: {
+        start: [2, 3],
+        goal: [0, 0],
+        walls: [
+          [1, 3],
+          [3, 3],
+          [2, 4],
+        ],
+      },
     }),
     start: { merged: false, a: [2, 2], b: [2, 3], off: [0, 0] },
     title: m.demo_title_decalage,
     sub: m.demo_sub_decalage,
     beats: [
       {
-        input: { kind: "move", dir: L }, // both slide left: the gap survives
-        say: m.demo_shift_futile,
-        done: m.demo_shift_futile_done,
+        input: { kind: "move", dir: R }, // both pinned: feel the shut door
+        say: m.demo_shift_blocked,
+        done: m.demo_shift_blocked_done,
       },
       {
         input: { kind: "shift", dir: L }, // the film slides under them → merge
         say: m.demo_shift_do,
         done: m.demo_shift_done,
+      },
+      {
+        input: { kind: "move", dir: R }, // merged: straight through the walls
+        say: m.demo_shift_through,
+        done: m.demo_shift_through_done,
       },
     ],
   },
