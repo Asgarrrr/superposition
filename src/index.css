@@ -89,6 +89,92 @@
   animation: sp-fade 500ms ease-out forwards;
 }
 
+/* aperçu de scission : les cibles fantômes des deux encres respirent tant que
+   ✕ est armé — assez pour attirer l'œil, assez discret pour ne pas masquer le
+   plateau. Sous reduced-motion la règle globale fige l'opacité de base. */
+@keyframes sp-ghost {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+.sp-ghost {
+  animation: sp-ghost 1.4s ease-in-out infinite;
+}
+
+/* tutoriel guidé : le contrôle attendu respire dans un halo tape pour attirer
+   l'œil, sans bouger la mise en page (halo par box-shadow). */
+@keyframes sp-guide {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(232, 184, 75, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(232, 184, 75, 0.3);
+  }
+}
+.sp-guide {
+  animation: sp-guide 1.3s ease-in-out infinite;
+}
+
+/* le tampon posé : une seule frappe partagée par la victoire, le daily et la
+   carte-titre du tutoriel — le délai reste inline (animation-delay). Le repos
+   à -8° vit ici pour que reduced-motion pose le tampon sans le claquer. */
+.sp-stamped {
+  animation: sp-stamp 700ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+/* refus doux : la consigne fait « non » de la tête — vu ET entendu, jamais
+   punitif. Retriggé en re-montant l'élément (key={nudge.t}). */
+@keyframes sp-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  55% {
+    transform: translateX(3px);
+  }
+  80% {
+    transform: translateX(-2px);
+  }
+}
+.sp-nudge {
+  animation: sp-nudge 280ms ease-out;
+}
+
+/* flèches guides : le geste dessiné sur le plateau, en pointillés qui
+   avancent vers l'atterrissage */
+@keyframes sp-march {
+  to {
+    stroke-dashoffset: -13;
+  }
+}
+.sp-march {
+  stroke-dasharray: 7 6;
+  animation: sp-march 650ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-guide {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(232, 184, 75, 0.3);
+  }
+  .sp-nudge,
+  .sp-march {
+    animation: none;
+  }
+  .sp-stamped {
+    animation: none;
+    transform: rotate(-8deg);
+  }
+}
+
 /* grab-knob idle pulse — CSS so it can't be reset by React re-renders /
    StrictMode remounts the way a JS repeat animation was */
 @keyframes sp-knob-pulse {

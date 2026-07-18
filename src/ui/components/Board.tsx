@@ -2,10 +2,11 @@
 // registration marks, merge bloom) and the recoil when a move
 // is blocked. Receives the state, decides nothing.
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { motion, useAnimationControls } from "motion/react";
 import type { GameState, Level, Pos } from "../../engine/types.ts";
 import { sub } from "../../engine/grid.ts";
+import { successors } from "../../engine/successors.ts";
 import type { Pulse } from "../hooks/useGame.ts";
 import { boardSpan, CELL, cellCenter } from "./board-metrics.ts";
 import { InkLayer } from "./InkLayer.tsx";
@@ -19,6 +20,10 @@ export function Board({
   solved,
   bump,
   bloom,
+  armed = false,
+  demo = false,
+  guideGhosts = null,
+  guides = null,
   iceTrailA,
   iceTrailB,
   onTouchStart,
@@ -30,6 +35,10 @@ export function Board({
   solved: boolean;
   bump: Pulse | null;
   bloom: Pulse | null;
+  armed?: boolean; // ✕ armed on a merged pawn: preview where the split sends each ink
+  demo?: boolean; // tutorial sandbox: frame the box in tape so it reads apart
+  guideGhosts?: { a: Pos[]; b: Pos[] } | null; // tutorial: landing preview of the guided push
+  guides?: { from: Pos; to: Pos; tone: "a" | "b" | "w" }[] | null; // tutorial: marching arrows drawing the gesture, in BOARD coordinates (this overlay is not shifted by `off` — magenta film positions must arrive pre-converted)
   iceTrailA: { from: Pos } | null;
   iceTrailB: { from: Pos } | null;
   onTouchStart: (e: React.TouchEvent) => void;
@@ -50,6 +59,26 @@ export function Board({
       transition: { duration: 0.22, ease: "easeOut" as const },
     });
   }, [bump, recoil]);
+
+  // Split preview: while ✕ is armed on the merged pawn, every legal split's
+  // landing cells, split by ink (cyan toward the arrow, magenta opposite).
+  // Read straight off the engine's successors so it can't drift from the rule.
+  const ghosts = useMemo(() => {
+    if (!armed || !st.merged) return { a: [] as Pos[], b: [] as Pos[] };
+    const a: Pos[] = [];
+    const b: Pos[] = [];
+    for (const [inp, next] of successors(st, level)) {
+      if (inp.kind === "split" && !next.merged) {
+        a.push(next.a);
+        b.push(next.b);
+      }
+    }
+    return { a, b };
+  }, [armed, st, level]);
+  // the guided push's landing cells ride the same ghost channel as the split
+  // preview, so both hints share one visual vocabulary
+  const ghostsA = guideGhosts ? [...ghosts.a, ...guideGhosts.a] : ghosts.a;
+  const ghostsB = guideGhosts ? [...ghosts.b, ...guideGhosts.b] : ghosts.b;
 
   const span = boardSpan(level.size);
   const pa = st.merged ? st.m : st.a;
@@ -72,6 +101,10 @@ export function Board({
     "inset 0 0 0 1px rgba(242,237,228,0.03), " +
     "inset 0 1px 0 rgba(242,237,228,0.05), " +
     "0 1px 2px rgba(0,0,0,0.35), 0 6px 18px rgba(0,0,0,0.22)";
+  // the tutorial sandbox wears a tape frame so it can't be mistaken for a level
+  const frame = demo
+    ? "inset 0 0 0 2px rgba(232,184,75,0.55), 0 0 22px rgba(232,184,75,0.12), "
+    : "";
 
   return (
     <motion.div
@@ -83,8 +116,8 @@ export function Board({
         background:
           "radial-gradient(ellipse 80% 80% at 50% 50%, var(--color-box-glow), var(--color-box) 80%)",
         boxShadow: st.merged
-          ? `inset 0 0 90px rgba(242,237,228,0.06), ${drop}`
-          : `inset 0 0 70px rgba(69,224,236,0.04), inset 0 0 70px rgba(255,79,163,0.04), ${drop}`,
+          ? `${frame}inset 0 0 90px rgba(242,237,228,0.06), ${drop}`
+          : `${frame}inset 0 0 70px rgba(69,224,236,0.04), inset 0 0 70px rgba(255,79,163,0.04), ${drop}`,
         transition: "box-shadow 500ms",
       }}
     >
@@ -98,6 +131,7 @@ export function Board({
         size={level.size}
         shift={[0, 0]}
         iceTrail={iceTrailA}
+        splitGhosts={ghostsA}
       />
       <InkLayer
         color="var(--color-ink-magenta)"
@@ -109,6 +143,7 @@ export function Board({
         size={level.size}
         shift={st.off}
         iceTrail={iceTrailB}
+        splitGhosts={ghostsB}
       />
 
       <svg
@@ -159,6 +194,42 @@ export function Board({
             />
           ))}
         </motion.g>
+        {/* tutorial arrows: the gesture drawn where it will act, marching from
+            each ink toward its landing — pulled back from both cell centres so
+            pawn and ghost ring stay readable under the arrowhead */}
+        {guides?.map(({ from, to, tone }, i) => {
+          const [x1, y1] = cellCenter(from);
+          const [x2, y2] = cellCenter(to);
+          const len = Math.hypot(x2 - x1, y2 - y1);
+          if (len === 0) return null;
+          const [ux, uy] = [(x2 - x1) / len, (y2 - y1) / len];
+          const sx = x1 + ux * (CELL * 0.34);
+          const sy = y1 + uy * (CELL * 0.34);
+          const ex = x2 - ux * (CELL * 0.36);
+          const ey = y2 - uy * (CELL * 0.36);
+          const color =
+            tone === "a"
+              ? "var(--color-ink-cyan)"
+              : tone === "b"
+                ? "var(--color-ink-magenta)"
+                : "var(--color-paper)";
+          const head = 9;
+          const [hx, hy] = [ex - ux * head, ey - uy * head];
+          const [px, py] = [-uy, ux];
+          return (
+            <g
+              key={`${i}-${from[0]}-${from[1]}`}
+              stroke={color}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              opacity="0.85"
+            >
+              <line className="sp-march" x1={sx} y1={sy} x2={ex} y2={ey} />
+              <line x1={ex} y1={ey} x2={hx + px * 5.5} y2={hy + py * 5.5} />
+              <line x1={ex} y1={ey} x2={hx - px * 5.5} y2={hy - py * 5.5} />
+            </g>
+          );
+        })}
         {bloom && (
           <circle
             cx={cellCenter(bloom.payload)[0]}

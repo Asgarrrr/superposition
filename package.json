@@ -13,7 +13,7 @@
     "start": "bun .output/server/index.mjs",
     "preview": "vite preview",
     "lint": "oxlint",
-    "test": "vitest run",
+    "test": "bun run paraglide && vitest run",
     "verify": "bun src/solver/verify.ts",
     "gen": "bun src/solver/generate.ts",
     "gen:daily": "bun src/solver/generate-daily.ts",

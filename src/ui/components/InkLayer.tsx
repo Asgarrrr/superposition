@@ -1,7 +1,10 @@
 // An ink film: grid, hatched walls, goal circle, pawn — all
 // in a single color, laid down in `screen` blend over the light box.
 // `misreg`: slight misalignment at rest; `shift`: world offset
-// (offset mechanic); `iceTrail`: trail of the slide on ice.
+// (offset mechanic); `iceTrail`: trail of the slide on ice;
+// `splitGhosts`: while ✕ is armed, this ink's landing cells for every
+// legal split — cyan lands toward the arrows, magenta mirrors them, so
+// the direction of the split reads off the board without a word.
 
 import { motion } from "motion/react";
 import type { Pos } from "../../engine/types.ts";
@@ -19,6 +22,7 @@ export function InkLayer({
   size,
   shift,
   iceTrail,
+  splitGhosts = [],
 }: {
   color: string;
   pawn: Pos;
@@ -29,6 +33,7 @@ export function InkLayer({
   size: number;
   shift: Pos;
   iceTrail: { from: Pos } | null;
+  splitGhosts?: Pos[];
 }) {
   const span = boardSpan(size);
   const [cx, cy] = cellCenter(pawn);
@@ -131,6 +136,22 @@ export function InkLayer({
             className="sp-trail"
           />
         )}
+        {splitGhosts.map(([r, c]) => {
+          const [x, y] = cellCenter([r, c]);
+          return (
+            <circle
+              key={`g-${r}-${c}`}
+              className="sp-ghost"
+              cx={x}
+              cy={y}
+              r={CELL * 0.19}
+              fill={color}
+              fillOpacity="0.14"
+              stroke={color}
+              strokeWidth="2"
+            />
+          );
+        })}
         <motion.circle
           initial={introInitial}
           animate="visible"

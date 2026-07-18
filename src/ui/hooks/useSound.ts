@@ -14,6 +14,7 @@ export interface SoundFx {
   shift: () => void;
   win: () => void;
   stamp: () => void;
+  tick: () => void; // soft refusal (tutorial): heard, not punished
 }
 
 // One AudioContext for the whole session, created lazily on the first tone and
@@ -76,6 +77,7 @@ const fx: SoundFx = {
     setTimeout(() => tone(784, 0.7, "sine", 0.05), 240);
   },
   stamp: () => tone(70, 0.14, "square", 0.05),
+  tick: () => tone(180, 0.04, "triangle", 0.025),
 };
 
 const setMuted = (v: boolean) => {

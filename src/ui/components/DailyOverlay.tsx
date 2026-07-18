@@ -19,10 +19,8 @@ export function DailyOverlay({
         <Wordmark aligned size={36} />
       </div>
       <div
-        className="rounded-sm border-[2.5px] border-tape px-4.5 py-2 font-mono text-[13px] tracking-[0.28em] text-tape uppercase"
-        style={{
-          animation: "sp-stamp 700ms cubic-bezier(0.2,1.4,0.4,1) 550ms both",
-        }}
+        className="sp-stamped rounded-sm border-[2.5px] border-tape px-4.5 py-2 font-mono text-[13px] tracking-[0.28em] text-tape uppercase"
+        style={{ animationDelay: "550ms" }}
       >
         {m.win_stamp()}
       </div>

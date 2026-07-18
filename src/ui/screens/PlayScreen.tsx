@@ -1,10 +1,12 @@
 // The play screen: composes Hud, Board, rule line and Controls
 // around useGame. Remounted (key) on every level change.
 
+import { useCallback, useState } from "react";
 import { motion, type Variants } from "motion/react";
-import type { Level } from "../../engine/types.ts";
+import type { GameState, Level, Pos } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { ruleLine } from "../ruleLine.ts";
+import { type Demo, levelDemo, pickDemo } from "../demos.ts";
 import { Board } from "../components/Board.tsx";
 import { Controls } from "../components/Controls.tsx";
 import { Hud } from "../components/Hud.tsx";
@@ -14,6 +16,11 @@ import { LevelBoard } from "../components/LevelBoard.tsx";
 import { Room } from "../components/Room.tsx";
 import { WinOverlay } from "../components/WinOverlay.tsx";
 import { DailyOverlay } from "../components/DailyOverlay.tsx";
+import {
+  type DemoCaption,
+  useGuidedDemo,
+  useSeenDemos,
+} from "../hooks/useDemo.ts";
 import { useGame } from "../hooks/useGame.ts";
 import { useKeyboard } from "../hooks/useKeyboard.ts";
 import type { SoundFx } from "../hooks/useSound.ts";
@@ -73,6 +80,23 @@ export interface DailyMode {
   optimal: number;
 }
 
+/** The alternate gesture a board state offers: split when merged, world on
+ *  decalage levels — one source for both the real controls and the tutorial. */
+const altLabelFor = (st: GameState, level: Level) =>
+  st.merged
+    ? m.controls_split()
+    : level.mods.includes("decalage")
+      ? m.controls_world()
+      : null;
+
+// the caption speaks in four voices; keep the mapping exhaustive and visible
+const captionTone: Record<DemoCaption["kind"], string> = {
+  say: "text-paper/85",
+  done: "text-tape",
+  hint: "text-ink-magenta",
+  hand: "text-tape",
+};
+
 export function PlayScreen({
   level,
   plate = 0,
@@ -99,24 +123,48 @@ export function PlayScreen({
   daily?: DailyMode;
 }) {
   const game = useGame(level, fx, onWin);
-  const swipe = useSwipe(game.play);
+
+  // First-encounter tutorial: on the level's first newest-mechanic, the player
+  // performs its signature gesture on rails on the ideal sandbox, captured at
+  // mount (the screen remounts per level). Daily mode is expert — no demos.
+  const { seen, markSeen } = useSeenDemos();
+  const [demo, setDemo] = useState<Demo | null>(() =>
+    daily ? null : pickDemo(level, seen),
+  );
+  const onDemoDone = useCallback(() => {
+    setDemo((d) => {
+      if (d) markSeen(d.id);
+      return null;
+    });
+  }, [markSeen]);
+  const guided = useGuidedDemo(demo, fx, onDemoDone);
+  const demoActive = guided.active;
+  const replayDemo = daily ? null : levelDemo(level);
+
+  // during the tutorial the real controls drive the sandbox on rails
+  const play = (d: Pos, alt = false) => {
+    if (demoActive) return guided.press(d, alt);
+    game.play(d, alt);
+  };
+  const toggleAlt = () => (demoActive ? guided.arm() : game.toggleAlt());
+  const swipe = useSwipe(play);
 
   useKeyboard({
-    play: game.play,
-    undo: game.undo,
-    reset: game.reset,
-    toggleAlt: game.toggleAlt,
+    play,
+    undo: () => !demoActive && game.undo(),
+    reset: () => !demoActive && game.reset(),
+    toggleAlt,
     exit: onExit,
     next: () => {
+      if (demoActive) return guided.next(); // Enter continues the tutorial
       if (game.solved) onNext?.();
     },
   });
 
-  const altLabel = game.st.merged
-    ? m.controls_split()
-    : level.mods.includes("decalage")
-      ? m.controls_world()
-      : null;
+  const altLabel = altLabelFor(game.st, level);
+  // the alt control the tutorial expects, from the sandbox state/mechanic
+  const guidedAltLabel =
+    guided.st && demo ? altLabelFor(guided.st, demo.level) : null;
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center px-4 pt-20 pb-10 font-mono text-paper select-none xl:py-10">
@@ -172,50 +220,166 @@ export function PlayScreen({
           className="xl:col-start-2 xl:row-start-2 xl:pt-4"
           variants={vBoard}
         >
-          <Board
-            level={level}
-            st={game.st}
-            solved={game.solved}
-            bump={game.bump}
-            bloom={game.bloom}
-            iceTrailA={game.iceTrailA}
-            iceTrailB={game.iceTrailB}
-            {...swipe}
-          >
-            {game.solved &&
-              (daily ? (
-                <DailyOverlay moves={game.moves} optimal={daily.optimal} />
-              ) : (
-                <WinOverlay
-                  plate={plate}
-                  moves={game.moves}
-                  best={best}
-                  onNext={onNext}
-                />
-              ))}
-          </Board>
+          {demoActive && guided.st && guided.level ? (
+            // the tutorial runs through the real Board; the player drives it on
+            // rails. A title card names the mechanic, marching arrows draw each
+            // gesture, and every payoff waits for the player: a tap anywhere,
+            // an arrow, or Enter continues. On handoff the tape frame fades
+            // before the real level develops in.
+            <div onClick={guided.next}>
+              <Board
+                demo={guided.phase !== "handoff"}
+                level={guided.level}
+                st={guided.st}
+                solved={false}
+                bump={guided.bump}
+                bloom={guided.bloom}
+                armed={guided.armed}
+                guideGhosts={guided.ghosts}
+                guides={guided.guides}
+                iceTrailA={null}
+                iceTrailB={null}
+                {...swipe}
+              >
+                {guided.phase === "title" ? (
+                  // the mechanic's name arrives like the win screen's "Bon à
+                  // tirer": an amber stamp slammed onto the veiled print
+                  <motion.div
+                    className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-room/45"
+                    initial={reduced ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.35, ease: PRINT_EASE }}
+                  >
+                    <span className="rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
+                      {m.controls_demo_tag()}
+                    </span>
+                    <div
+                      className="sp-stamped rounded-sm border-[2.5px] border-tape px-5 py-2.5 font-mono text-[19px] tracking-[0.26em] text-tape uppercase"
+                      style={{ animationDelay: "250ms" }}
+                    >
+                      {demo?.title()}
+                    </div>
+                    <span className="mt-1 font-display text-[17px] text-paper/75">
+                      {demo?.sub()}
+                    </span>
+                    <span className="mt-3 animate-pulse font-mono text-[11px] tracking-[0.14em] text-tape/80 uppercase">
+                      {m.demo_continue()}
+                    </span>
+                  </motion.div>
+                ) : (
+                  guided.caption && (
+                    <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
+                      <div
+                        // remount on each refusal so the headshake retriggers
+                        key={guided.nudge?.t ?? "still"}
+                        className={`flex max-w-[92%] flex-col items-center gap-1 rounded-xs px-3.5 py-2 text-center font-display text-[16px] leading-snug tracking-[0.01em] ${
+                          guided.nudge ? "sp-nudge" : ""
+                        } ${captionTone[guided.caption.kind]}`}
+                        style={{ background: "rgba(18,16,14,0.78)" }}
+                      >
+                        <div className="flex items-center gap-2">
+                          {guided.caption.kind === "say" && (
+                            <span className="shrink-0 rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
+                              {m.controls_demo_tag()}
+                            </span>
+                          )}
+                          {guided.caption.text}
+                        </div>
+                        {guided.waiting && (
+                          <span className="animate-pulse font-mono text-[11px] tracking-[0.14em] text-tape/80 uppercase">
+                            {m.demo_continue()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                )}
+              </Board>
+            </div>
+          ) : (
+            <Board
+              level={level}
+              st={game.st}
+              solved={game.solved}
+              bump={game.bump}
+              bloom={game.bloom}
+              armed={game.altArmed}
+              iceTrailA={game.iceTrailA}
+              iceTrailB={game.iceTrailB}
+              {...swipe}
+            >
+              {game.solved &&
+                (daily ? (
+                  <DailyOverlay moves={game.moves} optimal={daily.optimal} />
+                ) : (
+                  <WinOverlay
+                    plate={plate}
+                    moves={game.moves}
+                    best={best}
+                    onNext={onNext}
+                  />
+                ))}
+            </Board>
+          )}
         </motion.div>
 
         <motion.div
           className="flex flex-col items-center xl:col-start-2 xl:row-start-3"
           variants={vControls}
         >
-          <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28">
-            {game.flash ? (
-              <span className="text-ink-magenta">{game.flash}</span>
-            ) : (
-              ruleLine(game.st, level)
-            )}
-          </div>
+          {demoActive ? (
+            <>
+              <div className="mt-3.5 min-h-[30px]" />
+              <Controls
+                altLabel={guidedAltLabel}
+                altArmed={guided.armed}
+                onDir={play}
+                onToggleAlt={toggleAlt}
+                onUndo={() => {}}
+                onReset={() => {}}
+                guiding
+                highlight={guided.guidance}
+              />
+              {guided.phase !== "handoff" && (
+                <button
+                  type="button"
+                  onClick={guided.skip}
+                  className="mt-3 font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
+                >
+                  {m.demo_skip()}
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28">
+                {game.flash ? (
+                  <span className="text-ink-magenta">{game.flash}</span>
+                ) : (
+                  ruleLine(game.st, level)
+                )}
+              </div>
 
-          <Controls
-            altLabel={altLabel}
-            altArmed={game.altArmed}
-            onDir={game.play}
-            onToggleAlt={game.toggleAlt}
-            onUndo={game.undo}
-            onReset={game.reset}
-          />
+              <Controls
+                altLabel={altLabel}
+                altArmed={game.altArmed}
+                onDir={play}
+                onToggleAlt={game.toggleAlt}
+                onUndo={game.undo}
+                onReset={game.reset}
+              />
+
+              {replayDemo && (
+                <button
+                  type="button"
+                  onClick={() => setDemo(replayDemo)}
+                  className="mt-3 font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
+                >
+                  {m.controls_demo()}
+                </button>
+              )}
+            </>
+          )}
         </motion.div>
 
         {daily ? (
