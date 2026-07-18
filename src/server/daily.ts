@@ -9,6 +9,7 @@ import { dailyPuzzle, dailyScore } from "../db/schema.ts";
 import { LEVELS } from "../engine/levels.ts";
 import { solve } from "../solver/bfs.ts";
 import { isWeekend, utcDay } from "../lib/day.ts";
+import { computeStreaks } from "../lib/streak.ts";
 import {
   boardRows,
   currentUserId,
@@ -253,3 +254,22 @@ export const getDailyBoard = createServerFn({ method: "GET" })
     ]);
     return { optimal, rows, mine };
   });
+
+/** The signed-in player's current daily streak (consecutive UTC days with at
+ *  least one tier solved), for the discreet reminder on the daily win screen.
+ *  Today is unioned in so a just-solved day counts even if this read races the
+ *  score submit. Zero when signed out — the reminder simply doesn't show. */
+export const getMyStreak = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{ current: number }> => {
+    const userId = await currentUserId();
+    if (!userId) return { current: 0 };
+    const today = utcDay();
+    const rows = await db
+      .select({ date: dailyScore.date })
+      .from(dailyScore)
+      .where(eq(dailyScore.userId, userId))
+      .groupBy(dailyScore.date);
+    const days = rows.map((r) => r.date);
+    return { current: computeStreaks([...days, today], today).current };
+  },
+);

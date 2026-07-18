@@ -15,12 +15,14 @@ export function DailyOverlay({
   tier,
   moves,
   optimal,
+  streak = 0,
 }: {
   level: Level;
   date: string;
   tier: number;
   moves: number;
   optimal: number;
+  streak?: number; // current daily streak; a discreet reminder when > 0
 }) {
   // the copy confirmation is a records moment — one of the rare licences for
   // the tape accent; it self-clears so the button rests in paper again.
@@ -49,6 +51,11 @@ export function DailyOverlay({
         {m.daily_solved({ count: moves })}
         {optimal ? ` · ${m.daily_optimal({ optimal })}` : ""}
       </div>
+      {streak > 0 && (
+        <div className="font-mono text-[10px] tracking-[0.2em] text-paper/40 uppercase">
+          {m.daily_streak({ count: streak })}
+        </div>
+      )}
       <button
         type="button"
         onClick={onShare}

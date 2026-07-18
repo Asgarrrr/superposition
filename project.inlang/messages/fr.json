@@ -136,6 +136,16 @@
   "daily_submitting": "Enregistrement…",
   "daily_submit_error": "Échec — réessaie.",
   "daily_your_rank": "ton rang · #{rank}",
+  "daily_streak": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "série · {count} jour",
+        "countPlural=other": "série · {count} jours"
+      }
+    }
+  ],
   "daily_leaderboard_title": "Classement",
   "daily_leaderboard_empty": "Personne n'a encore résolu aujourd'hui.",
   "level_leaderboard_title": "Classement",

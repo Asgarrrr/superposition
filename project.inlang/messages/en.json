@@ -136,6 +136,16 @@
   "daily_submitting": "Saving…",
   "daily_submit_error": "Failed — try again.",
   "daily_your_rank": "your rank · #{rank}",
+  "daily_streak": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "streak · {count} day",
+        "countPlural=other": "streak · {count} days"
+      }
+    }
+  ],
   "daily_leaderboard_title": "Leaderboard",
   "daily_leaderboard_empty": "No one has solved it yet today.",
   "level_leaderboard_title": "Leaderboard",

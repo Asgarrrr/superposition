@@ -35,6 +35,14 @@ describe("computeStreaks", () => {
     expect(computeStreaks(days, "2026-07-17").longest).toBe(3);
   });
 
+  it("a first day played today reads as a current (and longest) streak of one", () => {
+    expect(computeStreaks(["2026-07-17"], "2026-07-17")).toEqual({
+      total: 1,
+      current: 1,
+      longest: 1,
+    });
+  });
+
   it("current counts the run ending today", () => {
     const days = ["2026-07-15", "2026-07-16", "2026-07-17"];
     expect(computeStreaks(days, "2026-07-17").current).toBe(3);

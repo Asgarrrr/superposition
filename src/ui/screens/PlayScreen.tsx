@@ -1,7 +1,7 @@
 // The play screen: composes Hud, Board, rule line and Controls
 // around useGame. Remounted (key) on every level change.
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, type Variants } from "motion/react";
 import type { GameState, Level, Pos } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
@@ -13,6 +13,7 @@ import { Controls } from "../components/Controls.tsx";
 import { Hud } from "../components/Hud.tsx";
 import { LeftRail } from "../components/LeftRail.tsx";
 import { DailyBoard } from "../components/DailyBoard.tsx";
+import { getMyStreak } from "../../server/daily.ts";
 import { LevelBoard } from "../components/LevelBoard.tsx";
 import { Room } from "../components/Room.tsx";
 import { WinOverlay } from "../components/WinOverlay.tsx";
@@ -127,6 +128,22 @@ export function PlayScreen({
   daily?: DailyMode;
 }) {
   const game = useGame(level, fx, onWin);
+
+  // The current daily streak, for the discreet reminder on the win overlay.
+  // Fetched once the daily is solved (the server unions today, so it's correct
+  // whether or not the rail's score submit has landed yet). Zero when signed out.
+  const [streak, setStreak] = useState(0);
+  const solvedDaily = !!daily && game.solved;
+  useEffect(() => {
+    if (!solvedDaily) return;
+    let alive = true;
+    getMyStreak()
+      .then((s) => alive && setStreak(s.current))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [solvedDaily]);
 
   // First-encounter tutorial: on the level's first newest-mechanic, the player
   // performs its signature gesture on rails on the ideal sandbox, captured at
@@ -320,6 +337,7 @@ export function PlayScreen({
                     tier={daily.tier}
                     moves={game.moves}
                     optimal={daily.optimal}
+                    streak={streak}
                   />
                 ) : (
                   <WinOverlay

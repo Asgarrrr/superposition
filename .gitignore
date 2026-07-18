@@ -17,3 +17,4 @@ src/paraglide
 
 # Railway config-pull temp dirs
 .railway-config-pull-*
+.claude/
