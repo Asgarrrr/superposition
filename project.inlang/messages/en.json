@@ -35,6 +35,8 @@
   "controls_split": "✕ split",
   "controls_world": "⇄ world",
   "controls_arm": " · which way?",
+  "controls_demo": "↻ demo",
+  "demo_skip": "press to skip",
   "win_stamp": "Ready to print",
   "win_summary": [
     {

@@ -21,6 +21,7 @@ export function Board({
   bump,
   bloom,
   armed = false,
+  ghost = false,
   iceTrailA,
   iceTrailB,
   onTouchStart,
@@ -33,6 +34,7 @@ export function Board({
   bump: Pulse | null;
   bloom: Pulse | null;
   armed?: boolean; // ✕ armed on a merged pawn: preview where the split sends each ink
+  ghost?: boolean; // demo playback: dim the whole box so it reads as a phantom
   iceTrailA: { from: Pos } | null;
   iceTrailB: { from: Pos } | null;
   onTouchStart: (e: React.TouchEvent) => void;
@@ -104,7 +106,9 @@ export function Board({
         boxShadow: st.merged
           ? `inset 0 0 90px rgba(242,237,228,0.06), ${drop}`
           : `inset 0 0 70px rgba(69,224,236,0.04), inset 0 0 70px rgba(255,79,163,0.04), ${drop}`,
-        transition: "box-shadow 500ms",
+        // demo playback reads as a phantom pass: the whole box sits back
+        opacity: ghost ? 0.62 : 1,
+        transition: "box-shadow 500ms, opacity 500ms",
       }}
     >
       <InkLayer

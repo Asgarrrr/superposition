@@ -35,6 +35,8 @@
   "controls_split": "✕ scinder",
   "controls_world": "⇄ monde",
   "controls_arm": " · sens ?",
+  "controls_demo": "↻ démo",
+  "demo_skip": "appuyez pour passer",
   "win_stamp": "Bon à tirer",
   "win_summary": [
     {

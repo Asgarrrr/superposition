@@ -1,10 +1,12 @@
 // The play screen: composes Hud, Board, rule line and Controls
 // around useGame. Remounted (key) on every level change.
 
+import { useCallback, useState } from "react";
 import { motion, type Variants } from "motion/react";
-import type { Level } from "../../engine/types.ts";
+import type { Level, Pos } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { ruleLine } from "../ruleLine.ts";
+import { type Demo, levelDemo, pickDemo } from "../demos.ts";
 import { Board } from "../components/Board.tsx";
 import { Controls } from "../components/Controls.tsx";
 import { Hud } from "../components/Hud.tsx";
@@ -14,6 +16,7 @@ import { LevelBoard } from "../components/LevelBoard.tsx";
 import { Room } from "../components/Room.tsx";
 import { WinOverlay } from "../components/WinOverlay.tsx";
 import { DailyOverlay } from "../components/DailyOverlay.tsx";
+import { useDemoPlayer, useSeenDemos } from "../hooks/useDemo.ts";
 import { useGame } from "../hooks/useGame.ts";
 import { useKeyboard } from "../hooks/useKeyboard.ts";
 import type { SoundFx } from "../hooks/useSound.ts";
@@ -99,10 +102,32 @@ export function PlayScreen({
   daily?: DailyMode;
 }) {
   const game = useGame(level, fx, onWin);
-  const swipe = useSwipe(game.play);
+
+  // First-encounter demo: the board plays the level's newest mechanic once,
+  // captured at mount (the screen remounts per level). While it runs, any input
+  // skips it instead of moving. Daily mode is expert — no demos there.
+  const { seen, markSeen } = useSeenDemos();
+  const [demo, setDemo] = useState<Demo | null>(() =>
+    daily ? null : pickDemo(level, seen),
+  );
+  const onDemoDone = useCallback(() => {
+    setDemo((d) => {
+      if (d) markSeen(d.id);
+      return null;
+    });
+  }, [markSeen]);
+  const player = useDemoPlayer(demo, onDemoDone);
+  const demoActive = player.active;
+  const replayDemo = daily ? null : levelDemo(level);
+
+  const play = (d: Pos, alt = false) => {
+    if (demoActive) return player.skip();
+    game.play(d, alt);
+  };
+  const swipe = useSwipe(play);
 
   useKeyboard({
-    play: game.play,
+    play,
     undo: game.undo,
     reset: game.reset,
     toggleAlt: game.toggleAlt,
@@ -172,51 +197,84 @@ export function PlayScreen({
           className="xl:col-start-2 xl:row-start-2 xl:pt-4"
           variants={vBoard}
         >
-          <Board
-            level={level}
-            st={game.st}
-            solved={game.solved}
-            bump={game.bump}
-            bloom={game.bloom}
-            armed={game.altArmed}
-            iceTrailA={game.iceTrailA}
-            iceTrailB={game.iceTrailB}
-            {...swipe}
-          >
-            {game.solved &&
-              (daily ? (
-                <DailyOverlay moves={game.moves} optimal={daily.optimal} />
-              ) : (
-                <WinOverlay
-                  plate={plate}
-                  moves={game.moves}
-                  best={best}
-                  onNext={onNext}
-                />
-              ))}
-          </Board>
+          {demoActive && player.st && player.level ? (
+            // the demo plays through the real Board in ghost mode; a touch skips
+            <Board
+              ghost
+              level={player.level}
+              st={player.st}
+              solved={false}
+              bump={player.bump}
+              bloom={player.bloom}
+              iceTrailA={null}
+              iceTrailB={null}
+              {...swipe}
+            />
+          ) : (
+            <Board
+              level={level}
+              st={game.st}
+              solved={game.solved}
+              bump={game.bump}
+              bloom={game.bloom}
+              armed={game.altArmed}
+              iceTrailA={game.iceTrailA}
+              iceTrailB={game.iceTrailB}
+              {...swipe}
+            >
+              {game.solved &&
+                (daily ? (
+                  <DailyOverlay moves={game.moves} optimal={daily.optimal} />
+                ) : (
+                  <WinOverlay
+                    plate={plate}
+                    moves={game.moves}
+                    best={best}
+                    onNext={onNext}
+                  />
+                ))}
+            </Board>
+          )}
         </motion.div>
 
         <motion.div
           className="flex flex-col items-center xl:col-start-2 xl:row-start-3"
           variants={vControls}
         >
-          <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28">
-            {game.flash ? (
-              <span className="text-ink-magenta">{game.flash}</span>
-            ) : (
-              ruleLine(game.st, level)
-            )}
-          </div>
+          {demoActive ? (
+            <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/40">
+              {m.demo_skip()}
+            </div>
+          ) : (
+            <>
+              <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28">
+                {game.flash ? (
+                  <span className="text-ink-magenta">{game.flash}</span>
+                ) : (
+                  ruleLine(game.st, level)
+                )}
+              </div>
 
-          <Controls
-            altLabel={altLabel}
-            altArmed={game.altArmed}
-            onDir={game.play}
-            onToggleAlt={game.toggleAlt}
-            onUndo={game.undo}
-            onReset={game.reset}
-          />
+              <Controls
+                altLabel={altLabel}
+                altArmed={game.altArmed}
+                onDir={play}
+                onToggleAlt={game.toggleAlt}
+                onUndo={game.undo}
+                onReset={game.reset}
+              />
+
+              {replayDemo && (
+                <button
+                  type="button"
+                  onClick={() => setDemo(replayDemo)}
+                  className="mt-3 font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
+                >
+                  {m.controls_demo()}
+                </button>
+              )}
+            </>
+          )}
         </motion.div>
 
         {daily ? (
