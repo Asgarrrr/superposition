@@ -64,8 +64,22 @@ describe("lzwEncode — round-trips through an independent decoder", () => {
     expect(lzwDecode(lzwEncode(px, 4), 4)).toEqual([...px]);
   });
 
-  it("survives a dictionary overflow reset (long uniform run)", () => {
-    const px = new Uint8Array(20000).fill(7);
+  it("survives a real dictionary overflow reset (varied stream past 4096 entries)", () => {
+    // A uniform run coins ~one entry per doubling and never nears the 4096-code
+    // ceiling, so it can't exercise the reset. A varied stream coins roughly one
+    // entry per pixel: 50k pixels drawn from the 16 palette codes cross 4096
+    // several times over, forcing the encoder to emit clear codes and reset.
+    // The generator is a seeded mulberry32 so the stream is fixed across runs.
+    let s = 0x9e3779b9;
+    const rng = () => {
+      s |= 0;
+      s = (s + 0x6d2b79f5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const px = new Uint8Array(50000);
+    for (let i = 0; i < px.length; i++) px[i] = Math.floor(rng() * 16);
     expect(lzwDecode(lzwEncode(px, 4), 4)).toEqual([...px]);
   });
 });

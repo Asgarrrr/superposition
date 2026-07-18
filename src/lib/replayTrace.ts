@@ -1,7 +1,8 @@
 // Compact URL encoding of a replay's winning line, shared by the client (which
 // builds the share URL) and the server (which decodes it before replaying it
-// through the engine). Pure and framework-free — imports only engine geometry —
-// so it stays out of nothing and can be unit-tested directly.
+// through the engine). Pure and framework-free — imports only engine geometry,
+// no framework or server code — so it stays importable from both the client and
+// server bundles and can be unit-tested directly.
 
 import type { Input, Pos, TraceStep } from "../engine/types.ts";
 import { DIRS, eq } from "../engine/grid.ts";

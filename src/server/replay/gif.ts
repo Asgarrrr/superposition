@@ -79,7 +79,7 @@ export function lzwEncode(
 ): Uint8Array {
   const clearCode = 1 << minCodeSize;
   const eoiCode = clearCode + 1;
-  const out: number[] = [];
+  const out = new ByteSink();
   let acc = 0;
   let accBits = 0;
   let codeSize = minCodeSize + 1;
@@ -87,13 +87,17 @@ export function lzwEncode(
     acc |= code << accBits;
     accBits += codeSize;
     while (accBits >= 8) {
-      out.push(acc & 0xff);
+      out.byte(acc & 0xff);
       acc >>= 8;
       accBits -= 8;
     }
   };
 
-  let dict = new Map<string, number>();
+  // Dictionary keyed by the standard LZW string: a prefix *code* (<= 12 bits)
+  // extended by the next index (8 bits), packed into one number as
+  // (prefixCode << 8) | index. `prefix` is always a live code, so a single
+  // emit site suffices — no raw-index vs coined-code dispatch.
+  let dict = new Map<number, number>();
   let next = clearCode + 2;
   const reset = () => {
     dict = new Map();
@@ -103,16 +107,16 @@ export function lzwEncode(
 
   emit(clearCode);
   reset();
-  let prefix = String(indices[0]);
+  let prefix = indices[0];
   for (let i = 1; i < indices.length; i++) {
-    const combined = prefix + "," + indices[i];
-    if (dict.has(combined)) {
-      prefix = combined;
+    const key = (prefix << 8) | indices[i];
+    const found = dict.get(key);
+    if (found !== undefined) {
+      prefix = found;
       continue;
     }
-    // prefix is either a raw index (< clearCode) or a coined code
-    emit(prefix.includes(",") ? dict.get(prefix)! : Number(prefix));
-    dict.set(combined, next);
+    emit(prefix);
+    dict.set(key, next);
     next++;
     // grow the code width once the dictionary outgrows it — GIF/giflib bump
     // one code later than plain LZW (verified against a real decoder)
@@ -121,12 +125,12 @@ export function lzwEncode(
       emit(clearCode);
       reset();
     }
-    prefix = String(indices[i]);
+    prefix = indices[i];
   }
-  emit(prefix.includes(",") ? dict.get(prefix)! : Number(prefix));
+  emit(prefix);
   emit(eoiCode);
-  if (accBits > 0) out.push(acc & 0xff);
-  return Uint8Array.from(out);
+  if (accBits > 0) out.byte(acc & 0xff);
+  return out.done();
 }
 
 /** Writes LZW bytes as GIF sub-blocks: [len][<=255 bytes]…, then a 0 terminator. */

@@ -1,11 +1,10 @@
 // "Ready to print": dark veil, aligned wordmark, amber stamp.
 
-import { useState } from "react";
 import type { TraceStep } from "../../engine/types.ts";
 import { LEVELS } from "../../engine/levels.ts";
 import { Wordmark } from "./Wordmark.tsx";
+import { ReplayGifButton } from "./ReplayGifButton.tsx";
 import { m } from "../../paraglide/messages.js";
-import { shareOrCopy } from "../dailyShare.ts";
 import { campaignReplayUrl } from "../replayLink.ts";
 
 export function WinOverlay({
@@ -23,21 +22,12 @@ export function WinOverlay({
   trace?: TraceStep[]; // the raw solve trace, for the shareable replay GIF
   onNext: (() => void) | null;
 }) {
-  // the copy confirmation is a records moment — one of the rare tape licences
-  const [copied, setCopied] = useState(false);
   // The replay URL carries the level's stable id, not its 1-based number, so a
   // reordered bank can't break shared links (see replayLink / render.ts).
   // null when the line is too long for the replay endpoint (see replayLink) —
   // the action is then absent, like a hinted run's.
   const level = LEVELS[plate - 1];
   const gifUrl = trace && level ? campaignReplayUrl(level.id, trace) : null;
-  const onShareGif = async () => {
-    if (!gifUrl) return;
-    if ((await shareOrCopy(gifUrl)) === "copied") {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-room/80 backdrop-blur-xs">
@@ -72,17 +62,7 @@ export function WinOverlay({
           {m.win_complete()}
         </div>
       )}
-      {gifUrl && (
-        <button
-          type="button"
-          onClick={onShareGif}
-          className={`font-mono text-[10px] tracking-[0.14em] uppercase transition-colors ${
-            copied ? "text-tape" : "text-paper/35 hover:text-paper/70"
-          }`}
-        >
-          {copied ? m.replay_gif_copied() : m.replay_gif()}
-        </button>
-      )}
+      {gifUrl && <ReplayGifButton url={gifUrl} />}
     </div>
   );
 }

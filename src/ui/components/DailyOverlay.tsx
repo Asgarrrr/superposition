@@ -6,9 +6,10 @@
 import { useState } from "react";
 import type { Level, TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
-import { utcDay } from "../../lib/day.ts";
+import { isReplayPublic } from "../../lib/day.ts";
 import { buildDailyShare, shareOrCopy } from "../dailyShare.ts";
 import { dailyReplayUrl } from "../replayLink.ts";
+import { ReplayGifButton } from "./ReplayGifButton.tsx";
 import { Wordmark } from "./Wordmark.tsx";
 
 // the weekend épreuve tier — its /daily route exists only on Sat/Sun (mirrors
@@ -35,7 +36,6 @@ export function DailyOverlay({
   // the copy confirmation is a records moment — one of the rare licences for
   // the tape accent; it self-clears so the button rests in paper again.
   const [copied, setCopied] = useState(false);
-  const [gifCopied, setGifCopied] = useState(false);
   const onShare = async () => {
     // The weekend épreuve (tier 3) lives only on Sat/Sun: /daily/3 bounces to
     // /levels on a weekday, so a shared link opened later dead-ends with no
@@ -51,17 +51,11 @@ export function DailyOverlay({
   };
 
   // the replay GIF exists only once the puzzle's day has fully passed (UTC) —
-  // rendering a still-live daily would spoil it, so the server 403s it.
-  const gifReady = date < utcDay();
+  // rendering a still-live daily would spoil it, so the server 403s it. Same
+  // predicate as the server's gate (isReplayPublic), so the two can't drift.
+  const gifReady = isReplayPublic(date);
   // null when the line is too long for the replay endpoint (see replayLink).
   const gifUrl = trace ? dailyReplayUrl(date, tier, trace) : null;
-  const onShareGif = async () => {
-    if (!gifUrl) return;
-    if ((await shareOrCopy(gifUrl)) === "copied") {
-      setGifCopied(true);
-      setTimeout(() => setGifCopied(false), 2000);
-    }
-  };
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-room/80 backdrop-blur-xs">
@@ -96,17 +90,7 @@ export function DailyOverlay({
           so no surface could honour a "GIF tomorrow" promise. The action
           returns on its own in the grace window (loaded before, solved after
           midnight UTC), where gifReady is already true. */}
-      {gifReady && gifUrl && (
-        <button
-          type="button"
-          onClick={onShareGif}
-          className={`font-mono text-[10px] tracking-[0.14em] uppercase transition-colors ${
-            gifCopied ? "text-tape" : "text-paper/35 hover:text-paper/70"
-          }`}
-        >
-          {gifCopied ? m.replay_gif_copied() : m.replay_gif()}
-        </button>
-      )}
+      {gifReady && gifUrl && <ReplayGifButton url={gifUrl} />}
     </div>
   );
 }
