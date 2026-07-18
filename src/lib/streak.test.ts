@@ -58,3 +58,25 @@ describe("computeStreaks", () => {
     expect(computeStreaks(days, "2026-07-17").current).toBe(0);
   });
 });
+
+// getMyStreak unions the *solved puzzle's* date into the played set — never the
+// server's current utcDay(). These pin that contract: during the grace window a
+// player solves yesterday's puzzle after UTC midnight, and crediting a "today"
+// they never played would inflate the run by one.
+describe("daily streak union (midnight grace window)", () => {
+  it("crediting the solved (yesterday) date does not inflate past the real run", () => {
+    const played = ["2026-07-15", "2026-07-16"]; // last real play: yesterday
+    const solved = "2026-07-16"; // yesterday's puzzle, solved after UTC midnight
+    const today = "2026-07-17";
+    expect(computeStreaks([...played, solved], today).current).toBe(2);
+    // the previous bug unioned `today`, fabricating an unplayed day → +1
+    expect(computeStreaks([...played, today], today).current).toBe(3);
+  });
+
+  it("crediting today's own solve extends the run before the submit lands", () => {
+    const played = ["2026-07-16"]; // yesterday committed; today's submit racing
+    expect(
+      computeStreaks([...played, "2026-07-17"], "2026-07-17").current,
+    ).toBe(2);
+  });
+});

@@ -272,19 +272,38 @@ export const getDailyBoard = createServerFn({ method: "GET" })
 
 /** The signed-in player's current daily streak (consecutive UTC days with at
  *  least one tier solved), for the discreet reminder on the daily win screen.
- *  Today is unioned in so a just-solved day counts even if this read races the
- *  score submit. Zero when signed out — the reminder simply doesn't show. */
-export const getMyStreak = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ current: number }> => {
+ *  Zero when signed out — the reminder simply doesn't show.
+ *
+ *  The client passes the date of the puzzle it just solved (`solved`), and only
+ *  that date is optimistically unioned into the played set, so the reminder is
+ *  right even when this read races the rail's score upsert. We deliberately do
+ *  NOT union the server's current utcDay(): during the grace window a player
+ *  can solve *yesterday's* puzzle after UTC midnight, and unioning "today"
+ *  would credit a day never played — inflating the streak by one. computeStreaks
+ *  already grants a yesterday grace anchor, so no server-side "today" is needed.
+ *  This union is optimistic: it credits the locally-solved day even if the score
+ *  submit later fails; a transient failure resolves on the next solve/retry. */
+export const getMyStreak = createServerFn({ method: "GET" })
+  .validator((data: unknown): { solved: string | null } => {
+    const d = data as { solved?: unknown } | null;
+    if (d?.solved === undefined || d?.solved === null) return { solved: null };
+    // accept only a submittable day (today or yesterday) — never an arbitrary
+    // date the client could inject to fabricate a run
+    if (typeof d.solved !== "string" || !isSubmittableDay(d.solved))
+      throw new Error("invalid date");
+    return { solved: d.solved };
+  })
+  .handler(async ({ data }): Promise<{ current: number }> => {
     const userId = await currentUserId();
     if (!userId) return { current: 0 };
-    const today = utcDay();
     const rows = await db
+      // distinct days played — the same set profileData.historyFor derives (there
+      // with a per-day count); kept separate as this path needs only the dates
       .select({ date: dailyScore.date })
       .from(dailyScore)
       .where(eq(dailyScore.userId, userId))
       .groupBy(dailyScore.date);
     const days = rows.map((r) => r.date);
-    return { current: computeStreaks([...days, today], today).current };
-  },
-);
+    if (data.solved) days.push(data.solved);
+    return { current: computeStreaks(days, utcDay()).current };
+  });

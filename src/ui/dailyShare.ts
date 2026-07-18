@@ -4,7 +4,7 @@
 // puzzle, so this is pure text assembly — no solving here.
 
 import type { Level } from "../engine/types.ts";
-import { eq } from "../engine/grid.ts";
+import { eq, wallSet } from "../engine/grid.ts";
 import { m } from "../paraglide/messages.js";
 
 // palier labels are 1-based roman numerals (tier 0 → palier I); the weekend
@@ -16,13 +16,10 @@ const ROMAN = ["I", "II", "III", "IV"] as const;
 // fuse to white. A few emoji rows — one per board line.
 export function shareGrid(level: Level): string {
   const n = level.size;
-  const walls = new Set<number>();
-  for (const [r, c] of [
-    ...level.a.walls,
-    ...level.b.walls,
-    ...(level.lightWalls ?? []),
-  ])
-    walls.add(r * n + c);
+  const walls = wallSet(
+    [...level.a.walls, ...level.b.walls, ...(level.lightWalls ?? [])],
+    n,
+  );
   const cyan = level.a.goal;
   const magenta = level.b.goal;
   const fused = eq(cyan, magenta);
@@ -70,12 +67,13 @@ export function buildDailyShare({
 }
 
 /** Copy to the clipboard, falling back to a hidden textarea + execCommand where
- *  the async Clipboard API is unavailable or blocked. */
-async function copyText(text: string): Promise<void> {
+ *  the async Clipboard API is unavailable or blocked. Returns whether the copy
+ *  actually landed — a swallowed failure would flash a false "Copié". */
+async function copyText(text: string): Promise<boolean> {
   if (navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(text);
-      return;
+      return true;
     } catch {
       // fall through to the legacy path (e.g. permission or insecure context)
     }
@@ -87,15 +85,21 @@ async function copyText(text: string): Promise<void> {
   document.body.appendChild(ta);
   ta.select();
   try {
-    document.execCommand("copy");
+    // execCommand returns false when the copy is refused; honour it
+    return document.execCommand("copy");
+  } catch {
+    return false;
   } finally {
     document.body.removeChild(ta);
   }
 }
 
 /** Share via the native sheet when present (mobile), else copy. Returns which
- *  path ran so the caller only flashes "copied" when nothing else was shown. */
-export async function shareOrCopy(text: string): Promise<"shared" | "copied"> {
+ *  path ran so the caller only flashes "copied" on a real copy — "failed" when
+ *  the clipboard refused, so the UI stays sober rather than lying. */
+export async function shareOrCopy(
+  text: string,
+): Promise<"shared" | "copied" | "failed"> {
   if (typeof navigator.share === "function") {
     try {
       await navigator.share({ text });
@@ -106,6 +110,5 @@ export async function shareOrCopy(text: string): Promise<"shared" | "copied"> {
       // any other failure (no permission, unsupported payload): fall to copy
     }
   }
-  await copyText(text);
-  return "copied";
+  return (await copyText(text)) ? "copied" : "failed";
 }

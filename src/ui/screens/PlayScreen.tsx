@@ -147,20 +147,22 @@ export function PlayScreen({
   const game = useGame(level, fx, onWin, onHintedWin);
 
   // The current daily streak, for the discreet reminder on the win overlay.
-  // Fetched once the daily is solved (the server unions today, so it's correct
-  // whether or not the rail's score submit has landed yet). Zero when signed out.
+  // Fetched once the daily is solved. We pass the solved puzzle's date so the
+  // server optimistically credits it even if the rail's score submit hasn't
+  // landed yet — without inflating the run by crediting the server's "today".
+  // Zero when signed out.
   const [streak, setStreak] = useState(0);
-  const solvedDaily = !!daily && game.solved;
+  const solvedDate = daily && game.solved ? daily.date : null;
   useEffect(() => {
-    if (!solvedDaily) return;
+    if (!solvedDate) return;
     let alive = true;
-    getMyStreak()
+    getMyStreak({ data: { solved: solvedDate } })
       .then((s) => alive && setStreak(s.current))
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [solvedDaily]);
+  }, [solvedDate]);
 
   // First-encounter tutorial: on the level's first newest-mechanic, the player
   // performs its signature gesture on rails on the ideal sandbox, captured at

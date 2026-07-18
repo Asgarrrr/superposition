@@ -11,6 +11,10 @@ import { buildDailyShare, shareOrCopy } from "../dailyShare.ts";
 import { dailyReplayUrl } from "../replayLink.ts";
 import { Wordmark } from "./Wordmark.tsx";
 
+// the weekend épreuve tier — its /daily route exists only on Sat/Sun (mirrors
+// the server's WEEKEND_TIER, kept local so this client view pulls no server code)
+const WEEKEND_TIER = 3;
+
 export function DailyOverlay({
   level,
   date,
@@ -33,7 +37,12 @@ export function DailyOverlay({
   const [copied, setCopied] = useState(false);
   const [gifCopied, setGifCopied] = useState(false);
   const onShare = async () => {
-    const url = `${window.location.origin}/daily/${tier}`;
+    // The weekend épreuve (tier 3) lives only on Sat/Sun: /daily/3 bounces to
+    // /levels on a weekday, so a shared link opened later dead-ends with no
+    // explanation. Point it at the game root instead — the perishable route is
+    // fine for the live campaign tiers (0–2), which resolve any day.
+    const origin = window.location.origin;
+    const url = tier === WEEKEND_TIER ? origin : `${origin}/daily/${tier}`;
     const text = buildDailyShare({ level, date, tier, moves, optimal, url });
     if ((await shareOrCopy(text)) === "copied") {
       setCopied(true);
