@@ -21,6 +21,16 @@ export const auth = betterAuth({
     schema: { user, session, account, verification },
   }),
   emailAndPassword: { enabled: true },
+  advanced: {
+    ipAddress: {
+      // Railway's edge strips any client-supplied X-Forwarded-For and appends
+      // the connecting IP, with its internal hops in the CGNAT range. Trusting
+      // that range lets the rate limiter walk the chain from the right past
+      // Railway's hops to the real (unspoofable) client IP — without this it
+      // refuses multi-hop chains and falls back to one shared bucket per path.
+      trustedProxies: ["100.0.0.0/8"],
+    },
+  },
   // tanstackStartCookies MUST stay LAST: it wraps the response to flush
   // Set-Cookie through @tanstack/react-start-server. A plugin registered after
   // it would run before cookies are written and break the session.
