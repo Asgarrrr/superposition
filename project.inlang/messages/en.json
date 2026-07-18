@@ -36,7 +36,8 @@
   "controls_world": "⇄ world",
   "controls_arm": " · which way?",
   "controls_demo": "↻ demo",
-  "demo_skip": "press to skip",
+  "controls_demo_tag": "demo",
+  "demo_skip": "skip demo",
   "win_stamp": "Ready to print",
   "win_summary": [
     {

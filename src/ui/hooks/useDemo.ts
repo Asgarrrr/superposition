@@ -1,23 +1,22 @@
-// Playing a first-encounter demo, and remembering which ones were seen.
-// The player drives a Demo's pre-computed steps on a timer and exposes the
-// current frame as a plain game state plus the bump/bloom pulses Board already
-// consumes — so a demo renders through the real Board in `ghost` mode and can't
-// look different from live play. All the rules come from the engine (demoSteps).
+// The first-encounter tutorial: on the ideal sandbox board, the player performs
+// the mechanic's signature gesture themselves, on rails — only the scripted
+// gesture advances, guided by a lit-up control and an on-board caption. State,
+// feedback (bump/bloom) and sound mirror real play so it renders through the
+// real Board; the scripted steps come from the engine (demoSteps).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { GameState, Level } from "../../engine/types.ts";
+import type { GameState, Level, Pos } from "../../engine/types.ts";
 import { type Demo, demoSteps } from "../demos.ts";
-import { reducedMotion } from "../motion.ts";
+import { vibrate } from "../haptics.ts";
+import type { SoundFx } from "./useSound.ts";
 import type { Pulse } from "./useGame.ts";
 
 const SEEN_KEY = "superposition.demos-seen";
+const HOLD = 1200; // let the last gesture's payoff settle before handing over
 
-// pacing (ms): a beat to let the board settle, one per played step, a last hold
-const INTRO = 650;
-const PACE = 950;
-const HOLD = 1100;
+const eqDir = (a: Pos, b: Pos) => a[0] === b[0] && a[1] === b[1];
 
-/** Ids of demos already auto-played, persisted so they don't replay by default. */
+/** Ids of demos already played, persisted so they don't replay by default. */
 export function useSeenDemos() {
   const [seen, setSeen] = useState<string[]>(() => {
     try {
@@ -42,73 +41,129 @@ export function useSeenDemos() {
   return { seen, markSeen };
 }
 
-interface DemoView {
+/** Which control to light up next. `arm`: the ✕/world control must be pressed
+ *  first; `dir`: the arrow to press (after arming, or for a plain move). */
+export interface DemoGuidance {
+  arm: boolean;
+  dir: Pos | null;
+}
+
+interface GuidedDemo {
   active: boolean;
   level: Level | null;
   st: GameState | null;
+  armed: boolean;
   bump: Pulse | null;
   bloom: Pulse | null;
+  guidance: DemoGuidance;
+  press: (dir: Pos, alt?: boolean) => void;
+  arm: () => void;
   skip: () => void;
 }
 
-/** Play `demo` (null = idle), calling `onDone` when it ends or is skipped. */
-export function useDemoPlayer(demo: Demo | null, onDone: () => void): DemoView {
+/** Play `demo` (null = idle) as an on-rails tutorial, calling `onDone` when the
+ *  last gesture is performed or the player skips. */
+export function useGuidedDemo(
+  demo: Demo | null,
+  fx: SoundFx,
+  onDone: () => void,
+): GuidedDemo {
   const steps = useMemo(() => (demo ? demoSteps(demo).steps : []), [demo]);
-  const [idx, setIdx] = useState(-1); // -1 = the start frame, before any step
-  const [pulse, setPulse] = useState<{
-    bump: Pulse | null;
-    bloom: Pulse | null;
-  }>({
-    bump: null,
-    bloom: null,
-  });
+  const [idx, setIdx] = useState(0);
+  const [st, setSt] = useState<GameState | null>(demo?.start ?? null);
+  const [armed, setArmed] = useState(false);
+  const [bump, setBump] = useState<Pulse | null>(null);
+  const [bloom, setBloom] = useState<Pulse | null>(null);
   const done = useRef(onDone);
   done.current = onDone;
+  const finish = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  // reset whenever the demo changes (new level, replay, or cleared)
   useEffect(() => {
-    if (!demo) return;
-    // reduced motion: no animated demo — hand straight back to real play
-    if (reducedMotion) {
-      done.current();
-      return;
-    }
-    setIdx(-1);
-    setPulse({ bump: null, bloom: null });
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    let i = -1;
-    const advance = () => {
-      i += 1;
-      if (i >= steps.length) {
-        timers.push(setTimeout(() => done.current(), HOLD));
-        return;
-      }
-      const s = steps[i];
-      setIdx(i);
-      if (s.blocked) {
-        setPulse({
-          bump: { payload: s.input.dir, t: Date.now() },
-          bloom: null,
-        });
-      } else if (s.merged && s.state.merged) {
-        setPulse({ bump: null, bloom: { payload: s.state.m, t: Date.now() } });
+    clearTimeout(finish.current);
+    setIdx(0);
+    setSt(demo?.start ?? null);
+    setArmed(false);
+    setBump(null);
+    setBloom(null);
+    return () => clearTimeout(finish.current);
+  }, [demo]);
+
+  const step = demo && idx < steps.length ? steps[idx] : null;
+  const expected = step?.input ?? null;
+  const needsArm = expected?.kind === "split" || expected?.kind === "shift";
+
+  const guidance: DemoGuidance = !expected
+    ? { arm: false, dir: null }
+    : needsArm && !armed
+      ? { arm: true, dir: null }
+      : { arm: false, dir: expected.dir };
+
+  const accept = useCallback(() => {
+    const s = steps[idx];
+    if (!s || !demo) return;
+    setSt(s.state);
+    setArmed(false);
+    // feedback + sound, mirroring useGame's vocabulary
+    if (s.blocked) {
+      setBump({ payload: s.input.dir, t: Date.now() });
+      setBloom(null);
+      fx.block();
+      vibrate(25);
+    } else {
+      setBump(null);
+      if (s.merged && s.state.merged) {
+        setBloom({ payload: s.state.m, t: Date.now() });
+        fx.merge();
+        vibrate([10, 20, 40]);
       } else {
-        setPulse({ bump: null, bloom: null });
+        setBloom(null);
+        if (s.input.kind === "split") {
+          fx.split();
+          vibrate([15, 30, 15]);
+        } else if (s.input.kind === "shift") {
+          fx.shift();
+          vibrate(40);
+        } else if (demo.level.mods.includes("glace")) {
+          fx.slide();
+        } else {
+          fx.move();
+        }
       }
-      timers.push(setTimeout(advance, PACE));
-    };
-    timers.push(setTimeout(advance, INTRO));
-    return () => timers.forEach(clearTimeout);
-  }, [demo, steps]);
+    }
+    const next = idx + 1;
+    setIdx(next);
+    if (next >= steps.length) {
+      finish.current = setTimeout(() => done.current(), HOLD);
+    }
+  }, [demo, fx, idx, steps]);
+
+  // `alt` (Shift+arrow, or a swipe while armed) arms and plays in one gesture,
+  // so the secondary action works from the keyboard, not only the ✕ button.
+  const press = useCallback(
+    (dir: Pos, alt = false) => {
+      if (!expected || (needsArm && !armed && !alt)) return;
+      if (eqDir(expected.dir, dir)) accept();
+    },
+    [accept, armed, expected, needsArm],
+  );
+
+  const arm = useCallback(() => {
+    if (needsArm && !armed) setArmed(true);
+  }, [armed, needsArm]);
 
   const skip = useCallback(() => done.current(), []);
-  const st = demo ? (idx < 0 ? demo.start : steps[idx].state) : null;
 
   return {
     active: !!demo,
     level: demo?.level ?? null,
     st,
-    bump: pulse.bump,
-    bloom: pulse.bloom,
+    armed,
+    bump,
+    bloom,
+    guidance,
+    press,
+    arm,
     skip,
   };
 }

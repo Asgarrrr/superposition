@@ -16,7 +16,7 @@ import { LevelBoard } from "../components/LevelBoard.tsx";
 import { Room } from "../components/Room.tsx";
 import { WinOverlay } from "../components/WinOverlay.tsx";
 import { DailyOverlay } from "../components/DailyOverlay.tsx";
-import { useDemoPlayer, useSeenDemos } from "../hooks/useDemo.ts";
+import { useGuidedDemo, useSeenDemos } from "../hooks/useDemo.ts";
 import { useGame } from "../hooks/useGame.ts";
 import { useKeyboard } from "../hooks/useKeyboard.ts";
 import type { SoundFx } from "../hooks/useSound.ts";
@@ -103,9 +103,9 @@ export function PlayScreen({
 }) {
   const game = useGame(level, fx, onWin);
 
-  // First-encounter demo: the board plays the level's newest mechanic once,
-  // captured at mount (the screen remounts per level). While it runs, any input
-  // skips it instead of moving. Daily mode is expert — no demos there.
+  // First-encounter tutorial: on the level's first newest-mechanic, the player
+  // performs its signature gesture on rails on the ideal sandbox, captured at
+  // mount (the screen remounts per level). Daily mode is expert — no demos.
   const { seen, markSeen } = useSeenDemos();
   const [demo, setDemo] = useState<Demo | null>(() =>
     daily ? null : pickDemo(level, seen),
@@ -116,30 +116,39 @@ export function PlayScreen({
       return null;
     });
   }, [markSeen]);
-  const player = useDemoPlayer(demo, onDemoDone);
-  const demoActive = player.active;
+  const guided = useGuidedDemo(demo, fx, onDemoDone);
+  const demoActive = guided.active;
   const replayDemo = daily ? null : levelDemo(level);
 
+  // during the tutorial the real controls drive the sandbox on rails
   const play = (d: Pos, alt = false) => {
-    if (demoActive) return player.skip();
+    if (demoActive) return guided.press(d, alt);
     game.play(d, alt);
   };
+  const toggleAlt = () => (demoActive ? guided.arm() : game.toggleAlt());
   const swipe = useSwipe(play);
 
   useKeyboard({
     play,
-    undo: game.undo,
-    reset: game.reset,
-    toggleAlt: game.toggleAlt,
+    undo: () => !demoActive && game.undo(),
+    reset: () => !demoActive && game.reset(),
+    toggleAlt,
     exit: onExit,
     next: () => {
-      if (game.solved) onNext?.();
+      if (!demoActive && game.solved) onNext?.();
     },
   });
 
   const altLabel = game.st.merged
     ? m.controls_split()
     : level.mods.includes("decalage")
+      ? m.controls_world()
+      : null;
+
+  // the alt control the tutorial expects, from the sandbox state/mechanic
+  const guidedAltLabel = guided.st?.merged
+    ? m.controls_split()
+    : demo?.level.mods.includes("decalage")
       ? m.controls_world()
       : null;
 
@@ -197,19 +206,33 @@ export function PlayScreen({
           className="xl:col-start-2 xl:row-start-2 xl:pt-4"
           variants={vBoard}
         >
-          {demoActive && player.st && player.level ? (
-            // the demo plays through the real Board in ghost mode; a touch skips
+          {demoActive && guided.st && guided.level ? (
+            // the tutorial runs through the real Board; the player drives it on
+            // rails, with an on-board caption naming the gesture
             <Board
-              ghost
-              level={player.level}
-              st={player.st}
+              demo
+              level={guided.level}
+              st={guided.st}
               solved={false}
-              bump={player.bump}
-              bloom={player.bloom}
+              bump={guided.bump}
+              bloom={guided.bloom}
+              armed={guided.armed}
               iceTrailA={null}
               iceTrailB={null}
               {...swipe}
-            />
+            >
+              <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
+                <div
+                  className="flex max-w-[88%] items-center gap-2 rounded-xs px-3 py-1.5 text-center font-display text-[13px] leading-snug tracking-[0.01em] text-paper/85"
+                  style={{ background: "rgba(18,16,14,0.78)" }}
+                >
+                  <span className="shrink-0 rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
+                    {m.controls_demo_tag()}
+                  </span>
+                  {ruleLine(guided.st, guided.level)}
+                </div>
+              </div>
+            </Board>
           ) : (
             <Board
               level={level}
@@ -242,9 +265,26 @@ export function PlayScreen({
           variants={vControls}
         >
           {demoActive ? (
-            <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/40">
-              {m.demo_skip()}
-            </div>
+            <>
+              <div className="mt-3.5 min-h-[30px]" />
+              <Controls
+                altLabel={guidedAltLabel}
+                altArmed={guided.armed}
+                onDir={play}
+                onToggleAlt={toggleAlt}
+                onUndo={() => {}}
+                onReset={() => {}}
+                guiding
+                highlight={guided.guidance}
+              />
+              <button
+                type="button"
+                onClick={guided.skip}
+                className="mt-3 font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
+              >
+                {m.demo_skip()}
+              </button>
+            </>
           ) : (
             <>
               <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28">

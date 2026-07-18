@@ -105,6 +105,21 @@
   animation: sp-ghost 1.4s ease-in-out infinite;
 }
 
+/* tutoriel guidé : le contrôle attendu respire dans un halo tape pour attirer
+   l'œil, sans bouger la mise en page (halo par box-shadow). */
+@keyframes sp-guide {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(232, 184, 75, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(232, 184, 75, 0.3);
+  }
+}
+.sp-guide {
+  animation: sp-guide 1.3s ease-in-out infinite;
+}
+
 /* grab-knob idle pulse — CSS so it can't be reset by React re-renders /
    StrictMode remounts the way a JS repeat animation was */
 @keyframes sp-knob-pulse {

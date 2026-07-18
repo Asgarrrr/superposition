@@ -21,7 +21,7 @@ export function Board({
   bump,
   bloom,
   armed = false,
-  ghost = false,
+  demo = false,
   iceTrailA,
   iceTrailB,
   onTouchStart,
@@ -34,7 +34,7 @@ export function Board({
   bump: Pulse | null;
   bloom: Pulse | null;
   armed?: boolean; // ✕ armed on a merged pawn: preview where the split sends each ink
-  ghost?: boolean; // demo playback: dim the whole box so it reads as a phantom
+  demo?: boolean; // tutorial sandbox: frame the box in tape so it reads apart
   iceTrailA: { from: Pos } | null;
   iceTrailB: { from: Pos } | null;
   onTouchStart: (e: React.TouchEvent) => void;
@@ -93,6 +93,10 @@ export function Board({
     "inset 0 0 0 1px rgba(242,237,228,0.03), " +
     "inset 0 1px 0 rgba(242,237,228,0.05), " +
     "0 1px 2px rgba(0,0,0,0.35), 0 6px 18px rgba(0,0,0,0.22)";
+  // the tutorial sandbox wears a tape frame so it can't be mistaken for a level
+  const frame = demo
+    ? "inset 0 0 0 2px rgba(232,184,75,0.55), 0 0 22px rgba(232,184,75,0.12), "
+    : "";
 
   return (
     <motion.div
@@ -104,11 +108,9 @@ export function Board({
         background:
           "radial-gradient(ellipse 80% 80% at 50% 50%, var(--color-box-glow), var(--color-box) 80%)",
         boxShadow: st.merged
-          ? `inset 0 0 90px rgba(242,237,228,0.06), ${drop}`
-          : `inset 0 0 70px rgba(69,224,236,0.04), inset 0 0 70px rgba(255,79,163,0.04), ${drop}`,
-        // demo playback reads as a phantom pass: the whole box sits back
-        opacity: ghost ? 0.62 : 1,
-        transition: "box-shadow 500ms, opacity 500ms",
+          ? `${frame}inset 0 0 90px rgba(242,237,228,0.06), ${drop}`
+          : `${frame}inset 0 0 70px rgba(69,224,236,0.04), inset 0 0 70px rgba(255,79,163,0.04), ${drop}`,
+        transition: "box-shadow 500ms",
       }}
     >
       <InkLayer

@@ -1,8 +1,8 @@
-// First-encounter demos: at the first level that introduces a mechanic, the
-// board plays it once with phantom pawns before handing over. Each demo is a
-// synthetic open board + a start state + an input sequence, run through the
-// SAME engine the game and solver share — so a demo can never show a rule the
-// engine wouldn't actually apply. Rendering reuses Board in `ghost` mode.
+// First-encounter tutorials: at the first level that introduces a mechanic, the
+// player performs its signature gesture on the ideal sandbox board, on rails.
+// Each demo is a synthetic open board + a start state + the scripted input
+// sequence, run through the SAME engine the game and solver share — so the
+// tutorial can never ask for a gesture the engine wouldn't actually apply.
 
 import type {
   GameState,
@@ -54,13 +54,12 @@ export const DEMOS: Demo[] = [
       size: 5,
       mods: ["fusion", "scission"],
       a: { start: [1, 0], goal: [0, 0], walls: [] },
-      b: { start: [1, 2], goal: [0, 0], walls: [] },
+      b: { start: [1, 1], goal: [0, 0], walls: [] },
     }),
-    start: { merged: false, a: [1, 0], b: [1, 2], off: [0, 0] },
+    start: { merged: false, a: [1, 0], b: [1, 1], off: [0, 0] },
     inputs: [
-      { kind: "move", dir: L },
-      { kind: "move", dir: L },
-      { kind: "split", dir: D },
+      { kind: "move", dir: L }, // one push: the edge holds cyan, magenta joins → white
+      { kind: "split", dir: D }, // then split: cyan down, magenta up
     ],
   },
   // lumiere: the white pawn is stopped by the light square, then the inks glide
@@ -77,9 +76,8 @@ export const DEMOS: Demo[] = [
     }),
     start: { merged: true, m: [1, 1], off: [0, 0] },
     inputs: [
-      { kind: "move", dir: R }, // blocked by the light square at [1,2]
+      { kind: "move", dir: R }, // blocked by the light square at [1,2]: feel the wall
       { kind: "split", dir: R }, // cyan lands ON the light cell — inks pass through
-      { kind: "move", dir: R },
     ],
   },
   // glace: one push and both inks slide the length of the row until a wall stops
