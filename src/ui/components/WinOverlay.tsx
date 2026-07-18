@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { TraceStep } from "../../engine/types.ts";
+import { LEVELS } from "../../engine/levels.ts";
 import { Wordmark } from "./Wordmark.tsx";
 import { m } from "../../paraglide/messages.js";
 import { shareOrCopy } from "../dailyShare.ts";
@@ -24,9 +25,12 @@ export function WinOverlay({
 }) {
   // the copy confirmation is a records moment — one of the rare tape licences
   const [copied, setCopied] = useState(false);
+  // The replay URL carries the level's stable id, not its 1-based number, so a
+  // reordered bank can't break shared links (see replayLink / render.ts).
   // null when the line is too long for the replay endpoint (see replayLink) —
   // the action is then absent, like a hinted run's.
-  const gifUrl = trace ? campaignReplayUrl(plate, trace) : null;
+  const level = LEVELS[plate - 1];
+  const gifUrl = trace && level ? campaignReplayUrl(level.id, trace) : null;
   const onShareGif = async () => {
     if (!gifUrl) return;
     if ((await shareOrCopy(gifUrl)) === "copied") {

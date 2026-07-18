@@ -179,18 +179,23 @@ async function replayGif(
   return gifResponse(gif);
 }
 
-/** Resolves the campaign level for a canonical 1-based plate, or null. */
-function campaignLevel(plate: string): Level | null {
-  const idx = Number(plate) - 1;
-  const level = LEVELS[idx];
-  // reject non-canonical forms ("01", "1e1", "0x1") Number() would accept
-  if (!level || String(idx + 1) !== plate) return null;
-  return level;
+// Campaign levels keyed by their stable id (levels.ts: `accord`, `retenue`…),
+// built once. The URL carries this id, not a positional index into LEVELS, so
+// reordering or inserting into the bank can never break or mis-resolve a link
+// that's already been shared (and served with a one-year immutable cache).
+const CAMPAIGN_BY_ID: Map<string, Level> = new Map(
+  LEVELS.map((level) => [level.id, level]),
+);
+
+/** Resolves the campaign level for a stable id, or null. Ids are never purely
+ *  numeric (locked by a test), so an old positional URL like `c/1/…` misses. */
+export function campaignLevel(id: string): Level | null {
+  return CAMPAIGN_BY_ID.get(id) ?? null;
 }
 
 /**
  * Renders the replay GIF for a splat path. Two shapes:
- *   c/<plate>/<trace>.gif        campaign — always renderable
+ *   c/<id>/<trace>.gif           campaign — always renderable (id: levels.ts)
  *   d/<date>/<tier>/<trace>.gif  daily — only once the puzzle's day is past
  *                                (UTC), else 403, so a fresh daily can't be
  *                                spoiled.

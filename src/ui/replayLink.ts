@@ -14,12 +14,12 @@ import {
 // null → 404), so the URL would be dead. Return null instead and let the UI
 // drop the action — no dead link, no false "copied".
 export function campaignReplayUrl(
-  plate: number,
+  levelId: string,
   trace: TraceStep[],
 ): string | null {
   const line = winningLine(trace);
   if (line.length > MAX_REPLAY_STEPS) return null;
-  return `${window.location.origin}/api/replay/c/${plate}/${encodeTrace(line)}.gif`;
+  return `${window.location.origin}/api/replay/c/${levelId}/${encodeTrace(line)}.gif`;
 }
 
 /** Daily replay GIF for a (date, tier). The endpoint only serves it once the

@@ -1,7 +1,7 @@
 // Animated-GIF replay of a solve (/api/replay/…). The splat carries the level
 // identity and the compact, engine-validated move line; the win overlays point
 // share actions here. Two shapes, parsed server-side:
-//   /api/replay/c/<plate>/<trace>.gif        campaign
+//   /api/replay/c/<id>/<trace>.gif           campaign (id: stable level id)
 //   /api/replay/d/<date>/<tier>/<trace>.gif  daily (only once its day is past)
 //
 // All the rendering (resvg, the DB for daily, the hand-rolled GIF encoder) lives
