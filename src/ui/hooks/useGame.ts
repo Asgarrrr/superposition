@@ -17,6 +17,7 @@ import { m } from "../../paraglide/messages.js";
 import { altGesture } from "../altGesture.ts";
 import { vibrate } from "../haptics.ts";
 import { inputSignature } from "../signatures.ts";
+import type { Solve } from "../submissionPolicy.ts";
 import type { SoundFx } from "./useSound.ts";
 
 export interface Pulse {
@@ -41,10 +42,11 @@ export function useGame(
   const [bump, setBump] = useState<Pulse | null>(null);
   const [bloom, setBloom] = useState<Pulse | null>(null);
   const [trails, setTrails] = useState<IceTrails>({ a: null, b: null });
-  // the full raw event trace (inputs + undo/reset), exposed once solved so the
-  // leaderboard rail can replay it and count corrections (a clean solve has
-  // none). Unlike `inputs`, it is NEVER popped — corrections stay on the record.
-  const [wonTrace, setWonTrace] = useState<TraceStep[]>([]);
+  // the solve as one value, produced at the win edge: the full raw event trace
+  // (inputs + undo/reset — unlike `inputs`, it is NEVER popped, corrections
+  // stay on the record) plus the winning line's move count, both derived from
+  // the same history so they can't diverge. Null until solved.
+  const [solve, setSolve] = useState<Solve | null>(null);
   const history = useRef<GameState[]>([]);
   // mirror of `history`: the exact inputs applied, popped on undo
   const inputs = useRef<Input[]>([]);
@@ -94,7 +96,7 @@ export function useGame(
     if (isWin(next, level)) {
       fx.win();
       vibrate([30, 60, 30]);
-      setWonTrace(trace.current.slice());
+      setSolve({ trace: trace.current.slice(), moves: history.current.length });
       onWin?.(history.current.length);
       stampTimer.current = setTimeout(() => fx.stamp(), 650);
     }
@@ -110,7 +112,7 @@ export function useGame(
     setMoves((m) => m - 1);
     setAltArmed(false);
     setTrails({ a: null, b: null });
-    setWonTrace([]); // undoing leaves the won state
+    setSolve(null); // undoing leaves the won state
   };
 
   const reset = () => {
@@ -126,7 +128,7 @@ export function useGame(
     setTrails({ a: null, b: null });
     history.current = [];
     inputs.current = [];
-    setWonTrace([]);
+    setSolve(null);
   };
 
   return {
@@ -140,7 +142,7 @@ export function useGame(
     bloom,
     iceTrailA: trails.a,
     iceTrailB: trails.b,
-    wonTrace,
+    solve,
     play,
     undo,
     reset,

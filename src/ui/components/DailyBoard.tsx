@@ -8,22 +8,19 @@ import type { TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { LeaderboardRail } from "./LeaderboardRail.tsx";
 import type { BoardSource } from "./LeaderboardRail.tsx";
+import type { Solve } from "../submissionPolicy.ts";
 import { getDailyBoard, submitDailyScore } from "../../server/daily.ts";
 
 export function DailyBoard({
   date,
   tier,
-  solved,
-  moves,
-  wonTrace,
+  solve,
   className = "",
   variants,
 }: {
   date: string;
   tier: number;
-  solved: boolean;
-  moves: number;
-  wonTrace: TraceStep[];
+  solve: Solve | null;
   className?: string;
   variants?: Variants;
 }) {
@@ -46,9 +43,7 @@ export function DailyBoard({
   return (
     <LeaderboardRail
       source={source}
-      solved={solved}
-      moves={moves}
-      wonTrace={wonTrace}
+      solve={solve}
       className={className}
       variants={variants}
     />

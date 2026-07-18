@@ -390,18 +390,14 @@ export function PlayScreen({
           <DailyBoard
             date={daily.date}
             tier={daily.tier}
-            solved={game.solved}
-            moves={game.moves}
-            wonTrace={game.wonTrace}
+            solve={game.solve}
             className={boardRailClass}
             variants={vRightRail}
           />
         ) : (
           <LevelBoard
             levelId={level.id}
-            solved={game.solved}
-            moves={game.moves}
-            wonTrace={game.wonTrace}
+            solve={game.solve}
             className={boardRailClass}
             variants={vRightRail}
           />

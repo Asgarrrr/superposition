@@ -1,10 +1,12 @@
 // The leaderboard rail shown beside the board during play. One rail, two callers:
 // the campaign (LevelBoard) and the daily (DailyBoard) differ only in where the
 // board is read from, where a score is posted, and its labels — passed in as a
-// `source`. The rail owns the shared logic: read the public board on mount,
-// auto-submit the winning trace on the solve edge (the server derives moves +
-// corrections from it), a sign-in gate (AuthPanel), and the standing footer.
-// Reading never needs an account.
+// `source`. The rail owns the shared React wiring: read the public board on
+// mount, a sign-in gate (AuthPanel), and the standing footer. WHETHER a solve
+// is posted — once per solve, best result per account, no trace laundering
+// across accounts — is decided by the pure policy in submissionPolicy.ts; the
+// rail only feeds it events and executes its decisions (the server derives
+// moves + corrections from the raw trace). Reading never needs an account.
 
 import { useEffect, useRef, useState } from "react";
 import { motion, type Variants } from "motion/react";
@@ -13,6 +15,12 @@ import { m } from "../../paraglide/messages.js";
 import { AuthPanel } from "./AuthPanel.tsx";
 import { LeaderboardRows } from "./LeaderboardRows.tsx";
 import { useSession } from "../../lib/auth-client.ts";
+import {
+  decideSubmission,
+  initialSubmission,
+  type Solve,
+  type SubmissionEvent,
+} from "../submissionPolicy.ts";
 import type {
   BoardData,
   LeaderRow,
@@ -33,16 +41,12 @@ type Phase = "idle" | "submitting" | "error";
 
 export function LeaderboardRail({
   source,
-  solved,
-  moves,
-  wonTrace,
+  solve,
   className = "",
   variants,
 }: {
   source: BoardSource;
-  solved: boolean;
-  moves: number; // the winning line's move count (for the resubmit guard)
-  wonTrace: TraceStep[];
+  solve: Solve | null; // the win, once it happens (a fresh object per solve)
   className?: string;
   variants?: Variants; // develop-in: inherits the parent's hidden→visible label
 }) {
@@ -55,35 +59,41 @@ export function LeaderboardRail({
   const [mine, setMine] = useState<MyResult | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [authOpen, setAuthOpen] = useState(false);
-  // bumped by the error footer to re-fire the submit effect: a failed post has
-  // no other trigger (its deps don't change when the network recovers), so
-  // without this a transient failure would strand the score until a remount.
-  const [retry, setRetry] = useState(0);
-  // the best result we've already posted, per signed-in account: fewest moves,
-  // then fewest corrections. An improved in-session solve re-posts, a worse or
-  // equal one doesn't, and a fresh sign-in posts even at the same result.
-  // Restored on failure so the next attempt retries.
-  const submitted = useRef<{
-    uid: string;
-    moves: number;
-    undos: number;
-  } | null>(null);
+  // the policy's memory (what was posted, by whom) — a ref, not state: it must
+  // survive sign-outs unchanged and never itself cause a render
+  const policy = useRef(initialSubmission);
 
   // close the sign-in gate as soon as a session lands
   useEffect(() => {
     if (uid) setAuthOpen(false);
   }, [uid]);
 
-  // the latest winning result, readable from the submit effect WITHOUT being a
-  // dependency — so submission fires on the solve edge, not on every move
-  const latest = useRef({ moves, wonTrace });
-  latest.current = { moves, wonTrace };
-  const wasSolved = useRef(false);
-
   const apply = (b: BoardData) => {
     setOptimal(b.optimal);
     setRows(b.rows);
     setMine(b.mine);
+  };
+
+  // feed one event to the policy and execute its decision; success/failure
+  // loop back in as events so the policy sees the whole submission lifecycle
+  const dispatch = (event: SubmissionEvent) => {
+    const { state, submit: payload } = decideSubmission(policy.current, event);
+    policy.current = state;
+    if (!payload) return;
+    setPhase("submitting");
+    void (async () => {
+      try {
+        await submit(payload);
+      } catch {
+        dispatch({ kind: "failed" });
+        setPhase("error");
+        return;
+      }
+      dispatch({ kind: "submitted" });
+      setPhase("idle");
+      const b = await read().catch(() => null);
+      if (b) apply(b);
+    })();
   };
 
   // read the public board when the session resolves, the account changes, or
@@ -101,51 +111,19 @@ export function LeaderboardRail({
     };
   }, [isPending, uid, read]);
 
-  // submit when this session's player just solved, or when a signed-in account
-  // first claims a solve that nobody has posted yet — a player who solved signed
-  // out and then signed in, or whose session only just resolved after the win.
-  // A solve already posted (`submitted` is set and survives a sign-out) is never
-  // re-posted under a different account, so switching or re-authenticating can't
-  // launder the prior player's trace. Best result per account wins: fewer moves,
-  // then fewer corrections; a worse re-solve doesn't repost. Refresh after.
+  // policy events: the solve edge (each win is a new object; null = undone) …
   useEffect(() => {
-    const justSolved = solved && !wasSolved.current;
-    wasSolved.current = solved;
-    if (isPending || !uid) return;
-    if (!justSolved && !(solved && !submitted.current)) return;
+    dispatch({ kind: "solve", solve });
+    // dispatch is recreated per render but only closes over stable refs/setters
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [solve]);
 
-    const { moves: mv, wonTrace: trace } = latest.current;
-    if (!trace.length) return;
-    const undos = trace.filter(
-      (s) => s.kind === "undo" || s.kind === "reset",
-    ).length;
-    const prev = submitted.current;
-    const freshAccount = !prev || prev.uid !== uid;
-    const improved =
-      !!prev &&
-      prev.uid === uid &&
-      (mv < prev.moves || (mv === prev.moves && undos < prev.undos));
-    if (!(freshAccount || improved)) return;
-
-    let alive = true;
-    submitted.current = { uid, moves: mv, undos };
-    setPhase("submitting");
-    void (async () => {
-      try {
-        await submit(trace);
-        if (alive) setPhase("idle");
-      } catch {
-        submitted.current = prev; // restore so the next attempt retries
-        if (alive) setPhase("error");
-        return;
-      }
-      const b = await read().catch(() => null);
-      if (alive && b) apply(b);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [isPending, uid, solved, read, submit, retry]);
+  // … and the session resolving or changing accounts
+  useEffect(() => {
+    if (isPending) return;
+    dispatch({ kind: "session", uid: uid ?? null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPending, uid]);
 
   return (
     <motion.aside
@@ -184,7 +162,7 @@ export function LeaderboardRail({
             <button
               type="button"
               className="btn border-none p-0 text-[11px] text-ink-magenta transition-opacity hover:opacity-70"
-              onClick={() => setRetry((r) => r + 1)}
+              onClick={() => dispatch({ kind: "retry" })}
             >
               {m.daily_submit_error()}
             </button>
