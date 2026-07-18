@@ -78,7 +78,7 @@ export function useGame(
       return;
     }
     // a merge is the headline event — announce it even when a shift caused it
-    if (!st.merged && next.merged) {
+    if (sig.fx === "merge") {
       setBloom({ payload: next.m, t: Date.now() });
       setTimeout(() => setBloom(null), 600);
     }

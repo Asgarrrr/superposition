@@ -1,42 +1,56 @@
 // BFS solver — knows NO rules: it consumes only
 // successors/isWin/hashState. Any game/solver divergence is impossible.
 
-import type { GameState, Input, Level, MechanicId } from '../engine/types.ts'
-import { hashState, initialState, isWin } from '../engine/state.ts'
-import { successors } from '../engine/successors.ts'
+import type { GameState, Input, Level, MechanicId } from "../engine/types.ts";
+import { hashState, initialState, isWin } from "../engine/state.ts";
+import { successors } from "../engine/successors.ts";
+import { MECHANICS } from "../engine/mechanics/registry.ts";
 
 export interface Solution {
-  inputs: Input[]
+  inputs: Input[];
 }
 
 export function solve(level: Level, maxDepth = 80): Solution | null {
-  const start = initialState(level)
-  if (isWin(start, level)) return { inputs: [] }
-  let frontier: [GameState, Input[]][] = [[start, []]]
-  const seen = new Set<number>([hashState(start, level)])
+  const start = initialState(level);
+  if (isWin(start, level)) return { inputs: [] };
+  let frontier: [GameState, Input[]][] = [[start, []]];
+  const seen = new Set<number>([hashState(start, level)]);
   for (let depth = 0; depth < maxDepth; depth++) {
-    const next: [GameState, Input[]][] = []
+    const next: [GameState, Input[]][] = [];
     for (const [s, path] of frontier) {
       for (const [inp, ns] of successors(s, level)) {
-        const h = hashState(ns, level)
-        if (seen.has(h)) continue
-        seen.add(h)
-        const np = [...path, inp]
-        if (isWin(ns, level)) return { inputs: np }
-        next.push([ns, np])
+        const h = hashState(ns, level);
+        if (seen.has(h)) continue;
+        seen.add(h);
+        const np = [...path, inp];
+        if (isWin(ns, level)) return { inputs: np };
+        next.push([ns, np]);
       }
     }
-    frontier = next
-    if (!frontier.length) return null
+    frontier = next;
+    if (!frontier.length) return null;
   }
-  return null
+  return null;
 }
 
 /** Solves a variant of the level with some mechanics removed. */
-export function solveWithout(level: Level, removed: MechanicId[]): Solution | null {
-  return solve({ ...level, mods: level.mods.filter((m) => !removed.includes(m)) })
+export function solveWithout(
+  level: Level,
+  removed: MechanicId[],
+): Solution | null {
+  return solve({
+    ...level,
+    mods: level.mods.filter((m) => !removed.includes(m)),
+  });
+}
+
+/** Necessity probe: a mechanic is required when removing it (and, per its
+ *  registry declaration, whatever it must be removed with) leaves the level
+ *  unsolvable. One definition so hunt and verify can't drift. */
+export function isRequired(level: Level, mo: MechanicId): boolean {
+  return solveWithout(level, MECHANICS[mo].removedWith ?? [mo]) === null;
 }
 
 export const fmtInput = (i: Input) =>
-  (i.kind === 'split' ? 'S' : i.kind === 'shift' ? 'W' : '') +
-  (i.dir[0] === -1 ? 'U' : i.dir[0] === 1 ? 'D' : i.dir[1] === -1 ? 'L' : 'R')
+  (i.kind === "split" ? "S" : i.kind === "shift" ? "W" : "") +
+  (i.dir[0] === -1 ? "U" : i.dir[0] === 1 ? "D" : i.dir[1] === -1 ? "L" : "R");

@@ -3,7 +3,7 @@
 // positional rank) — by earliest submission. Pure SQL builders with no db or
 // auth imports, so the rule stays testable without a live Postgres.
 
-import { and, asc, eq, lt, or, sql, type Column, type SQL } from "drizzle-orm";
+import { and, asc, eq, gt, lt, or, type Column, type SQL } from "drizzle-orm";
 
 /** The columns the rule reads; both score tables expose them. */
 export interface RankColumns {
@@ -19,7 +19,12 @@ export function beatenBy(
   cols: Pick<RankColumns, "moves" | "undos">,
   candidate: { moves: number; corrections: number },
 ): SQL {
-  return sql`${cols.moves} > ${candidate.moves} OR (${cols.moves} = ${candidate.moves} AND ${cols.undos} > ${candidate.corrections})`;
+  // composed operators (not a raw fragment) so the predicate stays
+  // parenthesized and safe to and(...) with a scope filter
+  return or(
+    gt(cols.moves, candidate.moves),
+    and(eq(cols.moves, candidate.moves), gt(cols.undos, candidate.corrections)),
+  )!;
 }
 
 /** The same rule as an ORDER BY, earliest-first as the final tiebreak. */

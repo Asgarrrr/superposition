@@ -3,7 +3,7 @@
 
 import { LEVELS } from "../engine/levels.ts";
 import { MECHANICS } from "../engine/mechanics/registry.ts";
-import { fmtInput, solve, solveWithout } from "./bfs.ts";
+import { fmtInput, isRequired, solve } from "./bfs.ts";
 
 let failed = false;
 for (const lv of LEVELS) {
@@ -16,9 +16,7 @@ for (const lv of LEVELS) {
   // tag each mechanic the level truly cannot do without (per its declaration)
   const tags = lv.mods
     .filter((mo) => MECHANICS[mo].mustBeNeeded)
-    .filter(
-      (mo) => solveWithout(lv, MECHANICS[mo].removedWith ?? [mo]) === null,
-    )
+    .filter((mo) => isRequired(lv, mo))
     .map((mo) => `${mo} obligatoire`)
     .join(", ");
   console.log(

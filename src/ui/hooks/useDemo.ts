@@ -251,8 +251,7 @@ export function useGuidedDemo(
       } else {
         setArmed(false);
         setBump(null);
-        if (!st.merged && next.merged)
-          setBloom({ payload: next.m, t: Date.now() });
+        if (sig.fx === "merge") setBloom({ payload: next.m, t: Date.now() });
         else setBloom(null);
         setSt(next);
       }

@@ -14,7 +14,7 @@ describe("beatenBy (upsert guard)", () => {
   it("replaces the stored row only on fewer moves, or equal moves with fewer corrections", () => {
     const q = render(beatenBy(dailyScore, { moves: 12, corrections: 3 }));
     expect(q.sql).toBe(
-      '"daily_score"."moves" > $1 OR ("daily_score"."moves" = $2 AND "daily_score"."undos" > $3)',
+      '("daily_score"."moves" > $1 or ("daily_score"."moves" = $2 and "daily_score"."undos" > $3))',
     );
     expect(q.params).toEqual([12, 12, 3]);
   });
@@ -22,7 +22,7 @@ describe("beatenBy (upsert guard)", () => {
   it("applies the same rule to the campaign table", () => {
     const q = render(beatenBy(levelScore, { moves: 5, corrections: 0 }));
     expect(q.sql).toBe(
-      '"level_score"."moves" > $1 OR ("level_score"."moves" = $2 AND "level_score"."undos" > $3)',
+      '("level_score"."moves" > $1 or ("level_score"."moves" = $2 and "level_score"."undos" > $3))',
     );
     expect(q.params).toEqual([5, 5, 0]);
   });

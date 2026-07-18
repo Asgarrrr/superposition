@@ -5,7 +5,7 @@
 
 import type { Level, MechanicId, Pos } from "../engine/types.ts";
 import { MECHANICS } from "../engine/mechanics/registry.ts";
-import { fmtInput, solve, solveWithout } from "./bfs.ts";
+import { fmtInput, isRequired, solve } from "./bfs.ts";
 import { levelSignature } from "./signature.ts";
 
 const rnd = (n: number) => Math.floor(Math.random() * n);
@@ -100,10 +100,8 @@ export function hunt({
     const proofs: string[] = [];
     let allEssential = true;
     for (const mo of mods) {
-      const { removedWith, mustBeNeeded } = MECHANICS[mo];
-      if (solveWithout(lv, removedWith ?? [mo]) === null)
-        proofs.push(mo + " obligatoire");
-      else if (mustBeNeeded) {
+      if (isRequired(lv, mo)) proofs.push(mo + " obligatoire");
+      else if (MECHANICS[mo].mustBeNeeded) {
         allEssential = false;
         break;
       }
