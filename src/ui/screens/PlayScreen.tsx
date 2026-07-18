@@ -246,7 +246,7 @@ export function PlayScreen({
                   // the mechanic's name arrives like the win screen's "Bon à
                   // tirer": an amber stamp slammed onto the veiled print
                   <motion.div
-                    className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-room/80 backdrop-blur-xs"
+                    className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-room/45"
                     initial={reduced ? false : { opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.35, ease: PRINT_EASE }}
