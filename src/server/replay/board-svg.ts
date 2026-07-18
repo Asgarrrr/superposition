@@ -70,6 +70,20 @@ function walls(cells: Pos[], color: string, shift: Pos): string {
     .join("");
 }
 
+/** Light walls (lumiere): dashed paper squares that only block the merged pawn.
+ *  They live in the shared board plane — never drifted by `off` (the engine
+ *  reads them straight against the merged pawn's board coordinates) — and read
+ *  brighter once merged, when they actually bite. */
+function lightWalls(cells: Pos[], merged: boolean): string {
+  const op = merged ? 1 : 0.4;
+  return cells
+    .map((w) => {
+      const [x, y] = cellCenter(w);
+      return `<g opacity="${op}"><rect x="${x - CELL / 2 + 8}" y="${y - CELL / 2 + 8}" width="${CELL - 16}" height="${CELL - 16}" fill="none" stroke="${WHITE}" stroke-width="2" stroke-dasharray="4 4"/><circle cx="${x}" cy="${y}" r="3" fill="${WHITE}"/></g>`;
+    })
+    .join("");
+}
+
 function goal(pos: Pos, color: string): string {
   const [x, y] = cellCenter(pos);
   return `<circle cx="${x}" cy="${y}" r="${CELL * 0.3}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
@@ -131,6 +145,10 @@ export function frameSvg(level: Level, st: GameState, won: boolean): string {
     parts.push(pawn(st.a, CYAN));
     parts.push(pawn(add(st.b, off), MAGENTA));
   }
+
+  // shared plane, on top of the inks and under the registration marks
+  if (level.lightWalls?.length)
+    parts.push(lightWalls(level.lightWalls, st.merged));
 
   const marks: [number, number][] = [
     [PAD, PAD],
