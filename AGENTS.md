@@ -148,20 +148,28 @@ import that (or `db`) from a module the client route tree pulls in.
 
 ### Don't recreate
 
-| Concern                             | Lives in                                                                               |
-| ----------------------------------- | -------------------------------------------------------------------------------------- |
-| pg pool + drizzle client            | `src/db/index.ts`                                                                      |
-| DB tables (auth + daily + campaign) | `src/db/schema.ts`                                                                     |
-| Better Auth server / client         | `src/lib/auth.ts` / `src/lib/auth-client.ts`                                           |
-| auth HTTP mount                     | `src/routes/api/auth/$.ts`                                                             |
-| daily server functions              | `src/server/daily.ts`                                                                  |
-| campaign leaderboard functions      | `src/server/campaign.ts`                                                               |
-| trace replay + shape validation     | `src/server/replay.ts` (`validateTrace`, `validateTraceShape`)                         |
-| level generation core               | `src/solver/hunt.ts`                                                                   |
-| daily cron entry                    | `src/solver/generate-daily.ts`                                                         |
-| daily win overlay / auth form       | `src/ui/components/DailyOverlay.tsx` / `AuthPanel.tsx`                                 |
-| leaderboard row list                | `src/ui/components/LeaderboardRows.tsx`                                                |
-| leaderboard rail (shared)           | `src/ui/components/LeaderboardRail.tsx` (bound by `DailyBoard.tsx` / `LevelBoard.tsx`) |
+| Concern                                       | Lives in                                                                                     |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| pg pool + drizzle client                      | `src/db/index.ts`                                                                            |
+| DB tables (auth + daily + campaign)           | `src/db/schema.ts`                                                                           |
+| Better Auth server / client                   | `src/lib/auth.ts` / `src/lib/auth-client.ts`                                                 |
+| auth HTTP mount                               | `src/routes/api/auth/$.ts`                                                                   |
+| daily server functions                        | `src/server/daily.ts`                                                                        |
+| campaign leaderboard functions                | `src/server/campaign.ts`                                                                     |
+| trace replay + shape validation               | `src/server/replay.ts` (`validateTrace`, `validateTraceShape`)                               |
+| level generation core                         | `src/solver/hunt.ts`                                                                         |
+| daily cron entry                              | `src/solver/generate-daily.ts`                                                               |
+| daily win overlay / auth form                 | `src/ui/components/DailyOverlay.tsx` / `AuthPanel.tsx`                                       |
+| leaderboard row list                          | `src/ui/components/LeaderboardRows.tsx`                                                      |
+| leaderboard rail (shared)                     | `src/ui/components/LeaderboardRail.tsx` (bound by `DailyBoard.tsx` / `LevelBoard.tsx`)       |
+| ranking rule (upsert guard + ORDER BY + rank) | `src/server/ranking.ts` — the ONLY place "fewer moves, then fewer corrections" lives         |
+| score upsert + board types + currentUserId    | `src/server/leaderboard.ts` (`upsertBestScore`, `LeaderRow`/`MyResult`/`BoardData`)          |
+| merge equation (`a == b + off`)               | `merges()` in `src/engine/state.ts` — sole owner, used by successors AND decalage            |
+| per-level compiled mechanics                  | `compiled()` in `src/engine/mechanics/registry.ts` (WeakMap; hosts the two-movers throw)     |
+| mechanic necessity semantics                  | `removedWith`/`mustBeNeeded` on each mechanic; probe = `isRequired()` in `src/solver/bfs.ts` |
+| verb → sound/haptic signature                 | `inputSignature()` in `src/ui/signatures.ts` (game + tutorial both consume it)               |
+| alt-gesture rule (split/world)                | `altGesture()` in `src/ui/altGesture.ts`                                                     |
+| solve value + submission policy               | `src/ui/submissionPolicy.ts` (`Solve`, `decideSubmission` — pure, owns the UI status)        |
 
 ### Deployment
 

@@ -46,7 +46,18 @@ export interface MoveCtx {
 
 export interface Mechanic {
   id: MechanicId;
+  /** Necessity proofs (solver side): the ids to remove alongside this one when
+   * testing whether the level needs it. Fusion drags scission along — a split
+   * is meaningless without a merge to undo, so they form one capability.
+   * Omitted = the mechanic stands alone ([id]). */
+  removedWith?: MechanicId[];
+  /** True when a level advertising this mechanic must be UNSOLVABLE without
+   * it (the generator rejects the level otherwise). Ice and light are exempt:
+   * they change the texture of play even when avoidable. */
+  mustBeNeeded?: boolean;
   hooks: {
+    /** At most ONE active mechanic may define this — movement has no
+     * composition order, and successors() throws if two are active. */
     resolveMove?: (pos: Pos, dir: Pos, ctx: MoveCtx) => Pos;
     mergedWalls?: (level: Level) => Pos[];
     enablesMerge?: boolean;

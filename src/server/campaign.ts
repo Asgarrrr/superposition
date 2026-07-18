@@ -4,17 +4,19 @@
 // through the pure engine (see replay.ts) before a row is written.
 
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
-import { eq, sql } from "drizzle-orm";
-import { db } from "../db/index.ts";
+import { eq } from "drizzle-orm";
 import { levelScore } from "../db/schema.ts";
 import { LEVELS } from "../engine/levels.ts";
 import { solve } from "../solver/bfs.ts";
-import { auth } from "../lib/auth.ts";
-import { boardRows, standing } from "./leaderboard.ts";
+import {
+  boardRows,
+  currentUserId,
+  standing,
+  upsertBestScore,
+} from "./leaderboard.ts";
 import { validateTrace, validateTraceShape } from "./replay.ts";
+import type { BoardData } from "./leaderboard.ts";
 import type { Level, TraceStep } from "../engine/types.ts";
-import type { BoardData } from "./daily.ts";
 
 // Campaign levels are static and live in code, so index them once and cache the
 // solver's optimal per level (BFS is not free) for the lifetime of the process.
@@ -27,12 +29,6 @@ function levelOptimal(level: Level): number {
   const n = solve(level)?.inputs.length ?? 0;
   optimalCache.set(level.id, n);
   return n;
-}
-
-async function currentUserId(): Promise<string | null> {
-  const { headers } = getRequest();
-  const session = await auth.api.getSession({ headers });
-  return session?.user.id ?? null;
 }
 
 function validateLevelId(data: unknown): { levelId: string } {
@@ -88,26 +84,14 @@ export const submitLevelScore = createServerFn({ method: "POST" })
     const result = validateTrace(level, data.trace);
     if (!result.ok) throw new Error("Invalid solution");
 
-    await db
-      .insert(levelScore)
-      .values({
-        levelId: data.levelId,
-        userId,
-        moves: result.moves,
-        undos: result.corrections,
-        trace: data.trace,
-      })
-      .onConflictDoUpdate({
-        target: [levelScore.levelId, levelScore.userId],
-        set: {
-          moves: result.moves,
-          undos: result.corrections,
-          trace: data.trace,
-          createdAt: new Date(),
-        },
-        // keep the better result: fewer moves, or same moves with fewer undos
-        where: sql`${levelScore.moves} > ${result.moves} OR (${levelScore.moves} = ${result.moves} AND ${levelScore.undos} > ${result.corrections})`,
-      });
+    // keep the better result for this (level, user) per the shared rule
+    await upsertBestScore(levelScore, [levelScore.levelId, levelScore.userId], {
+      levelId: data.levelId,
+      userId,
+      moves: result.moves,
+      undos: result.corrections,
+      trace: data.trace,
+    });
 
     return { ok: true, moves: result.moves };
   });

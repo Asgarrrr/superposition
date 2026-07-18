@@ -8,20 +8,17 @@ import type { TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { LeaderboardRail } from "./LeaderboardRail.tsx";
 import type { BoardSource } from "./LeaderboardRail.tsx";
+import type { Solve } from "../submissionPolicy.ts";
 import { getLevelBoard, submitLevelScore } from "../../server/campaign.ts";
 
 export function LevelBoard({
   levelId,
-  solved,
-  moves,
-  wonTrace,
+  solve,
   className = "",
   variants,
 }: {
   levelId: string;
-  solved: boolean;
-  moves: number;
-  wonTrace: TraceStep[];
+  solve: Solve | null;
   className?: string;
   variants?: Variants;
 }) {
@@ -48,9 +45,7 @@ export function LevelBoard({
   return (
     <LeaderboardRail
       source={source}
-      solved={solved}
-      moves={moves}
-      wonTrace={wonTrace}
+      solve={solve}
       className={className}
       variants={variants}
     />

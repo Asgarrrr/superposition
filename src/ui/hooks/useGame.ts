@@ -14,7 +14,10 @@ import { initialState, isWin, MAX_SHIFT } from "../../engine/state.ts";
 import { applyInput } from "../../engine/successors.ts";
 import { eq } from "../../engine/grid.ts";
 import { m } from "../../paraglide/messages.js";
+import { altGesture } from "../altGesture.ts";
 import { vibrate } from "../haptics.ts";
+import { inputSignature } from "../signatures.ts";
+import type { Solve } from "../submissionPolicy.ts";
 import type { SoundFx } from "./useSound.ts";
 
 export interface Pulse {
@@ -39,10 +42,11 @@ export function useGame(
   const [bump, setBump] = useState<Pulse | null>(null);
   const [bloom, setBloom] = useState<Pulse | null>(null);
   const [trails, setTrails] = useState<IceTrails>({ a: null, b: null });
-  // the full raw event trace (inputs + undo/reset), exposed once solved so the
-  // leaderboard rail can replay it and count corrections (a clean solve has
-  // none). Unlike `inputs`, it is NEVER popped — corrections stay on the record.
-  const [wonTrace, setWonTrace] = useState<TraceStep[]>([]);
+  // the solve as one value, produced at the win edge: the full raw event trace
+  // (inputs + undo/reset — unlike `inputs`, it is NEVER popped, corrections
+  // stay on the record) plus the winning line's move count, both derived from
+  // the same history so they can't diverge. Null until solved.
+  const [solve, setSolve] = useState<Solve | null>(null);
   const history = useRef<GameState[]>([]);
   // mirror of `history`: the exact inputs applied, popped on undo
   const inputs = useRef<Input[]>([]);
@@ -54,19 +58,19 @@ export function useGame(
   useEffect(() => cancelStamp, []);
 
   const solved = isWin(st, level);
-  // the alt gesture only exists where the level supports it (mirrors
-  // PlayScreen's altLabel) — otherwise Shift/arm falls back to a move
-  const altAvailable = st.merged || level.mods.includes("decalage");
+  // null when the level offers no secondary gesture: Shift/arm falls back to move
+  const altKind = altGesture(st, level);
 
   const play = (d: Pos, wantAlt = false) => {
     if (solved) return;
-    const alt = (wantAlt || altArmed) && altAvailable;
-    const kind: Input["kind"] = alt ? (st.merged ? "split" : "shift") : "move";
+    const kind: Input["kind"] =
+      (wantAlt || altArmed) && altKind ? altKind : "move";
     setAltArmed(false);
     const next = applyInput(st, level, { kind, dir: d });
+    const sig = inputSignature(st, next, kind, level);
+    fx[sig.fx]();
+    if (sig.vibrate !== null) vibrate(sig.vibrate);
     if (!next) {
-      fx.block();
-      vibrate(25);
       setBump({ payload: d, t: Date.now() });
       if (kind === "split") setFlash(m.flash_no_split());
       if (kind === "shift") setFlash(m.flash_no_shift({ max: MAX_SHIFT }));
@@ -74,19 +78,11 @@ export function useGame(
       return;
     }
     // a merge is the headline event — announce it even when a shift caused it
-    if (!st.merged && next.merged) {
-      fx.merge();
-      vibrate([10, 20, 40]);
+    // (`next.merged` restates what sig already knows, purely to narrow the type)
+    if (sig.fx === "merge" && next.merged) {
       setBloom({ payload: next.m, t: Date.now() });
       setTimeout(() => setBloom(null), 600);
-    } else if (kind === "shift") {
-      fx.shift();
-      vibrate(40);
-    } else if (kind === "split") {
-      fx.split();
-      vibrate([15, 30, 15]);
-    } else if (level.mods.includes("glace")) fx.slide();
-    else fx.move();
+    }
     // ice ink trails: from the cell left behind to the cell reached
     const ice = level.mods.includes("glace") && !st.merged && !next.merged;
     setTrails({
@@ -101,7 +97,7 @@ export function useGame(
     if (isWin(next, level)) {
       fx.win();
       vibrate([30, 60, 30]);
-      setWonTrace(trace.current.slice());
+      setSolve({ trace: trace.current.slice(), moves: history.current.length });
       onWin?.(history.current.length);
       stampTimer.current = setTimeout(() => fx.stamp(), 650);
     }
@@ -117,7 +113,7 @@ export function useGame(
     setMoves((m) => m - 1);
     setAltArmed(false);
     setTrails({ a: null, b: null });
-    setWonTrace([]); // undoing leaves the won state
+    setSolve(null); // undoing leaves the won state
   };
 
   const reset = () => {
@@ -133,7 +129,7 @@ export function useGame(
     setTrails({ a: null, b: null });
     history.current = [];
     inputs.current = [];
-    setWonTrace([]);
+    setSolve(null);
   };
 
   return {
@@ -141,13 +137,13 @@ export function useGame(
     moves,
     solved,
     altArmed,
-    toggleAlt: () => altAvailable && setAltArmed((v) => !v),
+    toggleAlt: () => altKind !== null && setAltArmed((v) => !v),
     flash,
     bump,
     bloom,
     iceTrailA: trails.a,
     iceTrailB: trails.b,
-    wonTrace,
+    solve,
     play,
     undo,
     reset,

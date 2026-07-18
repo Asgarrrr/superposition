@@ -1,27 +1,28 @@
 // Level bank verification — `bun run verify`.
 // Rejects any unsolvable level and measures difficulty.
 
-import { LEVELS } from '../engine/levels.ts'
-import { fmtInput, solve, solveWithout } from './bfs.ts'
+import { LEVELS } from "../engine/levels.ts";
+import { MECHANICS } from "../engine/mechanics/registry.ts";
+import { fmtInput, isRequired, solve } from "./bfs.ts";
 
-let failed = false
+let failed = false;
 for (const lv of LEVELS) {
-  const sol = solve(lv)
+  const sol = solve(lv);
   if (!sol) {
-    console.error(`✗ ${lv.id} : INSOLUBLE`)
-    failed = true
-    continue
+    console.error(`✗ ${lv.id} : INSOLUBLE`);
+    failed = true;
+    continue;
   }
-  const needsFusion = lv.mods.includes('fusion') && solveWithout(lv, ['fusion', 'scission']) === null
-  const needsSplit = lv.mods.includes('scission') && solveWithout(lv, ['scission']) === null
-  const tags = [
-    needsFusion ? 'fusion obligatoire' : '',
-    needsSplit ? 'scission obligatoire' : '',
-  ].filter(Boolean).join(', ')
+  // tag each mechanic the level truly cannot do without (per its declaration)
+  const tags = lv.mods
+    .filter((mo) => MECHANICS[mo].mustBeNeeded)
+    .filter((mo) => isRequired(lv, mo))
+    .map((mo) => `${mo} obligatoire`)
+    .join(", ");
   console.log(
     `✓ ${lv.ch.padEnd(3)} ${lv.name.padEnd(12)} ${String(sol.inputs.length).padStart(2)} coups` +
-    (tags ? `  [${tags}]` : '') +
-    `  ${sol.inputs.map(fmtInput).join(' ')}`,
-  )
+      (tags ? `  [${tags}]` : "") +
+      `  ${sol.inputs.map(fmtInput).join(" ")}`,
+  );
 }
-process.exit(failed ? 1 : 0)
+process.exit(failed ? 1 : 0);
