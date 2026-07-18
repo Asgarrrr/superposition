@@ -38,10 +38,10 @@ export function InstallBanner() {
             </span>
           </button>
         ) : (
-          <span className="flex flex-1 items-center gap-1.5 leading-tight text-paper/80">
-            <span>{m.install_ios_before()}</span>
-            <ShareGlyph />
-            <span>{m.install_ios_after()}</span>
+          /* one inline flow, not three flex blocks: the sentence must wrap as
+             prose with the glyph riding the line, never as split columns */
+          <span className="flex-1 leading-snug text-paper/80">
+            {m.install_ios_before()} <ShareGlyph /> {m.install_ios_after()}
           </span>
         )}
         <button
@@ -103,7 +103,7 @@ function ShareGlyph() {
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="mb-0.5 inline-block shrink-0 text-ink-cyan/90"
+      className="inline-block align-[-0.18em] text-ink-cyan/90"
       aria-hidden
     >
       <path d="M12 3v11" />
