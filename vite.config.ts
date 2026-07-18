@@ -19,7 +19,14 @@ const config = defineConfig({
     paraglideVitePlugin({
       project: "./project.inlang",
       outdir: "./src/paraglide",
-      strategy: ["localStorage", "preferredLanguage", "baseLocale"],
+      // Cookie-first so the server and the client resolve the same locale: the
+      // public profile is server-rendered, and a cookie is the only override the
+      // server can read (localStorage isn't sent with the request). On a first
+      // visit with no cookie, preferredLanguage negotiates from Accept-Language
+      // on the server and from navigator.languages on the client — the same
+      // browser preference — so the SSR HTML matches hydration. setLocale
+      // (LangToggle) writes the cookie, keeping the choice server-visible.
+      strategy: ["cookie", "preferredLanguage", "baseLocale"],
     }),
     tailwindcss(),
     tanstackStart(),

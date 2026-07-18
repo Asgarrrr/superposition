@@ -1,4 +1,8 @@
-import { createCsrfMiddleware, createStart } from "@tanstack/react-start";
+import {
+  createCsrfMiddleware,
+  createMiddleware,
+  createStart,
+} from "@tanstack/react-start";
 
 // Reject cross-site calls to our state-changing server functions (the score
 // submits). Scoped to serverFn mutations: better-auth's own route handler under
@@ -11,14 +15,32 @@ const csrfMiddleware = createCsrfMiddleware({
     ctx.handlerType === "serverFn" && ctx.request.method !== "GET",
 });
 
-// Superposition's components are client-only (AudioContext, localStorage,
-// keyboard/swipe), so no route renders its COMPONENT on the server. But the
-// public profile needs real per-request <head> tags for social crawlers, which
-// requires its loader + head to run server-side — and a child route can only be
-// as SSR-permissive as its parents. So the default is `data-only`: loaders and
-// head run on the server, components still render only on the client. The only
-// loaders in the app (daily, profile) are pure server-safe data reads.
+// Resolve the request's locale before anything renders, so the server-rendered
+// public profile (ssr: true) follows the visitor's cookie/Accept-Language rather
+// than the French fallback. paraglideMiddleware runs the rest of the request
+// inside an AsyncLocalStorage carrying the negotiated locale, which is what
+// `getLocale()` reads during SSR; without it the server always resolves to
+// baseLocale. Runs for every document request (handlerType "router"). Imported
+// lazily and only in `.server` so the Node-only middleware never reaches the
+// browser bundle. The locale strategy (vite.config.ts) is cookie-first, then
+// preferredLanguage, so the value the client resolves on hydration matches.
+const localeMiddleware = createMiddleware({ type: "request" }).server(
+  async ({ request, next }) => {
+    const { paraglideMiddleware } = await import("./paraglide/server.js");
+    return paraglideMiddleware(request, () => next());
+  },
+);
+
+// The game's components are client-only (AudioContext, localStorage,
+// keyboard/swipe), so `data-only` stays the app-wide default: loaders and head
+// run on the server, those components render only on the client. The public
+// profile is the exception — it renders fully server-side (ssr: true on
+// `/profile/$username` + the root) so crawlers and visitors get the real page
+// in the initial HTML. A child can't be more SSR-permissive than its parents,
+// which is why the root opts into `ssr: true`; every other route keeps
+// inheriting `data-only` (undefined ssr reads defaultSsr, not the parent), and
+// the live game boards opt back out with `ssr: false` (e.g. daily.$tier).
 export const startInstance = createStart(() => ({
   defaultSsr: "data-only",
-  requestMiddleware: [csrfMiddleware],
+  requestMiddleware: [localeMiddleware, csrfMiddleware],
 }));

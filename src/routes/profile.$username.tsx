@@ -10,12 +10,15 @@ import { utcDay } from "../lib/day.ts";
 import { m } from "../paraglide/messages.js";
 import { ProfileScreen } from "../ui/screens/ProfileScreen.tsx";
 
-// `data-only` SSR: the loader runs on the server and the head is rendered into
-// the initial HTML, so social crawlers (which don't run JS) get real per-profile
-// Open Graph tags — while the client-only ProfileScreen still renders on the
-// client, keeping the app's SSR-off contract for everything visual.
+// Full SSR: the loader, head, and the ProfileScreen component all render on the
+// server, so crawlers (which don't run JS) and visitors get the real page —
+// contribution grid, streaks, Open Graph tags — in the initial HTML. This is the
+// one route that opts out of the app's `data-only` default; it works only
+// because the root also sets `ssr: true` (a child can't out-SSR its parents).
+// ProfileScreen touches no browser API, and the request's locale is resolved
+// server-side by the paraglide middleware in src/start.ts.
 export const Route = createFileRoute("/profile/$username")({
-  ssr: "data-only",
+  ssr: true,
   loader: async ({ params }) => {
     const history = await getUserDailyHistory({
       data: { username: params.username },
