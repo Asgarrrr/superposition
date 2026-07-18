@@ -2,7 +2,7 @@
 // Both the game AND the solver consume only successors/applyInput — they can't diverge.
 
 import type { GameState, Input, Level, MoveCtx, Pos } from "./types.ts";
-import { active } from "./mechanics/registry.ts";
+import { compiled } from "./mechanics/registry.ts";
 import { DIRS, eq, inBounds, sub, wallSet } from "./grid.ts";
 import { merges } from "./state.ts";
 
@@ -18,15 +18,10 @@ export function successors(
   state: GameState,
   level: Level,
 ): [Input, GameState][] {
-  const mechs = active(level);
+  // memoized per level — the two-movers check happens once, in the registry
+  const { mechs, resolveMove } = compiled(level);
   const n = level.size;
-  const movers = mechs.filter((m) => m.hooks.resolveMove);
-  // no composition order exists for movement — two movers is a level-design bug
-  if (movers.length > 1)
-    throw new Error(
-      `level ${level.id}: several mechanics define resolveMove (${movers.map((m) => m.id).join(", ")})`,
-    );
-  const resolve = movers[0]?.hooks.resolveMove ?? stepMove;
+  const resolve = resolveMove ?? stepMove;
 
   const out: [Input, GameState][] = [];
 

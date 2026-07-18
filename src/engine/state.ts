@@ -5,7 +5,7 @@
 
 import type { GameState, Level, Pos } from "./types.ts";
 import { add, eq } from "./grid.ts";
-import { active } from "./mechanics/registry.ts";
+import { compiled } from "./mechanics/registry.ts";
 
 /** Bound on the offset between worlds — sizes the state space AND its hashing. */
 export const MAX_SHIFT = 2;
@@ -13,10 +13,10 @@ const SHIFT_SPAN = 2 * MAX_SHIFT + 1;
 
 /** SOLE owner of the merge equation: the pawns merge when a mechanic enables
  * merging AND they meet on the BOARD — a == b + off (b lives in its layer).
- * The import cycle with the registry is benign: `active` is only called at
+ * The import cycle with the registry is benign: `compiled` is only called at
  * play time, never during module evaluation. */
 export function merges(level: Level, a: Pos, b: Pos, off: Pos): boolean {
-  return active(level).some((m) => m.hooks.enablesMerge) && eq(a, add(b, off));
+  return compiled(level).canMerge && eq(a, add(b, off));
 }
 
 export function initialState(level: Level): GameState {

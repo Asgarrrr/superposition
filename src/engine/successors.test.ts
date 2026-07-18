@@ -52,14 +52,17 @@ describe("successors — déplacements de base", () => {
 
 describe("resolveMove — au plus une mécanique de déplacement", () => {
   it("deux mécaniques actives avec resolveMove → erreur explicite", () => {
+    // no shipped pair of movers exists: simulate one by patching fusion.
+    // Patch BEFORE building the level — mechanics compile once per level
+    // object (WeakMap in the registry), so a pre-built level would be
+    // compiled with the unpatched hooks.
+    MECHANICS.fusion.hooks.resolveMove = (pos) => pos;
     const level = testLevel({
       size: 3,
       mods: ["fusion", "glace"],
       a: { start: [0, 0], goal: [2, 2], walls: [] },
       b: { start: [2, 2], goal: [0, 0], walls: [] },
     });
-    // no shipped pair of movers exists: simulate one by patching fusion
-    MECHANICS.fusion.hooks.resolveMove = (pos) => pos;
     try {
       expect(() => successors(initialState(level), level)).toThrow(
         /resolveMove/,
