@@ -10,6 +10,7 @@ import { LEVELS } from "../engine/levels.ts";
 import { solve } from "../solver/bfs.ts";
 import { isValidDay, isWeekend, utcDay } from "../lib/day.ts";
 import { computeStreaks } from "../lib/streak.ts";
+import { Lru } from "../lib/lru.ts";
 import {
   boardRows,
   currentUserId,
@@ -70,7 +71,9 @@ function difficultyBands(): Level[][] {
 
 // The fallback is fully determined by (date, tier), so solve() it at most once
 // per key per server process instead of on every request to a cron-missed tier.
-const fallbackCache = new Map<string, DailyPuzzle>();
+// Bounded: the public replay endpoint resolves fallbacks for arbitrary past
+// (date, tier) pairs, so an unbounded Map would grow without limit.
+const fallbackCache = new Lru<string, DailyPuzzle>(256);
 
 /** Deterministic fallback: same (date, tier) → same level, everywhere, no DB row. */
 function fallbackPuzzle(date: string, tier: number): DailyPuzzle {
@@ -224,8 +227,9 @@ export const submitDailyScore = createServerFn({ method: "POST" })
 
 // optimal is fixed per (date, tier), so resolve the puzzle for it at most once
 // per key per process instead of on every board read (which is a daily_puzzle
-// SELECT, or the solver on a cron-missed tier).
-const optimalByKey = new Map<string, number>();
+// SELECT, or the solver on a cron-missed tier). Bounded for the same reason as
+// fallbackCache: distinct past (date, tier) reads must not grow memory forever.
+const optimalByKey = new Lru<string, number>(256);
 async function dailyOptimal(date: string, tier: number): Promise<number> {
   const key = `${date}:${tier}`;
   const cached = optimalByKey.get(key);
