@@ -36,6 +36,7 @@ const rise = {
 
 export function SelectScreen({
   best,
+  hinted = {},
   onPick,
   onDaily,
   onProfile,
@@ -44,6 +45,8 @@ export function SelectScreen({
   weekendReady = false,
 }: {
   best: Record<string, number>;
+  // levels cleared with a hint (off the record) — a dim ✓, no move count
+  hinted?: Record<string, true>;
   onPick: (idx: number) => void;
   onDaily: (tier: number) => void;
   onProfile: () => void;
@@ -197,10 +200,18 @@ export function SelectScreen({
                 <span className="flex-1 font-display text-[15px] italic tracking-[0.02em] text-paper/90 transition-colors duration-200 group-hover:text-paper">
                   {lv.name}
                 </span>
-                {best[lv.id] !== undefined && (
+                {best[lv.id] !== undefined ? (
                   <span className="text-[10px] tracking-[0.1em] text-tape tabular-nums">
                     ✓ {best[lv.id]}
                   </span>
+                ) : (
+                  // solved with a hint but never on the record: a dim mark, no
+                  // count and no amber — it reads as done without claiming a record
+                  hinted[lv.id] && (
+                    <span className="text-[10px] tracking-[0.1em] text-paper/40 tabular-nums">
+                      ✓
+                    </span>
+                  )
                 )}
               </button>
             </motion.div>

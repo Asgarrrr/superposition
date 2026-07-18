@@ -10,7 +10,12 @@ import type {
   Pos,
   TraceStep,
 } from "../../engine/types.ts";
-import { initialState, isWin, MAX_SHIFT } from "../../engine/state.ts";
+import {
+  hashState,
+  initialState,
+  isWin,
+  MAX_SHIFT,
+} from "../../engine/state.ts";
 import { applyInput } from "../../engine/successors.ts";
 import { solveFrom } from "../../solver/bfs.ts";
 import { eq } from "../../engine/grid.ts";
@@ -35,6 +40,7 @@ export function useGame(
   level: Level,
   fx: SoundFx,
   onWin?: (moves: number) => void,
+  onHintedWin?: () => void,
 ) {
   const [st, setSt] = useState<GameState>(() => initialState(level));
   const [moves, setMoves] = useState(0);
@@ -49,10 +55,22 @@ export function useGame(
   // the same history so they can't diverge. Null until solved.
   const [solve, setSolve] = useState<Solve | null>(null);
   // the solver's suggested next move (from the current state), and how many
-  // hints this run has consumed. A single peek taints the run: its solve is
-  // withheld, so it is never recorded nor auto-submitted to a leaderboard.
+  // hints have been consumed on this level. A single peek taints the level: its
+  // solve is withheld, so it is never recorded nor auto-submitted to a
+  // leaderboard. The count deliberately survives reset (R) — it clears only on
+  // remount, i.e. a real level change (the screen is keyed by level). Otherwise
+  // peek → memorise the move → R → replay clean would launder a hinted solve
+  // into a record. The tutorial/demo runs on its own state (useGuidedDemo) and
+  // never touches this, so nothing there is affected.
   const [hint, setHint] = useState<Input | null>(null);
   const [hints, setHints] = useState(0);
+  // shown when a hint is asked for from a dead end (no line to the goal): the
+  // solver finds nothing, so instead of a silent no-op we say so plainly
+  const [hintNote, setHintNote] = useState("");
+  // memoised solver answer per state hash, so re-reaching a state (undo,
+  // reset-and-replay) answers a hint without re-running BFS. Kept for the
+  // level's whole life — never cleared on reset.
+  const hintCache = useRef<Map<number, Input | null>>(new Map());
   const history = useRef<GameState[]>([]);
   // mirror of `history`: the exact inputs applied, popped on undo
   const inputs = useRef<Input[]>([]);
@@ -99,18 +117,23 @@ export function useGame(
     inputs.current.push({ kind, dir: d });
     trace.current.push({ kind, dir: d });
     setHint(null); // the move consumes any shown suggestion
+    setHintNote("");
     setSt(next);
     setMoves((m) => m + 1);
     if (isWin(next, level)) {
       fx.win();
       vibrate([30, 60, 30]);
-      // a hinted run is off the record: no solve to record or auto-submit
+      // a hinted run is off the record: no solve to record or auto-submit —
+      // but the win still counts as "solved with a hint" (a dim mark in the
+      // selector), distinct from a clean record
       if (hints === 0) {
         setSolve({
           trace: trace.current.slice(),
           moves: history.current.length,
         });
         onWin?.(history.current.length);
+      } else {
+        onHintedWin?.();
       }
       stampTimer.current = setTimeout(() => fx.stamp(), 650);
     }
@@ -119,12 +142,32 @@ export function useGame(
   // reveal the next optimal move from the current state (BFS from here, via the
   // shared solver). One peek per pending suggestion, so re-clicking without
   // moving doesn't inflate the counter; boards are tiny so it's instant.
-  const showHint = () => {
-    if (solved || hint) return;
-    const next = solveFrom(level, st)?.inputs[0];
-    if (!next) return;
+  const applyHint = (next: Input | null) => {
+    if (!next) {
+      // a bad merge strands the inks: most non-winning states of a level are
+      // dead ends. Don't spend a hint on nothing — tell the player instead.
+      setHintNote(m.controls_hint_none());
+      setTimeout(() => setHintNote(""), 2600);
+      return;
+    }
+    setHintNote("");
     setHint(next);
     setHints((n) => n + 1);
+  };
+  const showHint = () => {
+    if (solved || hint) return;
+    const key = hashState(st, level);
+    const cached = hintCache.current.get(key);
+    if (cached !== undefined) return applyHint(cached);
+    // BFS is synchronous and can stall the thread ~28ms on desktop, several
+    // times that on low-end mobile. Yield one frame first, so the button's
+    // pressed state paints instead of the tap feeling dead; then solve, cache
+    // the answer for this state, and reveal it.
+    requestAnimationFrame(() => {
+      const next = solveFrom(level, st)?.inputs[0] ?? null;
+      hintCache.current.set(key, next);
+      applyHint(next);
+    });
   };
 
   const undo = () => {
@@ -137,6 +180,7 @@ export function useGame(
     setMoves((m) => m - 1);
     setAltArmed(false);
     setHint(null);
+    setHintNote("");
     setTrails({ a: null, b: null });
     setSolve(null); // undoing leaves the won state
   };
@@ -153,7 +197,9 @@ export function useGame(
     setBloom(null);
     setTrails({ a: null, b: null });
     setHint(null);
-    setHints(0);
+    setHintNote("");
+    // NOTE: `hints` is intentionally NOT cleared here — the taint must outlive a
+    // reset (see the state declaration). It resets only on remount / level change.
     history.current = [];
     inputs.current = [];
     setSolve(null);
@@ -173,6 +219,7 @@ export function useGame(
     solve,
     hint,
     hints,
+    hintNote,
     showHint,
     play,
     undo,

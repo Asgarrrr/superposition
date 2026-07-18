@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, type Variants } from "motion/react";
-import type { GameState, Level, Pos } from "../../engine/types.ts";
+import type { GameState, Input, Level, Pos } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { altGesture } from "../altGesture.ts";
 import { ruleLine } from "../ruleLine.ts";
@@ -94,6 +94,21 @@ const altLabelFor = (st: GameState, level: Level) => {
   }
 };
 
+// The hint spotlights the control to press next in two beats, mirroring the
+// guided demo (useDemo's `guidance`): a split/world hint lights ONLY the arm
+// control until the state is armed, then the arrow. Lighting both at once let a
+// bare arrow press slip through as an ordinary move — the hint pointing at a
+// gesture the press didn't perform.
+const hintHighlight = (
+  hint: Input | null,
+  armed: boolean,
+): { arm: boolean; dir: Pos | null } | undefined => {
+  if (!hint) return undefined;
+  return hint.kind !== "move" && !armed
+    ? { arm: true, dir: null }
+    : { arm: false, dir: hint.dir };
+};
+
 // the caption speaks in four voices; keep the mapping exhaustive and visible
 const captionTone: Record<DemoCaption["kind"], string> = {
   say: "text-paper/85",
@@ -111,6 +126,7 @@ export function PlayScreen({
   muted,
   onToggleMute,
   onWin,
+  onHintedWin,
   onNext = null,
   onExit,
   daily,
@@ -123,11 +139,12 @@ export function PlayScreen({
   muted: boolean;
   onToggleMute: () => void;
   onWin?: (moves: number) => void;
+  onHintedWin?: () => void; // won with a hint: off the record, still marked solved
   onNext?: (() => void) | null;
   onExit: () => void;
   daily?: DailyMode;
 }) {
-  const game = useGame(level, fx, onWin);
+  const game = useGame(level, fx, onWin, onHintedWin);
 
   // The current daily streak, for the discreet reminder on the win overlay.
   // Fetched once the daily is solved (the server unions today, so it's correct
@@ -386,6 +403,8 @@ export function PlayScreen({
               <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28">
                 {game.flash ? (
                   <span className="text-ink-magenta">{game.flash}</span>
+                ) : game.hintNote ? (
+                  <span className="text-paper/55">{game.hintNote}</span>
                 ) : (
                   ruleLine(game.st, level)
                 )}
@@ -398,11 +417,7 @@ export function PlayScreen({
                 onToggleAlt={game.toggleAlt}
                 onUndo={game.undo}
                 onReset={game.reset}
-                highlight={
-                  game.hint
-                    ? { arm: game.hint.kind !== "move", dir: game.hint.dir }
-                    : undefined
-                }
+                highlight={hintHighlight(game.hint, game.altArmed)}
               />
 
               <div className="mt-3 flex items-center gap-5">

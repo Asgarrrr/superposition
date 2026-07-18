@@ -12,7 +12,7 @@ export const Route = createFileRoute("/levels")({ component: SelectRoute });
 
 function SelectRoute() {
   const navigate = useNavigate();
-  const { best } = useBestScores();
+  const { best, hinted } = useBestScores();
   const { data: session } = useSession();
   // read the enter-screen hand-off once, on the first render (pure — no
   // mutation), latched in a ref; then clear it after commit so a plain return
@@ -38,6 +38,7 @@ function SelectRoute() {
     <>
       <SelectScreen
         best={best}
+        hinted={hinted}
         reveal={reveal.current}
         weekendReady={weekendReady}
         signedIn={!!session}

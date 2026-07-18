@@ -43,6 +43,7 @@
   "controls_demo": "↻ demo",
   "controls_hint": "◎ hint",
   "controls_hint_used": "◎ hint · {count}",
+  "controls_hint_none": "No way through from here — undo or reset.",
   "controls_demo_tag": "demo",
   "demo_skip": "skip demo",
   "demo_handoff": "Your turn.",

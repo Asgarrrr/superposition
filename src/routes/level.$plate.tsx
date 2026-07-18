@@ -19,7 +19,7 @@ function PlayRoute() {
   // (Number() would resolve those to a real-but-mismatched plate)
   const valid = level !== undefined && String(idx + 1) === plate;
 
-  const { best, record } = useBestScores();
+  const { best, record, markHinted } = useBestScores();
   const { fx, muted, toggleMuted } = usePersistedSound();
 
   // an out-of-range or non-canonical plate (bad URL) bounces to the selector
@@ -39,6 +39,7 @@ function PlayRoute() {
       muted={muted}
       onToggleMute={toggleMuted}
       onWin={(moves) => record(level.id, moves)}
+      onHintedWin={() => markHinted(level.id)}
       onNext={
         idx < LEVELS.length - 1
           ? () =>
