@@ -11,7 +11,16 @@ export interface Solution {
 }
 
 export function solve(level: Level, maxDepth = 80): Solution | null {
-  const start = initialState(level);
+  return solveFrom(level, initialState(level), maxDepth);
+}
+
+/** Same BFS as `solve`, but from an arbitrary state — so the hint can find the
+ *  next optimal move from wherever the player currently stands. */
+export function solveFrom(
+  level: Level,
+  start: GameState,
+  maxDepth = 80,
+): Solution | null {
   if (isWin(start, level)) return { inputs: [] };
   let frontier: [GameState, Input[]][] = [[start, []]];
   const seen = new Set<number>([hashState(start, level)]);

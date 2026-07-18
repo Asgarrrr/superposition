@@ -344,6 +344,7 @@ export function PlayScreen({
                     plate={plate}
                     moves={game.moves}
                     best={best}
+                    hinted={game.hints > 0}
                     onNext={onNext}
                   />
                 ))}
@@ -395,17 +396,43 @@ export function PlayScreen({
                 onToggleAlt={game.toggleAlt}
                 onUndo={game.undo}
                 onReset={game.reset}
+                highlight={
+                  game.hint
+                    ? { arm: game.hint.kind !== "move", dir: game.hint.dir }
+                    : undefined
+                }
               />
 
-              {replayDemo && (
-                <button
-                  type="button"
-                  onClick={() => setDemo(replayDemo)}
-                  className="mt-3 font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
-                >
-                  {m.controls_demo()}
-                </button>
-              )}
+              <div className="mt-3 flex items-center gap-5">
+                {/* hint: campaign/free only. In daily its use can't be proven to
+                    the server (a tampered client could strip it from the trace),
+                    so hints are simply unavailable there rather than silently
+                    unenforced. Peeking taints the run — it's off the record. */}
+                {!daily && !game.solved && (
+                  <button
+                    type="button"
+                    onClick={game.showHint}
+                    className={`font-mono text-[11px] tracking-[0.06em] transition-colors ${
+                      game.hints > 0
+                        ? "text-tape/70 hover:text-tape"
+                        : "text-paper/30 hover:text-paper/60"
+                    }`}
+                  >
+                    {game.hints > 0
+                      ? m.controls_hint_used({ count: game.hints })
+                      : m.controls_hint()}
+                  </button>
+                )}
+                {replayDemo && (
+                  <button
+                    type="button"
+                    onClick={() => setDemo(replayDemo)}
+                    className="font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
+                  >
+                    {m.controls_demo()}
+                  </button>
+                )}
+              </div>
             </>
           )}
         </motion.div>

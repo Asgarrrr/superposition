@@ -7,11 +7,13 @@ export function WinOverlay({
   plate,
   moves,
   best,
+  hinted = false,
   onNext,
 }: {
   plate: number; // level number, 1-based
   moves: number;
   best: number | undefined;
+  hinted?: boolean; // a hint was used: the solve is off the record
   onNext: (() => void) | null;
 }) {
   return (
@@ -29,6 +31,11 @@ export function WinOverlay({
         {m.win_summary({ plate: String(plate).padStart(2, "0"), count: moves })}
         {best !== undefined && best < moves ? m.win_record({ best }) : ""}
       </div>
+      {hinted && (
+        <div className="font-mono text-[10px] tracking-[0.18em] text-tape/70 uppercase">
+          {m.win_hinted()}
+        </div>
+      )}
       {onNext ? (
         <button
           type="button"

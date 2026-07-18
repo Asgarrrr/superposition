@@ -12,6 +12,7 @@ import type {
 } from "../../engine/types.ts";
 import { initialState, isWin, MAX_SHIFT } from "../../engine/state.ts";
 import { applyInput } from "../../engine/successors.ts";
+import { solveFrom } from "../../solver/bfs.ts";
 import { eq } from "../../engine/grid.ts";
 import { m } from "../../paraglide/messages.js";
 import { altGesture } from "../altGesture.ts";
@@ -47,6 +48,11 @@ export function useGame(
   // stay on the record) plus the winning line's move count, both derived from
   // the same history so they can't diverge. Null until solved.
   const [solve, setSolve] = useState<Solve | null>(null);
+  // the solver's suggested next move (from the current state), and how many
+  // hints this run has consumed. A single peek taints the run: its solve is
+  // withheld, so it is never recorded nor auto-submitted to a leaderboard.
+  const [hint, setHint] = useState<Input | null>(null);
+  const [hints, setHints] = useState(0);
   const history = useRef<GameState[]>([]);
   // mirror of `history`: the exact inputs applied, popped on undo
   const inputs = useRef<Input[]>([]);
@@ -92,15 +98,33 @@ export function useGame(
     history.current.push(st);
     inputs.current.push({ kind, dir: d });
     trace.current.push({ kind, dir: d });
+    setHint(null); // the move consumes any shown suggestion
     setSt(next);
     setMoves((m) => m + 1);
     if (isWin(next, level)) {
       fx.win();
       vibrate([30, 60, 30]);
-      setSolve({ trace: trace.current.slice(), moves: history.current.length });
-      onWin?.(history.current.length);
+      // a hinted run is off the record: no solve to record or auto-submit
+      if (hints === 0) {
+        setSolve({
+          trace: trace.current.slice(),
+          moves: history.current.length,
+        });
+        onWin?.(history.current.length);
+      }
       stampTimer.current = setTimeout(() => fx.stamp(), 650);
     }
+  };
+
+  // reveal the next optimal move from the current state (BFS from here, via the
+  // shared solver). One peek per pending suggestion, so re-clicking without
+  // moving doesn't inflate the counter; boards are tiny so it's instant.
+  const showHint = () => {
+    if (solved || hint) return;
+    const next = solveFrom(level, st)?.inputs[0];
+    if (!next) return;
+    setHint(next);
+    setHints((n) => n + 1);
   };
 
   const undo = () => {
@@ -112,6 +136,7 @@ export function useGame(
     setSt(prev);
     setMoves((m) => m - 1);
     setAltArmed(false);
+    setHint(null);
     setTrails({ a: null, b: null });
     setSolve(null); // undoing leaves the won state
   };
@@ -127,6 +152,8 @@ export function useGame(
     setBump(null);
     setBloom(null);
     setTrails({ a: null, b: null });
+    setHint(null);
+    setHints(0);
     history.current = [];
     inputs.current = [];
     setSolve(null);
@@ -144,6 +171,9 @@ export function useGame(
     iceTrailA: trails.a,
     iceTrailB: trails.b,
     solve,
+    hint,
+    hints,
+    showHint,
     play,
     undo,
     reset,
