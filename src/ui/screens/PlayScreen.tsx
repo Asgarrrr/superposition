@@ -178,6 +178,7 @@ export function PlayScreen({
             solved={game.solved}
             bump={game.bump}
             bloom={game.bloom}
+            armed={game.altArmed}
             iceTrailA={game.iceTrailA}
             iceTrailB={game.iceTrailB}
             {...swipe}

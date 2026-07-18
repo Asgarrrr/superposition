@@ -89,6 +89,22 @@
   animation: sp-fade 500ms ease-out forwards;
 }
 
+/* aperçu de scission : les cibles fantômes des deux encres respirent tant que
+   ✕ est armé — assez pour attirer l'œil, assez discret pour ne pas masquer le
+   plateau. Sous reduced-motion la règle globale fige l'opacité de base. */
+@keyframes sp-ghost {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+.sp-ghost {
+  animation: sp-ghost 1.4s ease-in-out infinite;
+}
+
 /* grab-knob idle pulse — CSS so it can't be reset by React re-renders /
    StrictMode remounts the way a JS repeat animation was */
 @keyframes sp-knob-pulse {

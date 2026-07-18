@@ -113,7 +113,7 @@
   "rule_decalage_off": "Repérage décalé de [{x}, {y}] — regarde les croix. Réaligne avant la fin.",
   "rule_glace": "Glace : tout glisse jusqu'à l'obstacle. Les carrés blancs n'arrêtent que la lumière.",
   "rule_lightwalls": "Les carrés blancs bloquent le pion fusionné — les encres les traversent. Et inversement.",
-  "rule_fusion_merged": "Fusionnés : la lumière traverse les encres. Scinder : ✕ puis une direction.",
+  "rule_fusion_merged": "Fusionnés : la lumière traverse les encres. Scinder : ✕ puis une direction — cyan suit la flèche, magenta en miroir.",
   "rule_fusion_split": "Réunis-les sur une même case pour fusionner. Chacun doit finir sur son cercle.",
   "rule_base": "Un geste déplace les deux points. Bloqué par un mur ou un bord, un point reste.",
   "hint_accord": "Un geste, deux mondes.",

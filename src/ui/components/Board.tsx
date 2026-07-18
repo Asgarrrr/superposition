@@ -2,10 +2,11 @@
 // registration marks, merge bloom) and the recoil when a move
 // is blocked. Receives the state, decides nothing.
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { motion, useAnimationControls } from "motion/react";
 import type { GameState, Level, Pos } from "../../engine/types.ts";
 import { sub } from "../../engine/grid.ts";
+import { successors } from "../../engine/successors.ts";
 import type { Pulse } from "../hooks/useGame.ts";
 import { boardSpan, CELL, cellCenter } from "./board-metrics.ts";
 import { InkLayer } from "./InkLayer.tsx";
@@ -19,6 +20,7 @@ export function Board({
   solved,
   bump,
   bloom,
+  armed = false,
   iceTrailA,
   iceTrailB,
   onTouchStart,
@@ -30,6 +32,7 @@ export function Board({
   solved: boolean;
   bump: Pulse | null;
   bloom: Pulse | null;
+  armed?: boolean; // ✕ armed on a merged pawn: preview where the split sends each ink
   iceTrailA: { from: Pos } | null;
   iceTrailB: { from: Pos } | null;
   onTouchStart: (e: React.TouchEvent) => void;
@@ -50,6 +53,22 @@ export function Board({
       transition: { duration: 0.22, ease: "easeOut" as const },
     });
   }, [bump, recoil]);
+
+  // Split preview: while ✕ is armed on the merged pawn, every legal split's
+  // landing cells, split by ink (cyan toward the arrow, magenta opposite).
+  // Read straight off the engine's successors so it can't drift from the rule.
+  const ghosts = useMemo(() => {
+    if (!armed || !st.merged) return { a: [] as Pos[], b: [] as Pos[] };
+    const a: Pos[] = [];
+    const b: Pos[] = [];
+    for (const [inp, next] of successors(st, level)) {
+      if (inp.kind === "split" && !next.merged) {
+        a.push(next.a);
+        b.push(next.b);
+      }
+    }
+    return { a, b };
+  }, [armed, st, level]);
 
   const span = boardSpan(level.size);
   const pa = st.merged ? st.m : st.a;
@@ -98,6 +117,7 @@ export function Board({
         size={level.size}
         shift={[0, 0]}
         iceTrail={iceTrailA}
+        splitGhosts={ghosts.a}
       />
       <InkLayer
         color="var(--color-ink-magenta)"
@@ -109,6 +129,7 @@ export function Board({
         size={level.size}
         shift={st.off}
         iceTrail={iceTrailB}
+        splitGhosts={ghosts.b}
       />
 
       <svg

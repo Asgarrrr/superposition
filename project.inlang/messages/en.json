@@ -113,7 +113,7 @@
   "rule_decalage_off": "Registration off by [{x}, {y}] — watch the marks. Realign before the end.",
   "rule_glace": "Ice: everything slides until it hits something. White squares stop only the light.",
   "rule_lightwalls": "White squares block the merged piece — the inks pass through them. And vice versa.",
-  "rule_fusion_merged": "Merged: the light passes through the inks. To split: ✕ then a direction.",
+  "rule_fusion_merged": "Merged: the light passes through the inks. To split: ✕ then a direction — cyan follows the arrow, magenta mirrors it.",
   "rule_fusion_split": "Bring them onto the same cell to merge. Each must end on its own circle.",
   "rule_base": "One gesture moves both points. Blocked by a wall or an edge, a point stays put.",
   "hint_accord": "One gesture, two worlds.",
