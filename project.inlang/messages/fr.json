@@ -97,6 +97,9 @@
   "daily_ea_sub": "week-end · tirage 6×6",
   "daily_ea_tag": "l'épreuve d'artiste — toutes les encres, un plateau élargi. Une nouvelle chaque jour du week-end.",
   "daily_back": "accueil",
+  "offline_daily_title": "Hors ligne",
+  "offline_daily_body": "Le défi du jour a besoin d'une connexion. La campagne, elle, se joue hors ligne.",
+  "offline_daily_back": "retour aux planches",
   "daily_solved": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],

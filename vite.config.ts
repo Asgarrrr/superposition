@@ -5,6 +5,7 @@ import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { paraglideVitePlugin } from "@inlang/paraglide-js";
+import { serviceWorker } from "./scripts/sw-plugin.ts";
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true, dedupe: ["react", "react-dom"] },
@@ -25,6 +26,7 @@ const config = defineConfig({
     // Nitro server target: self-serves the client bundle, reads PORT, and emits
     // a single .output/server/index.mjs — the documented Railway/Node/Bun path.
     nitro({ preset: "bun" }),
+    serviceWorker(),
     viteReact(),
     // React Compiler via rolldown-vite's babel bridge (plugin-react v6 has no
     // babel option; this is the pattern the original Vite app used).

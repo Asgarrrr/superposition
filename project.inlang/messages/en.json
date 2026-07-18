@@ -97,6 +97,9 @@
   "daily_ea_sub": "weekend · 6×6 pull",
   "daily_ea_tag": "the artist's proof — every ink, a wider board. A new one each weekend day.",
   "daily_back": "home",
+  "offline_daily_title": "Offline",
+  "offline_daily_body": "The daily challenge needs a connection. The campaign, though, plays offline.",
+  "offline_daily_back": "back to the boards",
   "daily_solved": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],

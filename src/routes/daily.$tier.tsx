@@ -6,6 +6,7 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { getDailyPuzzle, getWeekendDaily } from "../server/daily.ts";
 import { PlayScreen } from "../ui/screens/PlayScreen.tsx";
 import { usePersistedSound } from "../ui/hooks/useSound.ts";
+import { m } from "../paraglide/messages.js";
 
 export const Route = createFileRoute("/daily/$tier")({
   // client-only: the board is a live AudioContext/keyboard experience with no
@@ -26,7 +27,34 @@ export const Route = createFileRoute("/daily/$tier")({
     return getDailyPuzzle({ data: { tier } });
   },
   component: DailyRoute,
+  // The loader hits server functions (daily puzzle, leaderboard) — the one part
+  // of the app that needs the network. Offline, the SW's navigation fallback
+  // serves the "/" shell, the client mounts this route, the loader throws, and
+  // we show a clear notice instead of a broken screen. (Redirects for bad tiers
+  // are handled by the router, not here.)
+  errorComponent: DailyOffline,
 });
+
+function DailyOffline() {
+  const navigate = useNavigate();
+  return (
+    <main className="relative flex min-h-screen flex-col items-center justify-center gap-5 px-8 text-center font-mono text-paper">
+      <h1 className="font-display text-3xl text-paper/90 italic">
+        {m.offline_daily_title()}
+      </h1>
+      <p className="max-w-xs text-sm leading-relaxed text-paper/55">
+        {m.offline_daily_body()}
+      </p>
+      <button
+        type="button"
+        onClick={() => navigate({ to: "/levels" })}
+        className="btn tracking-[0.2em] text-paper/70 uppercase"
+      >
+        {m.offline_daily_back()}
+      </button>
+    </main>
+  );
+}
 
 function DailyRoute() {
   const { date, tier, level, optimal } = Route.useLoaderData();

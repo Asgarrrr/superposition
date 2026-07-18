@@ -10,6 +10,7 @@
     "paraglide": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide",
     "generate-routes": "tsr generate",
     "build": "bun run paraglide && tsc --noEmit && vite build",
+    "gen:icons": "bun scripts/gen-icons.ts",
     "start": "bun .output/server/index.mjs",
     "preview": "vite preview",
     "lint": "oxlint",
