@@ -105,6 +105,33 @@
     }
   ],
   "daily_optimal": "optimal · {optimal}",
+  "daily_share_button": "Partager",
+  "daily_share_copied": "Copié",
+  "daily_share_header": "Superposition — {date} · palier {tier}",
+  "daily_share_moves": [
+    {
+      "declarations": [
+        "input count",
+        "input optimal",
+        "local countPlural = count: plural"
+      ],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} coup (optimal {optimal})",
+        "countPlural=other": "{count} coups (optimal {optimal})"
+      }
+    }
+  ],
+  "daily_share_moves_solo": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{count} coup",
+        "countPlural=other": "{count} coups"
+      }
+    }
+  ],
   "daily_signin_prompt": "Connecte-toi pour rejoindre le classement.",
   "daily_submitting": "Enregistrement…",
   "daily_submit_error": "Échec — réessaie.",

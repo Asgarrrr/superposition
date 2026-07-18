@@ -314,7 +314,13 @@ export function PlayScreen({
             >
               {game.solved &&
                 (daily ? (
-                  <DailyOverlay moves={game.moves} optimal={daily.optimal} />
+                  <DailyOverlay
+                    level={level}
+                    date={daily.date}
+                    tier={daily.tier}
+                    moves={game.moves}
+                    optimal={daily.optimal}
+                  />
                 ) : (
                   <WinOverlay
                     plate={plate}

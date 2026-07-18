@@ -3,16 +3,37 @@
 // leaderboard live in the always-visible rail (DailyBoard), so this overlay is
 // pure celebration — the daily counterpart to WinOverlay.
 
+import { useState } from "react";
+import type { Level } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
+import { buildDailyShare, shareOrCopy } from "../dailyShare.ts";
 import { Wordmark } from "./Wordmark.tsx";
 
 export function DailyOverlay({
+  level,
+  date,
+  tier,
   moves,
   optimal,
 }: {
+  level: Level;
+  date: string;
+  tier: number;
   moves: number;
   optimal: number;
 }) {
+  // the copy confirmation is a records moment — one of the rare licences for
+  // the tape accent; it self-clears so the button rests in paper again.
+  const [copied, setCopied] = useState(false);
+  const onShare = async () => {
+    const url = `${window.location.origin}/daily/${tier}`;
+    const text = buildDailyShare({ level, date, tier, moves, optimal, url });
+    if ((await shareOrCopy(text)) === "copied") {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-room/80 backdrop-blur-xs">
       <div className="scale-72">
@@ -28,6 +49,15 @@ export function DailyOverlay({
         {m.daily_solved({ count: moves })}
         {optimal ? ` · ${m.daily_optimal({ optimal })}` : ""}
       </div>
+      <button
+        type="button"
+        onClick={onShare}
+        className={`btn transition-colors ${
+          copied ? "border-tape/60 text-tape" : "hover:text-paper/80"
+        }`}
+      >
+        {copied ? m.daily_share_copied() : m.daily_share_button()}
+      </button>
     </div>
   );
 }
