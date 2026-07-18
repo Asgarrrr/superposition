@@ -1,6 +1,7 @@
 # First-encounter mechanic demos
 
-Status: approved design, ready for implementation.
+Status: v1 (autoplay) shipped; pivoting to v2 (guided, on-rails) — see "Revision"
+at the end.
 
 ## Problem
 
@@ -149,3 +150,56 @@ All on an open 5×5 grid. Three carry their own dimmed phantom element.
 The armed-split preview (`bd4548b`) stays as point-of-use reinforcement; the
 demo is the first-encounter teach. Complementary. The optional hover-on-arrow
 refinement of the preview remains deferred.
+
+## Revision — v2: guided, on-rails interactive tutorial
+
+v1 (autoplay) played three moves with no framing: the player watched movement
+without a reason to. The pivot makes it an **experience** — the player _performs_
+the mechanic's signature gesture themselves, on rails, on the ideal sandbox
+board, guided step by step. The "no text" constraint is lifted: **on-board text
+and callouts are allowed** — this is a real little tutorial.
+
+**Interaction (on rails).** Only the scripted gesture advances; other inputs do
+nothing (a soft refusal). The player uses the real controls (arrows, ✕, world).
+Each step:
+
+1. An on-board caption states the gesture in plain words.
+2. The expected control **lights up and pulses**; the others dim. A ghost hint on
+   the board shows where it lands (the split preview's ghosts are reused for the
+   split beat).
+3. The player performs it → the mechanic fires with emphasis (bloom for merge,
+   diverging inks for split, recoil + flash for a light block, amplified trail
+   for ice, registration-mark pulse for offset), plus its sound.
+4. A short beat, then the next caption — or, after the last, the real level
+   develops in.
+
+**Per-mechanic scripts (minimal signature).**
+
+- `intro_fusion` — bring them together (one push, edge catch-up) → merge to white;
+  then ✕ + a direction → split, inks diverge.
+- `intro_lumiere` — push the white pawn into the light → blocked (feel the wall);
+  then ✕ + a direction → an ink lands on the light cell (inks pass through).
+- `intro_glace` — one push → the ink slides the length of the row and stops.
+- `intro_decalage` — a world gesture → the film slides, marks go off; the reverse
+  gesture → marks realign.
+
+**Units (delta from v1).**
+
+- `demos.ts` — reused; `intro_fusion` starts one cell from merging and
+  `intro_lumiere` drops its trailing move, so each script is the minimal signature.
+  `demoSteps` still derives the scripted states/flags from the engine.
+- `useGuidedDemo` **replaces** `useDemoPlayer`: a purpose-built on-rails stepper
+  holding the sandbox state, the expected input, an `armed` sub-state (for
+  split/world), and the bump/bloom/sound of the last accepted gesture. Exposes
+  `press(dir)` / `arm()` that accept only the scripted gesture and advance, plus
+  `guidance` (which control to light up) and `caption`.
+- `Controls` — a `highlight` prop pulses the expected arrow / alt control and a
+  `guiding` prop hides undo/reset during the tutorial.
+- A small on-board caption/callout (rendered as `Board` children, like the win
+  overlay) shows the step's instruction. The contextual `ruleLine` copy is reused
+  where it fits, shown prominently (which also answers "the hint is too small").
+- Skip becomes an explicit control (inputs now drive the tutorial, so they can no
+  longer double as skip). Seen-once persistence and the replay control are reused.
+
+`useSeenDemos`, `pickDemo` / `levelDemo`, and the `Board` ghost prop stay. The
+autoplay `useDemoPlayer` is removed.
