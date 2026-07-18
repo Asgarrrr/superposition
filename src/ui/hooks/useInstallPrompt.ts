@@ -26,22 +26,34 @@ const subs = new Set<() => void>();
 
 const notify = () => subs.forEach((f) => f());
 
+function onBeforeInstallPrompt(e: Event) {
+  // keep the event so we can prompt on our own tap, in our own design
+  e.preventDefault();
+  deferred = e as BeforeInstallPromptEvent;
+  notify();
+}
+// installed out-of-band (browser menu): drop the captured prompt
+function onAppInstalled() {
+  deferred = null;
+  notify();
+}
+
 function start() {
   if (started || typeof window === "undefined") return;
   started = true;
-  window.addEventListener("beforeinstallprompt", (e) => {
-    // keep the event so we can prompt on our own tap, in our own design
-    e.preventDefault();
-    deferred = e as BeforeInstallPromptEvent;
-    notify();
-  });
-  // installed out-of-band (browser menu): drop the captured prompt
-  window.addEventListener("appinstalled", () => {
-    deferred = null;
-    notify();
-  });
+  window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+  window.addEventListener("appinstalled", onAppInstalled);
 }
 start();
+
+// dev-only: HMR re-evaluates this module, re-running start() with a fresh
+// `started`; without tearing the old listeners down they stack across edits.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.removeEventListener("appinstalled", onAppInstalled);
+  });
+}
 
 const subscribe = (cb: () => void) => {
   subs.add(cb);
@@ -81,11 +93,16 @@ export function useInstallPrompt(): {
   }, []);
 
   const install = useCallback(async () => {
-    if (!deferred) return;
-    await deferred.prompt();
-    const { outcome } = await deferred.userChoice;
+    const evt = deferred;
+    if (!evt) return;
+    // Consume the event before awaiting: a second tap (or a double-tap) while
+    // the OS prompt is open must not call prompt() twice on the same event —
+    // that throws InvalidStateError. The prompt is single-use regardless of
+    // outcome, so clearing it here is correct whether accepted or dismissed.
     deferred = null;
     notify();
+    await evt.prompt();
+    const { outcome } = await evt.userChoice;
     // accepted → the app installs; retire the banner for good
     if (outcome === "accepted") {
       markDismissed();

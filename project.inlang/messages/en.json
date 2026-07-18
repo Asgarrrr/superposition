@@ -105,6 +105,8 @@
   "offline_daily_title": "Offline",
   "offline_daily_body": "The daily challenge needs a connection. The campaign, though, plays offline.",
   "offline_daily_back": "back to the boards",
+  "error_daily_title": "Something went wrong",
+  "error_daily_body": "The daily challenge failed to load. Try again in a moment.",
   "daily_solved": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],

@@ -105,6 +105,8 @@
   "offline_daily_title": "Hors ligne",
   "offline_daily_body": "Le défi du jour a besoin d'une connexion. La campagne, elle, se joue hors ligne.",
   "offline_daily_back": "retour aux planches",
+  "error_daily_title": "Une erreur est survenue",
+  "error_daily_body": "Le défi du jour n'a pas pu se charger. Réessayez dans un instant.",
   "daily_solved": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],

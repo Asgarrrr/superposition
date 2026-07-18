@@ -34,7 +34,21 @@ const PRECACHE = ${JSON.stringify(precache)};
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()),
+    caches.open(CACHE).then(async (cache) => {
+      // "/" is the offline navigation fallback — its precache is blocking, a
+      // failure fails the install. Every other asset is best-effort: cache.addAll
+      // is atomic, so one 404 would reject the whole install forever and wedge
+      // the SW. cache: "reload" bypasses the HTTP cache so we store fresh copies.
+      await cache.add(new Request("/", { cache: "reload" }));
+      await Promise.all(
+        PRECACHE.filter((u) => u !== "/").map((u) =>
+          cache.add(new Request(u, { cache: "reload" })).catch((err) => {
+            console.warn("[sw] precache skipped (non-critical):", u, err);
+          }),
+        ),
+      );
+      await self.skipWaiting();
+    }),
   );
 });
 
@@ -62,8 +76,15 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put(req, copy));
+          // Cache only successful navigations — a one-off 500/403 must not be
+          // reserved offline in place of the shell fallback. And never overwrite
+          // the precached "/" shell: it's paired with this build's hashed assets,
+          // so a cached N+1 HTML referencing assets absent from the N cache
+          // (deploy skew) would render broken offline.
+          if (res.ok && url.pathname !== "/") {
+            const copy = res.clone();
+            caches.open(CACHE).then((cache) => cache.put(req, copy));
+          }
           return res;
         })
         .catch(() => caches.match(req).then((hit) => hit || caches.match("/"))),

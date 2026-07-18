@@ -30,20 +30,30 @@ export const Route = createFileRoute("/daily/$tier")({
   // The loader hits server functions (daily puzzle, leaderboard) — the one part
   // of the app that needs the network. Offline, the SW's navigation fallback
   // serves the "/" shell, the client mounts this route, the loader throws, and
-  // we show a clear notice instead of a broken screen. (Redirects for bad tiers
-  // are handled by the router, not here.)
-  errorComponent: DailyOffline,
+  // we show a clear notice instead of a broken screen. A real server error while
+  // online gets an honest generic message, not a false "offline" claim.
+  // (Redirects for bad tiers are handled by the router, not here.)
+  errorComponent: DailyError,
 });
 
-function DailyOffline() {
+// A dropped connection makes fetch() reject with a TypeError; an offline
+// navigator confirms it. Anything else (a 5xx serialized by the server function)
+// is a real error the player can't fix by reconnecting.
+function isNetworkError(error: unknown): boolean {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return true;
+  return error instanceof TypeError;
+}
+
+function DailyError({ error }: { error: Error }) {
   const navigate = useNavigate();
+  const offline = isNetworkError(error);
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center gap-5 px-8 text-center font-mono text-paper">
       <h1 className="font-display text-3xl text-paper/90 italic">
-        {m.offline_daily_title()}
+        {offline ? m.offline_daily_title() : m.error_daily_title()}
       </h1>
       <p className="max-w-xs text-sm leading-relaxed text-paper/55">
-        {m.offline_daily_body()}
+        {offline ? m.offline_daily_body() : m.error_daily_body()}
       </p>
       <button
         type="button"
