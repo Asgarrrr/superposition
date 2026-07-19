@@ -82,7 +82,7 @@ routing, and build were migrated.
   (Nitro output → `.output/server/index.mjs` + `.output/public`)
 - `bun run start` — run the built Nitro server (`bun .output/server/index.mjs`)
 - `bun run test` — Vitest: engine tests + `src/server/replay.test.ts`
-- `bun run verify` — solver certifies the 16-level bank (fails if any is unsolvable)
+- `bun run verify` — solver certifies the 22-level bank (fails if any is unsolvable)
 - `bun run gen` — hunt new levels; `bun run gen:hero` — hero image
 - `bun run gen:daily` — generate + persist the daily puzzle (today + J+1/J+2), then exit
 - `bun run db:generate` / `db:migrate` — Drizzle migrations (needs `DATABASE_URL`)
@@ -165,7 +165,7 @@ import that (or `db`) from a module the client route tree pulls in.
 | ranking rule (upsert guard + ORDER BY + rank) | `src/server/ranking.ts` — the ONLY place "fewer moves, then fewer corrections" lives         |
 | score upsert + board types + currentUserId    | `src/server/leaderboard.ts` (`upsertBestScore`, `LeaderRow`/`MyResult`/`BoardData`)          |
 | merge equation (`a == b + off`)               | `merges()` in `src/engine/state.ts` — sole owner, used by successors AND decalage            |
-| per-level compiled mechanics                  | `compiled()` in `src/engine/mechanics/registry.ts` (WeakMap; hosts the two-movers throw)     |
+| per-level compiled mechanics                  | `compiled()` in `src/engine/mechanics/registry.ts` (WeakMap; single-owner guard for `resolveMove`/`mapDirB`/`settle`) |
 | mechanic necessity semantics                  | `removedWith`/`mustBeNeeded` on each mechanic; probe = `isRequired()` in `src/solver/bfs.ts` |
 | verb → sound/haptic signature                 | `inputSignature()` in `src/ui/signatures.ts` (game + tutorial both consume it)               |
 | alt-gesture rule (split/world)                | `altGesture()` in `src/ui/altGesture.ts`                                                     |

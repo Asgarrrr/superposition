@@ -174,6 +174,70 @@ export const DEMOS: Demo[] = [
       },
     ],
   },
+  // verso: the magenta film reads horizontal moves mirrored. The two inks start
+  // adjacent; one push cleaves them apart — cyan right, magenta left — the mirror
+  // in a single gesture. A second push makes the consequence click: the edge
+  // holds cyan while magenta glides on, same push, opposite fates. Both beats are
+  // horizontal on purpose — a vertical push moves them as one, so the mirror
+  // would not show. (Appended after the others so levelDemo picks verso as the
+  // newest mechanic on ch. VII boards.)
+  {
+    id: "intro_verso",
+    covers: ["verso"],
+    level: board({
+      size: 5,
+      mods: ["verso"],
+      a: { start: [2, 3], goal: [0, 0], walls: [] },
+      b: { start: [2, 2], goal: [0, 0], walls: [] },
+    }),
+    start: { merged: false, a: [2, 3], b: [2, 2], off: [0, 0] },
+    title: m.demo_title_verso,
+    sub: m.demo_sub_verso,
+    beats: [
+      {
+        input: { kind: "move", dir: R }, // cyan → right, magenta → left: diverge
+        say: m.demo_verso_push,
+        done: m.demo_verso_mirror,
+      },
+      {
+        input: { kind: "move", dir: R }, // cyan is walled by the edge, magenta glides on
+        say: m.demo_verso_push2,
+        done: m.demo_verso_edge,
+      },
+    ],
+  },
+  // repere: pins fixed to the glass snap the offset home. First a world gesture
+  // sends the marks off-register; then walking cyan onto the pin fires the snap —
+  // the film seats back a notch and, realigned, magenta drops onto cyan, so the
+  // snap ITSELF triggers the fusion (engine-verified). Magenta is walled into the
+  // pin cell so only cyan moves: the merge is the pin's doing, not the push. Last
+  // in intro order, so it wins as the newest mechanic on every ch. VIII board.
+  {
+    id: "intro_repere",
+    covers: ["repere"],
+    level: board({
+      size: 5,
+      mods: ["fusion", "scission", "decalage", "repere"],
+      pins: [[2, 2]],
+      a: { start: [2, 1], goal: [0, 0], walls: [] },
+      b: { start: [2, 2], goal: [0, 0], walls: [[2, 3]] },
+    }),
+    start: { merged: false, a: [2, 1], b: [2, 2], off: [0, 0] },
+    title: m.demo_title_repere,
+    sub: m.demo_sub_repere,
+    beats: [
+      {
+        input: { kind: "shift", dir: R }, // slide the world: the marks go off-register
+        say: () => m.demo_repere_shift({ alt: altHint() }),
+        done: m.demo_repere_off,
+      },
+      {
+        input: { kind: "move", dir: R }, // cyan onto the pin → snap realigns → fusion
+        say: m.demo_repere_pin,
+        done: m.demo_repere_snap,
+      },
+    ],
+  },
 ];
 
 /** One played input: the resulting state (unchanged when `blocked`), plus flags

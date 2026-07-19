@@ -23,6 +23,19 @@ function d4(size: number): Xf[] {
   ];
 }
 
+// The subgroup of D4 that fixes the COLUMN-mirror axis (columns stay columns):
+// identity, rot180, flip rows, flip cols. verso pins that axis, so rotations and
+// transposes — which turn it into a row-mirror — are no longer the same puzzle.
+function colAxisFixed(size: number): Xf[] {
+  const m = size - 1;
+  return [
+    ([r, c]) => [r, c], // identity
+    ([r, c]) => [m - r, m - c], // rot 180
+    ([r, c]) => [m - r, c], // flip rows
+    ([r, c]) => [r, m - c], // flip cols
+  ];
+}
+
 // A layer as a stable string under transform `xf`: walls are order-independent,
 // so they're sorted; start and goal keep their roles.
 function serLayer(l: LayerDef, xf: Xf): string {
@@ -36,21 +49,24 @@ function serLayer(l: LayerDef, xf: Xf): string {
  *  signatures ⇒ the same puzzle up to symmetry. */
 export function levelSignature(lv: Level): string {
   const mods = [...lv.mods].sort().join(",");
-  // decalage shifts layer B specifically, so A and B are not interchangeable
-  // then; every other mechanic treats the two layers alike.
-  const allowSwap = !lv.mods.includes("decalage");
+  const verso = lv.mods.includes("verso");
+  // decalage shifts layer B and verso mirrors it: A and B stop being
+  // interchangeable then. Every other mechanic treats the two layers alike.
+  const allowSwap = !lv.mods.includes("decalage") && !verso;
+  // verso pins the column-mirror axis — only the symmetries that fix it survive.
+  const xfs = verso ? colAxisFixed(lv.size) : d4(lv.size);
+  const absolute = (ws: Pos[] | undefined, xf: Xf) =>
+    (ws ?? []).map((w) => xf(w).join(",")).sort().join(";");
   let best: string | null = null;
-  for (const xf of d4(lv.size)) {
+  for (const xf of xfs) {
     const A = serLayer(lv.a, xf);
     const B = serLayer(lv.b, xf);
-    // lightWalls are board-absolute (they don't move on a layer swap)
-    const light = (lv.lightWalls ?? [])
-      .map((w) => xf(w).join(","))
-      .sort()
-      .join(";");
+    // lightWalls and pins are board-absolute (they don't move on a layer swap)
+    const light = absolute(lv.lightWalls, xf);
+    const pins = absolute(lv.pins, xf);
     const orders = allowSwap ? [`${A}|${B}`, `${B}|${A}`] : [`${A}|${B}`];
     for (const layers of orders) {
-      const s = `${lv.size}#${mods}#${layers}#${light}`;
+      const s = `${lv.size}#${mods}#${layers}#${light}#${pins}`;
       if (best === null || s < best) best = s;
     }
   }

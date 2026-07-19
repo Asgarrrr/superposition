@@ -84,6 +84,28 @@ function lightWalls(cells: Pos[], merged: boolean): string {
     .join("");
 }
 
+/** Registration pins (repere): small calage anchors fixed to the glass. Drawn in
+ *  board coordinates — never drifted by `off`, like the light walls — and doubled
+ *  cyan/magenta by the world offset (as the corner marks are), seating to a single
+ *  head when the worlds align or fuse. Kept quieter than goals/marks. */
+function pins(cells: Pos[], off: Pos, merged: boolean, won: boolean): string {
+  const seated = won ? TAPE : WHITE;
+  const dx = C(off) * 3;
+  const dy = R(off) * 3;
+  const tick = (cx: number, cy: number, color: string) =>
+    `<g stroke="${color}" stroke-width="1.2"><line x1="${cx - 4.5}" y1="${cy}" x2="${cx + 4.5}" y2="${cy}"/><line x1="${cx}" y1="${cy - 4.5}" x2="${cx}" y2="${cy + 4.5}"/></g>`;
+  return cells
+    .map((p) => {
+      const [x, y] = cellCenter(p);
+      const body =
+        won || merged
+          ? tick(x, y, seated)
+          : tick(x - dx, y - dy, CYAN) + tick(x + dx, y + dy, MAGENTA);
+      return `<g opacity="0.5"><circle cx="${x}" cy="${y}" r="6.5" fill="none" stroke="${seated}" stroke-width="1.2"/>${body}<circle cx="${x}" cy="${y}" r="1.6" fill="${seated}"/></g>`;
+    })
+    .join("");
+}
+
 function goal(pos: Pos, color: string): string {
   const [x, y] = cellCenter(pos);
   return `<circle cx="${x}" cy="${y}" r="${CELL * 0.3}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
@@ -156,6 +178,7 @@ export function frameSvg(level: Level, st: GameState, won: boolean): string {
   // shared plane, on top of the inks and under the registration marks
   if (level.lightWalls?.length)
     parts.push(lightWalls(level.lightWalls, st.merged));
+  if (level.pins?.length) parts.push(pins(level.pins, off, st.merged, won));
 
   const marks: [number, number][] = [
     [PAD, PAD],

@@ -139,7 +139,7 @@ export function PlayScreen({
   fx: SoundFx;
   muted: boolean;
   onToggleMute: () => void;
-  onWin?: (moves: number) => void;
+  onWin?: (moves: number, clean: boolean) => void; // clean = no undo/reset in the run
   onHintedWin?: () => void; // won with a hint: off the record, still marked solved
   onNext?: (() => void) | null;
   onExit: () => void;

@@ -11,6 +11,7 @@ import type { Pulse } from "../hooks/useGame.ts";
 import { boardSpan, CELL, cellCenter } from "./board-metrics.ts";
 import { InkLayer } from "./InkLayer.tsx";
 import { RegMark } from "./RegMark.tsx";
+import { RegPin } from "./RegPin.tsx";
 import { introInitial, introVariants } from "./board-intro.ts";
 import { reducedMotion } from "../motion.ts";
 
@@ -185,6 +186,29 @@ export function Board({
                 />
                 <circle cx={x} cy={y} r="3" fill="var(--color-paper)" />
               </g>
+            );
+          })}
+        </motion.g>
+        {/* registration pins (repere): calage anchors fixed to the glass, so
+            they render in board coordinates — never shifted by `off`, visible
+            under both films. Doubled cyan/magenta while the worlds drift, seated
+            to a single head when aligned or merged, echoing the corner marks. */}
+        <motion.g
+          initial={introInitial}
+          animate="visible"
+          variants={introVariants.marks}
+        >
+          {(level.pins ?? []).map(([r, c]) => {
+            const [x, y] = cellCenter([r, c]);
+            return (
+              <RegPin
+                key={`pin-${r}-${c}`}
+                x={x}
+                y={y}
+                offPx={offPx}
+                merged={st.merged}
+                locked={solved}
+              />
             );
           })}
         </motion.g>

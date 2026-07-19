@@ -26,7 +26,7 @@ export interface LayerDef {
 }
 
 export type MechanicId =
-  "fusion" | "scission" | "lumiere" | "glace" | "decalage";
+  "fusion" | "scission" | "lumiere" | "glace" | "decalage" | "verso" | "repere";
 
 export interface Level {
   id: string;
@@ -37,6 +37,7 @@ export interface Level {
   a: LayerDef;
   b: LayerDef;
   lightWalls?: Pos[]; // in board coordinates (layer A)
+  pins?: Pos[]; // registration pins, in board coordinates (layer A)
 }
 
 export interface MoveCtx {
@@ -62,5 +63,14 @@ export interface Mechanic {
     mergedWalls?: (level: Level) => Pos[];
     enablesMerge?: boolean;
     extraSuccessors?: (state: GameState, level: Level) => [Input, GameState][];
+    /** Remaps layer B's `move` direction while unmerged, applied BEFORE the
+     * mover resolves. At most ONE active mechanic may define this — remapping
+     * has no composition order, and successors() throws if two are active. */
+    mapDirB?: (dir: Pos) => Pos;
+    /** Post-processes every produced successor state (all branches). Merged
+     * states must be returned untouched. successors() drops a settled state
+     * equal to its origin (no no-op transitions). At most ONE active mechanic
+     * may define this — the correction has no composition order. */
+    settle?: (next: GameState, level: Level) => GameState;
   };
 }
