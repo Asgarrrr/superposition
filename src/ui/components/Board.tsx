@@ -121,7 +121,7 @@ export function Board({
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       onTouchCancel={onTouchCancel}
-      className="relative aspect-square w-[min(92vw,520px)] touch-none overflow-hidden rounded-md"
+      className="relative aspect-square w-[min(92vw,60svh,520px)] touch-none overflow-hidden rounded-md"
       style={{
         background:
           "radial-gradient(ellipse 80% 80% at 50% 50%, var(--color-box-glow), var(--color-box) 80%)",

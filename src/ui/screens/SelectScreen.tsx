@@ -78,7 +78,7 @@ export function SelectScreen({
       )}
 
       <motion.div
-        className="relative z-10 flex min-h-dvh flex-col items-center px-4 pt-11 pb-16"
+        className="relative z-10 flex min-h-dvh flex-col items-center px-4 pt-11 pb-[calc(6rem+env(safe-area-inset-bottom))]"
         variants={column}
         initial={play ? "hidden" : false}
         animate="visible"
@@ -113,11 +113,12 @@ export function SelectScreen({
               <button
                 key={t}
                 type="button"
-                className="group relative flex cursor-pointer items-center justify-center overflow-hidden rounded-xs border border-paper/12 bg-paper/[0.015] py-3 text-center transition-colors duration-200 hover:border-paper/25 hover:bg-paper/[0.045]"
+                className="group relative flex cursor-pointer items-center justify-center overflow-hidden rounded-xs border border-paper/12 bg-paper/[0.015] py-3 text-center transition-colors duration-200 hover:border-paper/25 hover:bg-paper/[0.045] active:border-paper/25 active:bg-paper/[0.06]"
                 onClick={() => onDaily(t)}
               >
-                {/* same register tick as the level plates */}
-                <span className="absolute top-1/2 left-0 h-0 w-px -translate-y-1/2 bg-tape/70 transition-all duration-200 group-hover:h-5" />
+                {/* same register tick as the level plates — grows on hover, and
+                    on tap (active) where touch has no hover */}
+                <span className="absolute top-1/2 left-0 h-0 w-px -translate-y-1/2 bg-tape/70 transition-all duration-200 group-hover:h-5 group-active:h-5" />
                 <span className="font-display text-sm italic tracking-[0.02em] text-paper/85 transition-colors duration-200 group-hover:text-paper">
                   {label}
                 </span>
@@ -132,7 +133,7 @@ export function SelectScreen({
             <button
               type="button"
               onClick={() => onDaily(3)}
-              className="group relative mt-2 flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xs border border-tape/40 px-4 py-4 text-left transition-colors duration-200 hover:border-tape/70"
+              className="group relative mt-2 flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xs border border-tape/40 px-4 py-4 text-left transition-colors duration-200 hover:border-tape/70 active:border-tape/70"
               style={{
                 // a lit sheet, not a flat rectangle: a warm lamp catches the top
                 // corner and a hairline lip picks up the light
@@ -188,12 +189,13 @@ export function SelectScreen({
               )}
               <button
                 type="button"
-                className="group relative flex cursor-pointer items-center gap-3.5 overflow-hidden rounded-xs border border-paper/12 bg-paper/[0.015] px-3.5 py-3 text-left transition-colors duration-200 hover:border-paper/25 hover:bg-paper/[0.045]"
+                className="group relative flex cursor-pointer items-center gap-3.5 overflow-hidden rounded-xs border border-paper/12 bg-paper/[0.015] px-3.5 py-3 text-left transition-colors duration-200 hover:border-paper/25 hover:bg-paper/[0.045] active:border-paper/25 active:bg-paper/[0.06]"
                 onClick={() => onPick(i)}
               >
                 {/* register tick — a slot mark on the sheet's edge that grows as
-                  the plate comes into register under the pointer */}
-                <span className="absolute top-1/2 left-0 h-0 w-px -translate-y-1/2 bg-tape/70 transition-all duration-200 group-hover:h-5" />
+                  the plate comes into register under the pointer (hover), or on
+                  tap (active) where touch has no hover */}
+                <span className="absolute top-1/2 left-0 h-0 w-px -translate-y-1/2 bg-tape/70 transition-all duration-200 group-hover:h-5 group-active:h-5" />
                 <span className="w-6 text-[11px] tabular-nums text-paper/28 transition-colors duration-200 group-hover:text-tape">
                   {String(i + 1).padStart(2, "0")}
                 </span>
