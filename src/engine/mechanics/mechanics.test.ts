@@ -221,3 +221,182 @@ describe("décalage", () => {
     expect(next).toEqual({ merged: false, a: [1, 1], b: [1, 0], off: [0, 1] });
   });
 });
+
+describe("verso", () => {
+  const level = testLevel({
+    size: 5,
+    mods: ["verso"],
+    a: { start: [2, 2], goal: [0, 0], walls: [] },
+    b: { start: [2, 2], goal: [0, 0], walls: [] },
+  });
+
+  it("miroir horizontal pour B seulement (colonnes)", () => {
+    // A va à droite (brut), B lit la gauche (miroir)
+    const next = byInput(successors(initialState(level), level), "move", [0, 1]);
+    expect(next).toEqual({ merged: false, a: [2, 3], b: [2, 1], off: [0, 0] });
+  });
+
+  it("les déplacements verticaux ne sont pas miroités", () => {
+    const next = byInput(
+      successors(initialState(level), level),
+      "move",
+      [-1, 0],
+    );
+    expect(next).toEqual({ merged: false, a: [1, 2], b: [1, 2], off: [0, 0] });
+  });
+
+  it("fusionné, le pion suit le sens brut (plus de miroir)", () => {
+    const merged = testLevel({ ...level, mods: ["verso", "fusion"] });
+    const st: GameState = { merged: true, m: [2, 2], off: [0, 0] };
+    expect(byInput(successors(st, merged), "move", [0, 1])).toEqual({
+      merged: true,
+      m: [2, 3],
+      off: [0, 0],
+    });
+    expect(byInput(successors(st, merged), "move", [0, -1])).toEqual({
+      merged: true,
+      m: [2, 1],
+      off: [0, 0],
+    });
+  });
+
+  it("la scission n’est pas miroitée", () => {
+    const withSplit = testLevel({
+      ...level,
+      mods: ["verso", "fusion", "scission"],
+    });
+    const st: GameState = { merged: true, m: [2, 2], off: [0, 0] };
+    // split → droite : cyan à droite, magenta à l’opposé dans SON calque (brut)
+    expect(byInput(successors(st, withSplit), "split", [0, 1])).toEqual({
+      merged: false,
+      a: [2, 3],
+      b: [2, 1],
+      off: [0, 0],
+    });
+  });
+
+  it("le shift n’est pas miroité : le monde B glisse dans le sens brut", () => {
+    const withShift = testLevel({ ...level, mods: ["verso", "decalage"] });
+    const st: GameState = { merged: false, a: [2, 2], b: [2, 2], off: [0, 0] };
+    expect(byInput(successors(st, withShift), "shift", [0, 1])).toEqual({
+      merged: false,
+      a: [2, 2],
+      b: [2, 2],
+      off: [0, 1],
+    });
+  });
+
+  it("compose avec la glace : B glisse dans le sens miroité", () => {
+    const iced = testLevel({
+      size: 5,
+      mods: ["verso", "glace"],
+      a: { start: [2, 0], goal: [0, 0], walls: [] },
+      b: { start: [2, 4], goal: [0, 0], walls: [] },
+    });
+    // A glisse à droite jusqu’au bord, B glisse à GAUCHE (miroir) jusqu’au bord
+    const next = byInput(successors(initialState(iced), iced), "move", [0, 1]);
+    expect(next).toEqual({ merged: false, a: [2, 4], b: [2, 0], off: [0, 0] });
+  });
+});
+
+describe("repère", () => {
+  const level = testLevel({
+    size: 5,
+    mods: ["decalage", "repere"],
+    pins: [[2, 2]],
+    a: { start: [0, 0], goal: [0, 0], walls: [] },
+    b: { start: [0, 0], goal: [0, 0], walls: [] },
+  });
+
+  it("la case de A sur une goupille rapproche l’offset d’un cran par axe", () => {
+    // A tombe sur [2,2] ; offset [2,2] → un cran vers 0 sur chaque axe
+    const st: GameState = { merged: false, a: [1, 2], b: [1, 1], off: [2, 2] };
+    const next = byInput(successors(st, level), "move", [1, 0]);
+    expect(next).toEqual({ merged: false, a: [2, 2], b: [2, 1], off: [1, 1] });
+  });
+
+  it("la case PLATEAU de B (b+off) déclenche aussi ; l’axe déjà nul reste nul", () => {
+    const st: GameState = { merged: false, a: [4, 3], b: [2, 0], off: [0, 1] };
+    // seul b+off = [2,2] touche la goupille
+    const next = byInput(successors(st, level), "move", [0, 1]);
+    expect(next).toEqual({ merged: false, a: [4, 4], b: [2, 1], off: [0, 0] });
+  });
+
+  it("uniforme : un shift déclenche la goupille comme un move", () => {
+    const st: GameState = { merged: false, a: [2, 2], b: [0, 0], off: [0, 2] };
+    // shift gauche → offset [0,1], la goupille sous A le cale à [0,0]
+    expect(byInput(successors(st, level), "shift", [0, -1])).toEqual({
+      merged: false,
+      a: [2, 2],
+      b: [0, 0],
+      off: [0, 0],
+    });
+    // sans repère, le shift s’arrêterait à [0,1]
+    const noPin = testLevel({ ...level, mods: ["decalage"] });
+    expect(byInput(successors(st, noPin), "shift", [0, -1])).toEqual({
+      merged: false,
+      a: [2, 2],
+      b: [0, 0],
+      off: [0, 1],
+    });
+  });
+
+  it("le calage peut provoquer la fusion", () => {
+    const merge = testLevel({
+      ...level,
+      mods: ["fusion", "decalage", "repere"],
+    });
+    const st: GameState = { merged: false, a: [1, 2], b: [1, 1], off: [0, 2] };
+    // move bas : A tombe sur la goupille, l’offset se cale à [0,1] et a == b+off
+    const next = byInput(successors(st, merge), "move", [1, 0]);
+    expect(next).toEqual({ merged: true, m: [2, 2], off: [0, 1] });
+  });
+
+  it("un seul cran par input : pas de cascade même en restant sur la goupille", () => {
+    const st: GameState = { merged: false, a: [1, 2], b: [0, 0], off: [2, 0] };
+    // A finit sur la goupille avec offset [2,0] → un seul cran → [1,0], pas [0,0]
+    const next = byInput(successors(st, level), "move", [1, 0]);
+    expect(next).toEqual({ merged: false, a: [2, 2], b: [1, 0], off: [1, 0] });
+  });
+
+  it("un successeur qui se cale sur l’état d’origine est supprimé", () => {
+    const st: GameState = { merged: false, a: [2, 2], b: [0, 0], off: [0, 1] };
+    // shift droite → [0,2], la goupille le ramène à [0,1] = origine → supprimé
+    expect(byInput(successors(st, level), "shift", [0, 1])).toBeUndefined();
+    // shift gauche → [0,0], état distinct → conservé
+    expect(byInput(successors(st, level), "shift", [0, -1])).toEqual({
+      merged: false,
+      a: [2, 2],
+      b: [0, 0],
+      off: [0, 0],
+    });
+  });
+
+  it("les états fusionnés ignorent les goupilles", () => {
+    const merge = testLevel({
+      ...level,
+      mods: ["fusion", "decalage", "repere"],
+    });
+    // m sur la goupille, offset non nul, mais fusionné → aucun calage
+    const st: GameState = { merged: true, m: [2, 2], off: [0, 1] };
+    expect(byInput(successors(st, merge), "move", [-1, 0])).toEqual({
+      merged: true,
+      m: [1, 2],
+      off: [0, 1],
+    });
+  });
+
+  it("inerte sans offset créé par décalage : les goupilles n’ont aucun effet", () => {
+    const withPins = testLevel({
+      size: 5,
+      mods: ["repere"],
+      pins: [[2, 2]],
+      a: { start: [2, 2], goal: [0, 0], walls: [] },
+      b: { start: [2, 2], goal: [0, 0], walls: [] },
+    });
+    const twin = testLevel({ ...withPins, mods: [] });
+    expect(successors(initialState(withPins), withPins)).toEqual(
+      successors(initialState(twin), twin),
+    );
+  });
+});

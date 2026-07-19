@@ -47,6 +47,13 @@ export function randomLevel(mods: MechanicId[], size: number): Level {
   };
   if (mods.includes("lumiere"))
     lv.lightWalls = mk(new Set(), 1 + rnd(size - 2));
+  if (mods.includes("repere")) {
+    // pins are board-absolute; keep them off both layers' walls (and any light)
+    const used = new Set<number>();
+    for (const w of [...lv.a.walls, ...lv.b.walls, ...(lv.lightWalls ?? [])])
+      used.add(ck(w));
+    lv.pins = mk(used, 1 + rnd(2)); // 1 or 2 pins
+  }
   return lv;
 }
 
