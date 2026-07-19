@@ -49,7 +49,7 @@ function MeRoute() {
   // blank table (a transient error would otherwise strand the page forever)
   if (session && failed)
     return (
-      <div className="relative flex min-h-screen items-center justify-center font-mono text-paper select-none">
+      <div className="relative flex min-h-dvh items-center justify-center font-mono text-paper select-none">
         <Room variant={0} reduced={reduced} />
         <div className="relative z-10 flex flex-col items-center gap-5">
           <p className="text-[11px] tracking-[0.1em] text-ink-magenta">
@@ -70,14 +70,14 @@ function MeRoute() {
   // the sign-in gate before we know whether there's a session
   if (isPending || (uid && !history))
     return (
-      <div className="relative min-h-screen">
+      <div className="relative min-h-dvh">
         <Room variant={0} reduced={reduced} />
       </div>
     );
 
   // no session — the sign-in gate
   return (
-    <div className="relative flex min-h-screen items-center justify-center font-mono text-paper select-none">
+    <div className="relative flex min-h-dvh items-center justify-center font-mono text-paper select-none">
       <Room variant={0} reduced={reduced} />
       <div className="relative z-10 flex flex-col items-center gap-5">
         <p className="text-[11px] tracking-[0.1em] text-paper/50">

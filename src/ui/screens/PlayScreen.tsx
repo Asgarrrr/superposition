@@ -207,7 +207,7 @@ export function PlayScreen({
     guided.st && demo ? altLabelFor(guided.st, demo.level) : null;
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 pt-20 pb-10 font-mono text-paper select-none xl:py-10">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center px-4 pt-20 pb-[calc(2.5rem_+_env(safe-area-inset-bottom))] font-mono text-paper select-none xl:py-10">
       {/* the shared lit table — the same workshop the title and edition sit in,
           so the board reads as a print on the table rather than a widget in a
           void (variant 0: the plain warm lamp, no halftone competing with the
