@@ -194,6 +194,9 @@ export function PlayScreen({
   // level stays a plain move. The tutorial drives its own arming, so the hold is
   // inert there and the swipe never carries alt.
   const altAvailable = altGesture(game.st, level) !== null;
+  // the direction the finger is aiming mid-slide, so the split preview can
+  // narrow to the move about to fire (cleared on release inside useSwipe)
+  const [aim, setAim] = useState<Pos | null>(null);
   const swipe = useSwipe((d, alt) => play(d, alt), {
     onHold: (held) => {
       if (demoActive) {
@@ -210,6 +213,7 @@ export function PlayScreen({
       game.arm(held);
       if (held) vibrate([10]);
     },
+    onAim: (d) => setAim(demoActive || !altAvailable ? null : d),
   });
 
   useKeyboard({
@@ -367,6 +371,7 @@ export function PlayScreen({
               bump={game.bump}
               bloom={game.bloom}
               armed={game.altArmed}
+              aim={aim}
               iceTrailA={game.iceTrailA}
               iceTrailB={game.iceTrailB}
               {...swipe}
