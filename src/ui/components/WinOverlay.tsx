@@ -2,10 +2,12 @@
 
 import type { TraceStep } from "../../engine/types.ts";
 import { LEVELS } from "../../engine/levels.ts";
+import { PAR } from "../../engine/par.ts";
 import { Wordmark } from "./Wordmark.tsx";
 import { ReplayGifButton } from "./ReplayGifButton.tsx";
 import { m } from "../../paraglide/messages.js";
 import { campaignReplayUrl } from "../replayLink.ts";
+import { undosOf } from "../submissionPolicy.ts";
 
 export function WinOverlay({
   plate,
@@ -29,6 +31,14 @@ export function WinOverlay({
   const level = LEVELS[plate - 1];
   const gifUrl = trace && level ? campaignReplayUrl(level.id, trace) : null;
 
+  // the two earnable stamps this pull qualifies for (the giant amber stamp above
+  // is the fiction's approval, shown on every win — these are the campaign
+  // marks): "bon à tirer" at the solver's par, "sans retouche" for a run with no
+  // correction. A hinted run is off the record, so it earns neither.
+  const par = level ? PAR[level.id] : undefined;
+  const atPar = !hinted && par !== undefined && moves === par;
+  const clean = !hinted && !!trace && undosOf(trace) === 0;
+
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-room/80 backdrop-blur-xs">
       <div className="scale-72">
@@ -47,6 +57,14 @@ export function WinOverlay({
       {hinted && (
         <div className="font-mono text-[10px] tracking-[0.18em] text-tape/70 uppercase">
           {m.win_hinted()}
+        </div>
+      )}
+      {(atPar || clean) && (
+        <div className="flex items-center gap-2.5 font-mono text-[10px] tracking-[0.18em] uppercase">
+          {atPar && <span className="text-tape/70">{m.stamp_bat()}</span>}
+          {clean && (
+            <span className="text-paper/45">{m.stamp_sans_retouche()}</span>
+          )}
         </div>
       )}
       {onNext ? (

@@ -74,7 +74,10 @@ export interface SubmissionDecision {
   readonly submit: TraceStep[] | null;
 }
 
-const undosOf = (trace: TraceStep[]) =>
+/** Corrections in a trace: undo and reset steps. Zero of them is a clean run
+ *  (the "sans retouche" stamp); the leaderboard also ranks by it as a
+ *  tie-break. Exported as the one definition of what a correction is. */
+export const undosOf = (trace: TraceStep[]) =>
   trace.filter((s) => s.kind === "undo" || s.kind === "reset").length;
 
 const stay = (state: SubmissionState): SubmissionDecision => ({
