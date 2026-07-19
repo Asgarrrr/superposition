@@ -211,6 +211,10 @@ export function useGame(
     solved,
     altArmed,
     toggleAlt: () => altKind !== null && setAltArmed((v) => !v),
+    // set the armed state directly (not toggled): the maintien-slide arms while
+    // the finger is held and disarms on release, so it can't flip an existing
+    // arm the wrong way. No-op when the state offers no alternate gesture.
+    arm: (on: boolean) => altKind !== null && setAltArmed(on),
     flash,
     bump,
     bloom,

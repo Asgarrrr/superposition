@@ -27,7 +27,9 @@ export function Board({
   iceTrailA,
   iceTrailB,
   onTouchStart,
+  onTouchMove,
   onTouchEnd,
+  onTouchCancel,
   children,
 }: {
   level: Level;
@@ -42,7 +44,9 @@ export function Board({
   iceTrailA: { from: Pos } | null;
   iceTrailB: { from: Pos } | null;
   onTouchStart: (e: React.TouchEvent) => void;
+  onTouchMove?: (e: React.TouchEvent) => void;
   onTouchEnd: (e: React.TouchEvent) => void;
+  onTouchCancel?: (e: React.TouchEvent) => void;
   children?: React.ReactNode;
 }) {
   // a blocked move recoils the whole box. Driven imperatively so the board
@@ -110,7 +114,9 @@ export function Board({
     <motion.div
       animate={recoil}
       onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
       className="relative aspect-square w-[min(92vw,520px)] touch-none overflow-hidden rounded-md"
       style={{
         background:
