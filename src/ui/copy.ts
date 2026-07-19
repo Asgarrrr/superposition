@@ -21,6 +21,12 @@ const HINTS: Record<string, () => string> = {
   verglas: m.hint_verglas,
   derive: m.hint_derive,
   tectonique: m.hint_tectonique,
+  reflet: m.hint_reflet,
+  envers: m.hint_envers,
+  parallaxe: m.hint_parallaxe,
+  goupille: m.hint_goupille,
+  aplomb: m.hint_aplomb,
+  calage: m.hint_calage,
 }
 
 const CHAPTERS: Record<string, () => string> = {
@@ -30,6 +36,8 @@ const CHAPTERS: Record<string, () => string> = {
   IV: m.chapter_IV,
   V: m.chapter_V,
   VI: m.chapter_VI,
+  VII: m.chapter_VII,
+  VIII: m.chapter_VIII,
 }
 
 export const levelHint = (id: string): string => HINTS[id]?.() ?? ''
