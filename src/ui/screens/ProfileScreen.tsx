@@ -113,7 +113,7 @@ export function ProfileScreen({
   }).format(new Date(`${history.joinedAt}T00:00:00Z`));
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-4 py-16 font-mono text-paper select-none">
+    <div className="relative flex min-h-dvh items-center justify-center px-4 py-16 font-mono text-paper select-none">
       <Room variant={0} reduced={reduced} />
       <LangToggle className="absolute top-4 right-4 z-20" />
       <button

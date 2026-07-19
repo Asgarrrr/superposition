@@ -60,7 +60,7 @@ export function SelectScreen({
   const play = reveal && !reduced;
   const tierLabels = [m.daily_tier_0(), m.daily_tier_1(), m.daily_tier_2()];
   return (
-    <div className="relative min-h-screen font-mono text-paper select-none">
+    <div className="relative min-h-dvh font-mono text-paper select-none">
       {/* the shared lit table, behind the scrolling edition (variant 0: the
           plain warm lamp, same as the board) */}
       <Room variant={0} reduced={reduced} />
@@ -78,7 +78,7 @@ export function SelectScreen({
       )}
 
       <motion.div
-        className="relative z-10 flex min-h-screen flex-col items-center px-4 pt-11 pb-16"
+        className="relative z-10 flex min-h-dvh flex-col items-center px-4 pt-11 pb-16"
         variants={column}
         initial={play ? "hidden" : false}
         animate="visible"

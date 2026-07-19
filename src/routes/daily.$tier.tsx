@@ -48,7 +48,7 @@ function DailyError({ error }: { error: Error }) {
   const navigate = useNavigate();
   const offline = isNetworkError(error);
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center gap-5 px-8 text-center font-mono text-paper">
+    <main className="relative flex min-h-dvh flex-col items-center justify-center gap-5 px-8 text-center font-mono text-paper">
       <h1 className="font-display text-3xl text-paper/90 italic">
         {offline ? m.offline_daily_title() : m.error_daily_title()}
       </h1>

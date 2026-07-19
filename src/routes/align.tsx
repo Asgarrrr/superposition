@@ -75,7 +75,7 @@ function AlignPrototype() {
       onPointerDown={onDown}
       onPointerMove={onMove}
       onPointerUp={onUp}
-      className="relative flex min-h-screen touch-none flex-col items-center justify-center overflow-hidden font-mono text-paper select-none"
+      className="relative flex min-h-dvh touch-none flex-col items-center justify-center overflow-hidden font-mono text-paper select-none"
       style={{
         cursor: solved ? "default" : drag.current ? "grabbing" : "grab",
         background:

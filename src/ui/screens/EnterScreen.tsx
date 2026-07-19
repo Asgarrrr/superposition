@@ -168,7 +168,7 @@ export function EnterScreen({ onStart }: { onStart: () => void }) {
   return (
     <div
       onPointerMove={onPointerMove}
-      className="relative flex min-h-screen touch-none flex-col items-center justify-center overflow-hidden font-mono text-paper select-none"
+      className="relative flex min-h-dvh touch-none flex-col items-center justify-center overflow-hidden font-mono text-paper select-none"
     >
       {/* the shared lit table — the room the edition and board also open in.
           Its corner marks breathe into register with the wordmark (crossSpread)

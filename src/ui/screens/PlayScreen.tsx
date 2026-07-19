@@ -6,6 +6,7 @@ import { motion, type Variants } from "motion/react";
 import type { GameState, Input, Level, Pos } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { altGesture } from "../altGesture.ts";
+import { vibrate } from "../haptics.ts";
 import { ruleLine } from "../ruleLine.ts";
 import { type Demo, levelDemo, pickDemo } from "../demos.ts";
 import { Board } from "../components/Board.tsx";
@@ -187,7 +188,19 @@ export function PlayScreen({
     game.play(d, alt);
   };
   const toggleAlt = () => (demoActive ? guided.arm() : game.toggleAlt());
-  const swipe = useSwipe(play);
+  // Maintien-slide: on the real board, holding still before a swipe arms the
+  // alternate gesture (split / world) — the tactile echo of Maj+arrow. We only
+  // arm (and buzz) when the state actually offers one, so a hold on a plain
+  // level stays a plain move. The tutorial drives its own arming, so the hold is
+  // inert there and the swipe never carries alt.
+  const altAvailable = altGesture(game.st, level) !== null;
+  const swipe = useSwipe((d, alt) => play(d, demoActive ? false : alt), {
+    onHold: (held) => {
+      if (demoActive || !altAvailable) return;
+      game.arm(held);
+      if (held) vibrate([10]);
+    },
+  });
 
   useKeyboard({
     play,
@@ -207,7 +220,7 @@ export function PlayScreen({
     guided.st && demo ? altLabelFor(guided.st, demo.level) : null;
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 pt-20 pb-10 font-mono text-paper select-none xl:py-10">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center px-4 pt-20 pb-[calc(2.5rem_+_env(safe-area-inset-bottom))] font-mono text-paper select-none xl:py-10">
       {/* the shared lit table — the same workshop the title and edition sit in,
           so the board reads as a print on the table rather than a widget in a
           void (variant 0: the plain warm lamp, no halftone competing with the
