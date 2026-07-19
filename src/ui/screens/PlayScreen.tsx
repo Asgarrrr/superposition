@@ -191,13 +191,15 @@ export function PlayScreen({
   // Maintien-slide: on the real board, holding still before a swipe arms the
   // alternate gesture (split / world) — the tactile echo of Maj+arrow. We only
   // arm (and buzz) when the state actually offers one, so a hold on a plain
-  // level stays a plain move. The tutorial drives its own arming, so the hold is
-  // inert there and the swipe never carries alt.
+  // level stays a plain move. In the tutorial the hold also arms the guided demo
+  // (but only on its alt beat — see onHold); the swipe itself never carries alt
+  // there, so a held push on a plain move-beat is still just a move — the arming
+  // is what lets an alt beat accept.
   const altAvailable = altGesture(game.st, level) !== null;
   // the direction the finger is aiming mid-slide, so the split preview can
   // narrow to the move about to fire (cleared on release inside useSwipe)
   const [aim, setAim] = useState<Pos | null>(null);
-  const swipe = useSwipe((d, alt) => play(d, alt), {
+  const swipe = useSwipe((d, alt) => play(d, demoActive ? false : alt), {
     onHold: (held) => {
       if (demoActive) {
         // in the tutorial the same gesture teaches itself, but arm ONLY when the
