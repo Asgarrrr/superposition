@@ -13,6 +13,7 @@ import type {
 } from "../engine/types.ts";
 import { applyInput } from "../engine/successors.ts";
 import { m } from "../paraglide/messages.js";
+import { altHint } from "./gestureHint.ts";
 
 /** One scripted gesture. `input` is the canonical script (drives demoSteps and
  *  the guidance arrow); `free` lets the tutorial accept ANY direction of the
@@ -74,7 +75,7 @@ export const DEMOS: Demo[] = [
       {
         input: { kind: "split", dir: D },
         free: true, // the player verifies the mirror rule in the direction THEY pick
-        say: m.demo_fusion_split,
+        say: () => m.demo_fusion_split({ alt: altHint() }),
         done: m.demo_fusion_split_done,
       },
     ],
@@ -163,7 +164,7 @@ export const DEMOS: Demo[] = [
       },
       {
         input: { kind: "shift", dir: L }, // the film slides under them → merge
-        say: m.demo_shift_do,
+        say: () => m.demo_shift_do({ alt: altHint() }),
         done: m.demo_shift_done,
       },
       {

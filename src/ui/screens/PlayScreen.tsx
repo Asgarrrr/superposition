@@ -194,9 +194,19 @@ export function PlayScreen({
   // level stays a plain move. The tutorial drives its own arming, so the hold is
   // inert there and the swipe never carries alt.
   const altAvailable = altGesture(game.st, level) !== null;
-  const swipe = useSwipe((d, alt) => play(d, demoActive ? false : alt), {
+  const swipe = useSwipe((d, alt) => play(d, alt), {
     onHold: (held) => {
-      if (demoActive || !altAvailable) return;
+      if (demoActive) {
+        // in the tutorial the same gesture teaches itself, but arm ONLY when the
+        // current beat is the alt one (guidance.arm) — a hold on a plain push
+        // would otherwise fire a split/world the beat never asked for
+        if (held && guided.guidance.arm) {
+          guided.arm();
+          vibrate([10]);
+        }
+        return;
+      }
+      if (!altAvailable) return;
       game.arm(held);
       if (held) vibrate([10]);
     },
