@@ -39,6 +39,8 @@ per board through the level's `mods` list.
 | `lumiere`  | White squares block only the merged pawn; the inks pass straight through them.                            |
 | `glace`    | Every move slides until it hits an obstacle (a layer wall or the edge).                                   |
 | `decalage` | Slides layer B by one cell under the pawns; the two worlds must end up aligned.                           |
+| `verso`    | The magenta film is laid emulsion-down: layer B reads horizontal pushes mirrored (left ↔ right).          |
+| `repere`   | Registration pins fixed to the glass: an ink ending its move on one snaps the offset a notch toward zero. |
 
 ## Architecture
 
@@ -52,7 +54,7 @@ direct consequence is that the game and the solver consume exactly the same API
 | `src/engine/types.ts`                   | The contract: the game state and the mechanic protocol                               |
 | `src/engine/{grid,state,successors}.ts` | Geometry, lifecycle, move enumeration                                                |
 | `src/engine/mechanics/`                 | One mechanic = one file + `registry.ts`                                              |
-| `src/engine/levels.ts`                  | The level bank (pure data, 16 boards)                                                |
+| `src/engine/levels.ts`                  | The level bank (pure data, 22 boards)                                                |
 | `src/solver/`                           | Rule-agnostic BFS + the `verify` / `gen` CLIs                                        |
 | `src/ui/screens/`                       | The title / select / play screens                                                    |
 | `src/ui/components/`                    | Board, InkLayer, RegMark, Wordmark, Hud, Controls…                                   |
