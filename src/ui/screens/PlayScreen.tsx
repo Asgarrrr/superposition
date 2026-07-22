@@ -3,7 +3,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, type Variants } from "motion/react";
-import type { GameState, Input, Level, Pos } from "../../engine/types.ts";
+import type {
+  GameState,
+  Input,
+  Level,
+  Pos,
+  TraceStep,
+} from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { altGesture } from "../altGesture.ts";
 import { ruleLine } from "../ruleLine.ts";
@@ -138,7 +144,7 @@ export function PlayScreen({
   fx: SoundFx;
   muted: boolean;
   onToggleMute: () => void;
-  onWin?: (moves: number) => void;
+  onWin?: (moves: number, trace: TraceStep[]) => void;
   onHintedWin?: () => void; // won with a hint: off the record, still marked solved
   onNext?: (() => void) | null;
   onExit: () => void;

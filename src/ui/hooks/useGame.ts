@@ -39,7 +39,7 @@ interface IceTrails {
 export function useGame(
   level: Level,
   fx: SoundFx,
-  onWin?: (moves: number) => void,
+  onWin?: (moves: number, trace: TraceStep[]) => void,
   onHintedWin?: () => void,
 ) {
   const [st, setSt] = useState<GameState>(() => initialState(level));
@@ -131,7 +131,7 @@ export function useGame(
           trace: trace.current.slice(),
           moves: history.current.length,
         });
-        onWin?.(history.current.length);
+        onWin?.(history.current.length, trace.current.slice());
       } else {
         onHintedWin?.();
       }
