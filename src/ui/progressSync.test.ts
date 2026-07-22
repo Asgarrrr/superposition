@@ -50,4 +50,19 @@ describe("planProgressSync", () => {
     ]);
     expect(plan.uploads).toEqual([]);
   });
+
+  it("does not upload a trace whose level has no recorded best", () => {
+    const plan = planProgressSync({}, { a: T(4) }, []);
+    expect(plan.uploads).toEqual([]);
+  });
+
+  it("plans a download and an upload for different levels in one pass", () => {
+    const plan = planProgressSync(
+      { a: 8, b: 3 }, // a: server 5 beats local 8 → download; b: local 3 clean → upload
+      { b: T(3) },
+      [{ levelId: "a", moves: 5 }],
+    );
+    expect(plan.downloads).toEqual([{ levelId: "a", moves: 5 }]);
+    expect(plan.uploads).toEqual([{ levelId: "b", trace: T(3) }]);
+  });
 });

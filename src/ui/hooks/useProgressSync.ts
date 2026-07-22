@@ -30,7 +30,9 @@ export function useProgressSync(uid: string | null, deps: Deps) {
     (async () => {
       const server = await getMyLevelScores().catch(() => null);
       if (!alive || !server) {
-        if (syncedFor.current === uid) syncedFor.current = null; // let a retry happen
+        // release the guard so a later re-login (or remount) can retry — the
+        // effect is keyed on [uid], so nothing re-runs within this session
+        if (syncedFor.current === uid) syncedFor.current = null;
         return;
       }
       const { best, traces, record } = depsRef.current;

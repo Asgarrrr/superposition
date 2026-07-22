@@ -42,18 +42,19 @@ export function useBestScores() {
   }, [traces]);
 
   // A clean win passes its trace; a downward sync (record from the server) omits
-  // it. The trace is kept only when this solve becomes the new best, mirroring
-  // the move-count guard, so a worse replay never overwrites the better line.
+  // it. The trace is kept only when this solve becomes the new best, so a worse
+  // replay never overwrites the better line. The "is this a new best?" decision
+  // is made inside the functional updater — against fresh state, never a stale
+  // render closure — and read back synchronously to gate the trace write.
   const record = (id: string, moves: number, trace?: TraceStep[]) => {
+    let isBest = false;
     setBest((b) => {
-      const v = Math.min(b[id] ?? Infinity, moves);
-      return v === b[id] ? b : { ...b, [id]: v };
+      const prev = b[id];
+      isBest = prev === undefined || moves < prev;
+      return isBest ? { ...b, [id]: moves } : b;
     });
-    if (trace) {
-      setTraces((t) => {
-        const prev = best[id];
-        return prev !== undefined && prev <= moves ? t : { ...t, [id]: trace };
-      });
+    if (trace && isBest) {
+      setTraces((t) => ({ ...t, [id]: trace }));
     }
   };
 
