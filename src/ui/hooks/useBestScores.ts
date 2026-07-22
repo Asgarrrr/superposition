@@ -1,11 +1,15 @@
 // Best scores per level (key = level id), persisted in localStorage.
 // `hinted` marks levels cleared with a hint (off the record: no move count),
 // so the selector can show they were solved without pretending to a record.
+// `traces` keeps the winning trace of each level's best CLEAN solve, so a
+// signed-in player can replay-submit it (see progressSync / useProgressSync).
 
 import { useEffect, useState } from "react";
+import type { TraceStep } from "../../engine/types.ts";
 
 const STORAGE_KEY = "superposition.best";
 const HINTED_KEY = "superposition.hinted";
+const TRACES_KEY = "superposition.traces";
 
 function load<T>(key: string): Record<string, T> {
   try {
@@ -22,6 +26,9 @@ export function useBestScores() {
   const [hinted, setHinted] = useState<Record<string, true>>(() =>
     load<true>(HINTED_KEY),
   );
+  const [traces, setTraces] = useState<Record<string, TraceStep[]>>(() =>
+    load<TraceStep[]>(TRACES_KEY),
+  );
 
   // persistence lives outside the updater: it must stay pure
   useEffect(() => {
@@ -30,15 +37,28 @@ export function useBestScores() {
   useEffect(() => {
     localStorage.setItem(HINTED_KEY, JSON.stringify(hinted));
   }, [hinted]);
+  useEffect(() => {
+    localStorage.setItem(TRACES_KEY, JSON.stringify(traces));
+  }, [traces]);
 
-  const record = (id: string, moves: number) =>
+  // A clean win passes its trace; a downward sync (record from the server) omits
+  // it. The trace is kept only when this solve becomes the new best, mirroring
+  // the move-count guard, so a worse replay never overwrites the better line.
+  const record = (id: string, moves: number, trace?: TraceStep[]) => {
     setBest((b) => {
       const v = Math.min(b[id] ?? Infinity, moves);
       return v === b[id] ? b : { ...b, [id]: v };
     });
+    if (trace) {
+      setTraces((t) => {
+        const prev = best[id];
+        return prev !== undefined && prev <= moves ? t : { ...t, [id]: trace };
+      });
+    }
+  };
 
   const markHinted = (id: string) =>
     setHinted((h) => (h[id] ? h : { ...h, [id]: true }));
 
-  return { best, hinted, record, markHinted };
+  return { best, hinted, traces, record, markHinted };
 }
