@@ -38,7 +38,7 @@ function PlayRoute() {
       fx={fx}
       muted={muted}
       onToggleMute={toggleMuted}
-      onWin={(moves, clean) => record(level.id, moves, clean)}
+      onWin={(moves, trace, clean) => record(level.id, moves, trace, clean)}
       onHintedWin={() => markHinted(level.id)}
       onNext={
         idx < LEVELS.length - 1

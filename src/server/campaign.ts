@@ -6,6 +6,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
 import { levelScore } from "../db/schema.ts";
+import { db } from "../db/index.ts";
 import { LEVELS } from "../engine/levels.ts";
 import { solve } from "../solver/bfs.ts";
 import {
@@ -95,3 +96,17 @@ export const submitLevelScore = createServerFn({ method: "POST" })
 
     return { ok: true, moves: result.moves };
   });
+
+/** Every campaign score the current user holds — `{ levelId, moves }` per level.
+ *  Read-only, public shape: returns `[]` when not signed in (no throw). Feeds
+ *  the client's login-time progress reconciliation (useProgressSync). */
+export const getMyLevelScores = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{ levelId: string; moves: number }[]> => {
+    const userId = await currentUserId();
+    if (!userId) return [];
+    return db
+      .select({ levelId: levelScore.levelId, moves: levelScore.moves })
+      .from(levelScore)
+      .where(eq(levelScore.userId, userId));
+  },
+);

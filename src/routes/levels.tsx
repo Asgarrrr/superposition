@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { SelectScreen } from "../ui/screens/SelectScreen.tsx";
 import { InstallBanner } from "../ui/components/InstallBanner.tsx";
 import { useBestScores } from "../ui/hooks/useBestScores.ts";
+import { useProgressSync } from "../ui/hooks/useProgressSync.ts";
 import { getWeekendDaily } from "../server/daily.ts";
 import { useSession } from "../lib/auth-client.ts";
 import { clearReveal, peekReveal } from "../ui/transition.ts";
@@ -12,8 +13,9 @@ export const Route = createFileRoute("/levels")({ component: SelectRoute });
 
 function SelectRoute() {
   const navigate = useNavigate();
-  const { best, hinted, clean } = useBestScores();
+  const { best, hinted, clean, traces, record } = useBestScores();
   const { data: session } = useSession();
+  useProgressSync(session?.user.id ?? null, { best, traces, record });
   // read the enter-screen hand-off once, on the first render (pure — no
   // mutation), latched in a ref; then clear it after commit so a plain return
   // to the selector never replays the reveal

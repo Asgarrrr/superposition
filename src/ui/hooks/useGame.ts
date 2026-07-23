@@ -39,7 +39,7 @@ interface IceTrails {
 export function useGame(
   level: Level,
   fx: SoundFx,
-  onWin?: (moves: number, clean: boolean) => void,
+  onWin?: (moves: number, trace: TraceStep[], clean: boolean) => void,
   onHintedWin?: () => void,
 ) {
   const [st, setSt] = useState<GameState>(() => initialState(level));
@@ -133,7 +133,11 @@ export function useGame(
         });
         // a clean run carried no correction — no undo, no reset — the whole way
         // (corrections stay in the trace, never popped), earning "sans retouche"
-        onWin?.(history.current.length, undosOf(trace.current) === 0);
+        onWin?.(
+          history.current.length,
+          trace.current.slice(),
+          undosOf(trace.current) === 0,
+        );
       } else {
         onHintedWin?.();
       }
