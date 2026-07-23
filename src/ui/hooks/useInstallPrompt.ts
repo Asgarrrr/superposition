@@ -7,13 +7,13 @@
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import {
   installMode,
-  isCoarsePointer,
   isDismissed,
   isIosSafari,
   isStandalone,
   markDismissed,
   type InstallMode,
 } from "../install.ts";
+import { coarsePointer } from "../pointer.ts";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -77,7 +77,7 @@ export function useInstallPrompt(): {
   // one-shot probes: standalone/iOS can't change within a session
   const standalone = useMemo(isStandalone, []);
   const iosSafari = useMemo(isIosSafari, []);
-  const mobile = useMemo(isCoarsePointer, []);
+  const mobile = useMemo(coarsePointer, []);
 
   const mode = installMode({
     dismissed,

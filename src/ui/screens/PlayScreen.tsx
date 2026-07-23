@@ -12,6 +12,7 @@ import type {
 } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { altGesture } from "../altGesture.ts";
+import { vibrate } from "../haptics.ts";
 import { ruleLine } from "../ruleLine.ts";
 import { type Demo, levelDemo, pickDemo } from "../demos.ts";
 import { Board } from "../components/Board.tsx";
@@ -144,7 +145,7 @@ export function PlayScreen({
   fx: SoundFx;
   muted: boolean;
   onToggleMute: () => void;
-  onWin?: (moves: number, trace: TraceStep[]) => void;
+  onWin?: (moves: number, trace: TraceStep[], clean: boolean) => void; // clean = no undo/reset in the run
   onHintedWin?: () => void; // won with a hint: off the record, still marked solved
   onNext?: (() => void) | null;
   onExit: () => void;
@@ -193,7 +194,35 @@ export function PlayScreen({
     game.play(d, alt);
   };
   const toggleAlt = () => (demoActive ? guided.arm() : game.toggleAlt());
-  const swipe = useSwipe(play);
+  // Maintien-slide: on the real board, holding still before a swipe arms the
+  // alternate gesture (split / world) — the tactile echo of Maj+arrow. We only
+  // arm (and buzz) when the state actually offers one, so a hold on a plain
+  // level stays a plain move. In the tutorial the hold also arms the guided demo
+  // (but only on its alt beat — see onHold); the swipe itself never carries alt
+  // there, so a held push on a plain move-beat is still just a move — the arming
+  // is what lets an alt beat accept.
+  const altAvailable = altGesture(game.st, level) !== null;
+  // the direction the finger is aiming mid-slide, so the split preview can
+  // narrow to the move about to fire (cleared on release inside useSwipe)
+  const [aim, setAim] = useState<Pos | null>(null);
+  const swipe = useSwipe((d, alt) => play(d, demoActive ? false : alt), {
+    onHold: (held) => {
+      if (demoActive) {
+        // in the tutorial the same gesture teaches itself, but arm ONLY when the
+        // current beat is the alt one (guidance.arm) — a hold on a plain push
+        // would otherwise fire a split/world the beat never asked for
+        if (held && guided.guidance.arm) {
+          guided.arm();
+          vibrate([10]);
+        }
+        return;
+      }
+      if (!altAvailable) return;
+      game.arm(held);
+      if (held) vibrate([10]);
+    },
+    onAim: (d) => setAim(demoActive || !altAvailable ? null : d),
+  });
 
   useKeyboard({
     play,
@@ -213,7 +242,7 @@ export function PlayScreen({
     guided.st && demo ? altLabelFor(guided.st, demo.level) : null;
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center px-4 pt-20 pb-10 font-mono text-paper select-none xl:py-10">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center-safe px-4 pt-20 pb-[calc(2.5rem_+_env(safe-area-inset-bottom))] font-mono text-paper select-none xl:py-10">
       {/* the shared lit table — the same workshop the title and edition sit in,
           so the board reads as a print on the table rather than a widget in a
           void (variant 0: the plain warm lamp, no halftone competing with the
@@ -350,6 +379,7 @@ export function PlayScreen({
               bump={game.bump}
               bloom={game.bloom}
               armed={game.altArmed}
+              aim={aim}
               iceTrailA={game.iceTrailA}
               iceTrailB={game.iceTrailB}
               {...swipe}

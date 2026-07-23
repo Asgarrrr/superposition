@@ -5,12 +5,13 @@
 import { useEffect, useMemo } from "react";
 import { motion, useAnimationControls } from "motion/react";
 import type { GameState, Level, Pos } from "../../engine/types.ts";
-import { sub } from "../../engine/grid.ts";
+import { eq, sub } from "../../engine/grid.ts";
 import { successors } from "../../engine/successors.ts";
 import type { Pulse } from "../hooks/useGame.ts";
 import { boardSpan, CELL, cellCenter } from "./board-metrics.ts";
 import { InkLayer } from "./InkLayer.tsx";
 import { RegMark } from "./RegMark.tsx";
+import { RegPin } from "./RegPin.tsx";
 import { introInitial, introVariants } from "./board-intro.ts";
 import { reducedMotion } from "../motion.ts";
 
@@ -21,13 +22,16 @@ export function Board({
   bump,
   bloom,
   armed = false,
+  aim = null,
   demo = false,
   guideGhosts = null,
   guides = null,
   iceTrailA,
   iceTrailB,
   onTouchStart,
+  onTouchMove,
   onTouchEnd,
+  onTouchCancel,
   children,
 }: {
   level: Level;
@@ -36,13 +40,16 @@ export function Board({
   bump: Pulse | null;
   bloom: Pulse | null;
   armed?: boolean; // ✕ armed on a merged pawn: preview where the split sends each ink
+  aim?: Pos | null; // while sliding: the direction being aimed — narrow the split preview to it
   demo?: boolean; // tutorial sandbox: frame the box in tape so it reads apart
   guideGhosts?: { a: Pos[]; b: Pos[] } | null; // tutorial: landing preview of the guided push
   guides?: { from: Pos; to: Pos; tone: "a" | "b" | "w" }[] | null; // tutorial: marching arrows drawing the gesture, in BOARD coordinates (this overlay is not shifted by `off` — magenta film positions must arrive pre-converted)
   iceTrailA: { from: Pos } | null;
   iceTrailB: { from: Pos } | null;
   onTouchStart: (e: React.TouchEvent) => void;
+  onTouchMove?: (e: React.TouchEvent) => void;
   onTouchEnd: (e: React.TouchEvent) => void;
+  onTouchCancel?: (e: React.TouchEvent) => void;
   children?: React.ReactNode;
 }) {
   // a blocked move recoils the whole box. Driven imperatively so the board
@@ -60,21 +67,23 @@ export function Board({
     });
   }, [bump, recoil]);
 
-  // Split preview: while ✕ is armed on the merged pawn, every legal split's
-  // landing cells, split by ink (cyan toward the arrow, magenta opposite).
-  // Read straight off the engine's successors so it can't drift from the rule.
+  // Split preview: while ✕ is armed on the merged pawn, the split's landing
+  // cells by ink (cyan toward the arrow, magenta opposite). Read straight off
+  // the engine's successors so it can't drift from the rule. When the finger is
+  // aiming a direction (maintien-slide), narrow to that one split — the two
+  // colours of the move about to fire — instead of showing every option.
   const ghosts = useMemo(() => {
     if (!armed || !st.merged) return { a: [] as Pos[], b: [] as Pos[] };
     const a: Pos[] = [];
     const b: Pos[] = [];
     for (const [inp, next] of successors(st, level)) {
-      if (inp.kind === "split" && !next.merged) {
-        a.push(next.a);
-        b.push(next.b);
-      }
+      if (inp.kind !== "split" || next.merged) continue;
+      if (aim && !eq(inp.dir, aim)) continue;
+      a.push(next.a);
+      b.push(next.b);
     }
     return { a, b };
-  }, [armed, st, level]);
+  }, [armed, aim, st, level]);
   // the guided push's landing cells ride the same ghost channel as the split
   // preview, so both hints share one visual vocabulary
   const ghostsA = guideGhosts ? [...ghosts.a, ...guideGhosts.a] : ghosts.a;
@@ -110,8 +119,10 @@ export function Board({
     <motion.div
       animate={recoil}
       onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
-      className="relative aspect-square w-[min(92vw,520px)] overflow-hidden rounded-md"
+      onTouchCancel={onTouchCancel}
+      className="relative aspect-square w-[min(92vw,60svh,520px)] touch-none overflow-hidden rounded-md"
       style={{
         background:
           "radial-gradient(ellipse 80% 80% at 50% 50%, var(--color-box-glow), var(--color-box) 80%)",
@@ -175,6 +186,29 @@ export function Board({
                 />
                 <circle cx={x} cy={y} r="3" fill="var(--color-paper)" />
               </g>
+            );
+          })}
+        </motion.g>
+        {/* registration pins (repere): calage anchors fixed to the glass, so
+            they render in board coordinates — never shifted by `off`, visible
+            under both films. Doubled cyan/magenta while the worlds drift, seated
+            to a single head when aligned or merged, echoing the corner marks. */}
+        <motion.g
+          initial={introInitial}
+          animate="visible"
+          variants={introVariants.marks}
+        >
+          {(level.pins ?? []).map(([r, c]) => {
+            const [x, y] = cellCenter([r, c]);
+            return (
+              <RegPin
+                key={`pin-${r}-${c}`}
+                x={x}
+                y={y}
+                offPx={offPx}
+                merged={st.merged}
+                locked={solved}
+              />
             );
           })}
         </motion.g>

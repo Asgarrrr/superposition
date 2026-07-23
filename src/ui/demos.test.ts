@@ -54,6 +54,32 @@ describe("démos — invariants moteur", () => {
     expect(walled).toContainEqual([2, 3]); // …an ink-walled cell in A's film
   });
 
+  it("intro_verso : une poussée horizontale sépare les encres en sens opposés", () => {
+    const d = byId("intro_verso");
+    const st0 = split(d.start);
+    const { steps } = demoSteps(d);
+    const s1 = split(steps[0].state);
+    const dCyan = s1.a[1] - st0.a[1]; // cyan column delta
+    const dMag = s1.b[1] - st0.b[1]; // magenta column delta
+    expect(dCyan * dMag).toBeLessThan(0); // opposite horizontal directions: the mirror
+    expect(s1.a[0]).toBe(st0.a[0]); // rows unchanged — a horizontal push
+    // beat 2 — the edge holds cyan while magenta keeps sliding
+    const s2 = split(steps[1].state);
+    expect(s2.a).toEqual(s1.a); // cyan pinned against the edge
+    expect(s2.b[1]).toBeLessThan(s1.b[1]); // magenta still moving left
+  });
+
+  it("intro_repere : le monde se décale, puis la goupille recale et fusionne", () => {
+    const { steps } = demoSteps(byId("intro_repere"));
+    expect(steps[0].merged).toBe(false);
+    expect(steps[0].state.off).not.toEqual([0, 0]); // the shift takes the marks off-register
+    expect(steps[1].merged).toBe(true); // the pin snap ITSELF triggers the fusion
+    expect(steps[1].state.off).toEqual([0, 0]); // …and pulls the marks back home
+    const merged = steps[1].state;
+    if (!merged.merged) throw new Error("expected a merged state");
+    expect(merged.m).toEqual([2, 2]); // fused on the pin
+  });
+
   it("chaque étape non bloquée fait avancer l’état", () => {
     for (const d of DEMOS) {
       const { start, steps } = demoSteps(d);
@@ -150,6 +176,23 @@ describe("démos — déclenchement à la première rencontre", () => {
   });
   it("Dérive déclenche décalage quand fusion est déjà vue", () => {
     expect(pickDemo(L("derive"), ["intro_fusion"])?.id).toBe("intro_decalage");
+  });
+  it("Reflet déclenche verso", () => {
+    expect(pickDemo(L("reflet"), [])?.id).toBe("intro_verso");
+  });
+  it("Envers déclenche verso même quand fusion est déjà vue (verso est la neuve)", () => {
+    expect(pickDemo(L("envers"), ["intro_fusion"])?.id).toBe("intro_verso");
+  });
+  it("Goupille déclenche repere quand décalage est déjà vu", () => {
+    expect(pickDemo(L("goupille"), ["intro_fusion", "intro_decalage"])?.id).toBe(
+      "intro_repere",
+    );
+  });
+  it("Calage (cinq mécaniques) déclenche repere en dernier", () => {
+    expect(
+      pickDemo(L("calage"), ["intro_fusion", "intro_glace", "intro_decalage"])
+        ?.id,
+    ).toBe("intro_repere");
   });
   it("un niveau sans mécanique neuve (Accord) ne déclenche rien", () => {
     expect(pickDemo(L("accord"), [])).toBeNull();

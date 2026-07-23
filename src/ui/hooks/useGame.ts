@@ -23,7 +23,7 @@ import { m } from "../../paraglide/messages.js";
 import { altGesture } from "../altGesture.ts";
 import { vibrate } from "../haptics.ts";
 import { inputSignature } from "../signatures.ts";
-import type { Solve } from "../submissionPolicy.ts";
+import { type Solve, undosOf } from "../submissionPolicy.ts";
 import type { SoundFx } from "./useSound.ts";
 
 export interface Pulse {
@@ -39,7 +39,7 @@ interface IceTrails {
 export function useGame(
   level: Level,
   fx: SoundFx,
-  onWin?: (moves: number, trace: TraceStep[]) => void,
+  onWin?: (moves: number, trace: TraceStep[], clean: boolean) => void,
   onHintedWin?: () => void,
 ) {
   const [st, setSt] = useState<GameState>(() => initialState(level));
@@ -131,7 +131,13 @@ export function useGame(
           trace: trace.current.slice(),
           moves: history.current.length,
         });
-        onWin?.(history.current.length, trace.current.slice());
+        // a clean run carried no correction — no undo, no reset — the whole way
+        // (corrections stay in the trace, never popped), earning "sans retouche"
+        onWin?.(
+          history.current.length,
+          trace.current.slice(),
+          undosOf(trace.current) === 0,
+        );
       } else {
         onHintedWin?.();
       }
@@ -211,6 +217,10 @@ export function useGame(
     solved,
     altArmed,
     toggleAlt: () => altKind !== null && setAltArmed((v) => !v),
+    // set the armed state directly (not toggled): the maintien-slide arms while
+    // the finger is held and disarms on release, so it can't flip an existing
+    // arm the wrong way. No-op when the state offers no alternate gesture.
+    arm: (on: boolean) => altKind !== null && setAltArmed(on),
     flash,
     bump,
     bloom,

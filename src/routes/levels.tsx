@@ -13,7 +13,7 @@ export const Route = createFileRoute("/levels")({ component: SelectRoute });
 
 function SelectRoute() {
   const navigate = useNavigate();
-  const { best, hinted, traces, record } = useBestScores();
+  const { best, hinted, clean, traces, record } = useBestScores();
   const { data: session } = useSession();
   useProgressSync(session?.user.id ?? null, { best, traces, record });
   // read the enter-screen hand-off once, on the first render (pure — no
@@ -41,6 +41,7 @@ function SelectRoute() {
       <SelectScreen
         best={best}
         hinted={hinted}
+        clean={clean}
         reveal={reveal.current}
         weekendReady={weekendReady}
         signedIn={!!session}

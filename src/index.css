@@ -48,6 +48,15 @@
   }
 }
 
+/* Sur un écran tactile (pas de clavier), les touches gravées « ⇧ / Z / R » ne
+   veulent rien dire : on les masque pour ne garder que le libellé du bouton.
+   Hors @layer pour l'emporter sur le .kbd de la couche « components ». */
+@media (hover: none) and (pointer: coarse) {
+  .kbd {
+    display: none;
+  }
+}
+
 /* recul du caisson quand un coup est bloqué : piloté par motion (Board), plus
    de keyframes CSS ici. */
 /* bloom blanc de la fusion */

@@ -4,7 +4,7 @@
 import type { GameState, Input, Level, MoveCtx, Pos } from "./types.ts";
 import { compiled } from "./mechanics/registry.ts";
 import { DIRS, eq, inBounds, sub, wallSet } from "./grid.ts";
-import { merges } from "./state.ts";
+import { hashState, merges } from "./state.ts";
 
 const stepMove = (pos: Pos, dir: Pos, ctx: MoveCtx): Pos => {
   const n = ctx.level.size;
@@ -18,8 +18,8 @@ export function successors(
   state: GameState,
   level: Level,
 ): [Input, GameState][] {
-  // memoized per level — the two-movers check happens once, in the registry
-  const { mechs, resolveMove } = compiled(level);
+  // memoized per level — the single-hook checks happen once, in the registry
+  const { mechs, resolveMove, mapDirB, settle } = compiled(level);
   const n = level.size;
   const resolve = resolveMove ?? stepMove;
 
@@ -29,8 +29,10 @@ export function successors(
     const wa = wallSet(level.a.walls, n);
     const wb = wallSet(level.b.walls, n);
     for (const dir of DIRS) {
+      // verso mirrors layer B's direction BEFORE the mover resolves the slide
+      const dirB = mapDirB ? mapDirB(dir) : dir;
       const na = resolve(state.a, dir, { level, walls: wa });
-      const nb = resolve(state.b, dir, { level, walls: wb });
+      const nb = resolve(state.b, dirB, { level, walls: wb });
       if (eq(na, state.a) && eq(nb, state.b)) continue;
       if (merges(level, na, nb, state.off))
         out.push([
@@ -64,7 +66,17 @@ export function successors(
     if (m.hooks.extraSuccessors)
       out.push(...m.hooks.extraSuccessors(state, level));
   }
-  return out;
+
+  if (!settle) return out;
+  // repere: pull the offset back toward alignment on EVERY successor, then drop
+  // any that settles onto the origin (successors never emits a no-op transition)
+  const origin = hashState(state, level);
+  const settled: [Input, GameState][] = [];
+  for (const [inp, ns] of out) {
+    const s = settle(ns, level);
+    if (hashState(s, level) !== origin) settled.push([inp, s]);
+  }
+  return settled;
 }
 
 export function applyInput(

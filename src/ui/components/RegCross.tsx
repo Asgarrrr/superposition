@@ -36,7 +36,11 @@ export function RegCross({
       width="26"
       height="27"
       viewBox="0 0 26 27"
-      className={`absolute ${pos}`}
+      // purely atmospheric corner marks — on a phone the narrow viewport
+      // brings the content edges out to where these sit, so they read as
+      // clutter laid over the list. Hide them below `sm`; the framing only
+      // earns its keep once the table has margin around it (tablet up).
+      className={`absolute hidden sm:block ${pos}`}
       style={{ opacity: 0.6 }}
     >
       <g style={{ mixBlendMode: "screen" }}>

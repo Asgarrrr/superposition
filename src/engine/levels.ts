@@ -2,6 +2,8 @@
 // Ch. I–II are hand-made; ch. III–V were discovered by the generator,
 // certified by `bun run verify`: unsolvable without merge (III+)
 // and without split (as marked). Ch. VI: the world itself moves.
+// Ch. VII: the magenta film reads mirrored (verso). Ch. VIII:
+// registration pins snap the offset home (repere, over decalage).
 // Display names live here (also printed by the solver CLI); level
 // hints are UI-only and live in the i18n messages, keyed by id.
 
@@ -62,4 +64,25 @@ export const LEVELS: Level[] = [
     mods: ['fusion', 'scission', 'decalage'],
     a: { start: [0, 4], goal: [4, 4], walls: [[2, 4], [1, 3], [0, 3], [0, 2], [1, 4]] },
     b: { start: [2, 1], goal: [1, 0], walls: [[2, 2], [0, 2], [1, 2], [3, 2], [4, 4], [0, 1], [0, 4]] } },
+  { id: 'reflet', ch: 'VII', name: 'Reflet', size: 5, mods: ['verso'],
+    a: { start: [3, 0], goal: [4, 4], walls: [[0, 4], [1, 2], [4, 0]] },
+    b: { start: [2, 4], goal: [2, 1], walls: [[1, 0], [0, 1], [0, 3]] } },
+  { id: 'envers', ch: 'VII', name: 'Envers', size: 5, mods: ['fusion', 'scission', 'verso'],
+    a: { start: [0, 4], goal: [4, 0], walls: [[1, 1], [1, 4], [2, 2], [3, 1], [0, 3]] },
+    b: { start: [2, 1], goal: [0, 4], walls: [[2, 3], [1, 3], [0, 2]] } },
+  { id: 'parallaxe', ch: 'VII', name: 'Parallaxe', size: 5, mods: ['fusion', 'scission', 'verso', 'glace'],
+    a: { start: [4, 4], goal: [0, 1], walls: [[4, 2], [3, 4], [2, 1]] },
+    b: { start: [2, 0], goal: [0, 1], walls: [[0, 2], [1, 1], [4, 3], [4, 0]] } },
+  { id: 'goupille', ch: 'VIII', name: 'Goupille', size: 5,
+    mods: ['fusion', 'scission', 'decalage', 'repere'], pins: [[4, 0], [3, 2]],
+    a: { start: [2, 3], goal: [4, 0], walls: [[4, 4], [3, 0], [2, 4]] },
+    b: { start: [4, 1], goal: [1, 3], walls: [[0, 4], [0, 1], [2, 4], [2, 3]] } },
+  { id: 'aplomb', ch: 'VIII', name: 'Aplomb', size: 5,
+    mods: ['fusion', 'scission', 'decalage', 'repere'], pins: [[4, 4], [2, 0]],
+    a: { start: [4, 4], goal: [1, 1], walls: [[4, 1], [1, 0], [0, 0], [0, 3]] },
+    b: { start: [0, 0], goal: [4, 3], walls: [[2, 3], [3, 4], [0, 4], [0, 1], [1, 0], [3, 3]] } },
+  { id: 'calage', ch: 'VIII', name: 'Calage', size: 5,
+    mods: ['fusion', 'scission', 'decalage', 'repere', 'glace'], pins: [[2, 1], [0, 4]],
+    a: { start: [2, 3], goal: [0, 4], walls: [[0, 1], [3, 3], [4, 3]] },
+    b: { start: [1, 4], goal: [1, 0], walls: [[4, 1], [3, 2], [3, 1], [2, 0]] } },
 ]

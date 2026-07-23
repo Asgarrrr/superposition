@@ -53,12 +53,6 @@ export function isIosSafari(): boolean {
   return iOS && safari;
 }
 
-/** Touch-first device, the only audience for the banner. */
-export function isCoarsePointer(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia?.("(pointer: coarse)").matches ?? false;
-}
-
 export function isDismissed(): boolean {
   try {
     return localStorage.getItem(DISMISS_KEY) === "1";

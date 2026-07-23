@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { LEVELS } from "../../engine/levels.ts";
 import { m } from "../../paraglide/messages.js";
 import { chapterName } from "../copy.ts";
+import { stamps } from "../stamps.ts";
 import { Wordmark } from "../components/Wordmark.tsx";
 import { LangToggle } from "../components/LangToggle.tsx";
 import { Room } from "../components/Room.tsx";
@@ -37,6 +38,7 @@ const rise = {
 export function SelectScreen({
   best,
   hinted = {},
+  clean = {},
   onPick,
   onDaily,
   onProfile,
@@ -47,6 +49,8 @@ export function SelectScreen({
   best: Record<string, number>;
   // levels cleared with a hint (off the record) — a dim ✓, no move count
   hinted?: Record<string, true>;
+  // levels ever cleared with no correction — backs the "sans retouche" mark
+  clean?: Record<string, true>;
   onPick: (idx: number) => void;
   onDaily: (tier: number) => void;
   onProfile: () => void;
@@ -60,7 +64,7 @@ export function SelectScreen({
   const play = reveal && !reduced;
   const tierLabels = [m.daily_tier_0(), m.daily_tier_1(), m.daily_tier_2()];
   return (
-    <div className="relative min-h-screen font-mono text-paper select-none">
+    <div className="relative min-h-dvh font-mono text-paper select-none">
       {/* the shared lit table, behind the scrolling edition (variant 0: the
           plain warm lamp, same as the board) */}
       <Room variant={0} reduced={reduced} />
@@ -78,7 +82,7 @@ export function SelectScreen({
       )}
 
       <motion.div
-        className="relative z-10 flex min-h-screen flex-col items-center px-4 pt-11 pb-16"
+        className="relative z-10 flex min-h-dvh flex-col items-center px-4 pt-11 pb-[calc(6rem+env(safe-area-inset-bottom))]"
         variants={column}
         initial={play ? "hidden" : false}
         animate="visible"
@@ -113,11 +117,12 @@ export function SelectScreen({
               <button
                 key={t}
                 type="button"
-                className="group relative flex cursor-pointer items-center justify-center overflow-hidden rounded-xs border border-paper/12 bg-paper/[0.015] py-3 text-center transition-colors duration-200 hover:border-paper/25 hover:bg-paper/[0.045]"
+                className="group relative flex cursor-pointer items-center justify-center overflow-hidden rounded-xs border border-paper/12 bg-paper/[0.015] py-3 text-center transition-colors duration-200 hover:border-paper/25 hover:bg-paper/[0.045] active:border-paper/25 active:bg-paper/[0.06]"
                 onClick={() => onDaily(t)}
               >
-                {/* same register tick as the level plates */}
-                <span className="absolute top-1/2 left-0 h-0 w-px -translate-y-1/2 bg-tape/70 transition-all duration-200 group-hover:h-5" />
+                {/* same register tick as the level plates — grows on hover, and
+                    on tap (active) where touch has no hover */}
+                <span className="absolute top-1/2 left-0 h-0 w-px -translate-y-1/2 bg-tape/70 transition-all duration-200 group-hover:h-5 group-active:h-5" />
                 <span className="font-display text-sm italic tracking-[0.02em] text-paper/85 transition-colors duration-200 group-hover:text-paper">
                   {label}
                 </span>
@@ -132,7 +137,7 @@ export function SelectScreen({
             <button
               type="button"
               onClick={() => onDaily(3)}
-              className="group relative mt-2 flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xs border border-tape/40 px-4 py-4 text-left transition-colors duration-200 hover:border-tape/70"
+              className="group relative mt-2 flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xs border border-tape/40 px-4 py-4 text-left transition-colors duration-200 hover:border-tape/70 active:border-tape/70"
               style={{
                 // a lit sheet, not a flat rectangle: a warm lamp catches the top
                 // corner and a hairline lip picks up the light
@@ -175,47 +180,100 @@ export function SelectScreen({
           variants={plates}
           className="flex w-[min(92vw,420px)] flex-col gap-2"
         >
-          {LEVELS.map((lv, i) => (
-            <motion.div variants={rise} key={lv.id} className="flex flex-col">
-              {(i === 0 || lv.ch !== LEVELS[i - 1].ch) && (
-                <div className="mx-0 mt-4 mb-2 flex items-baseline gap-2.5 text-[10px] tracking-[0.3em] text-paper/28 uppercase">
-                  <span>{m.select_set({ ch: lv.ch })}</span>
-                  <span className="flex-1 border-b border-paper/12" />
-                  <span className="font-display text-[15px] normal-case italic tracking-[0.02em] text-paper/50">
-                    {chapterName(lv.ch)}
-                  </span>
-                </div>
-              )}
-              <button
-                type="button"
-                className="group relative flex cursor-pointer items-center gap-3.5 overflow-hidden rounded-xs border border-paper/12 bg-paper/[0.015] px-3.5 py-3 text-left transition-colors duration-200 hover:border-paper/25 hover:bg-paper/[0.045]"
-                onClick={() => onPick(i)}
-              >
-                {/* register tick — a slot mark on the sheet's edge that grows as
-                  the plate comes into register under the pointer */}
-                <span className="absolute top-1/2 left-0 h-0 w-px -translate-y-1/2 bg-tape/70 transition-all duration-200 group-hover:h-5" />
-                <span className="w-6 text-[11px] tabular-nums text-paper/28 transition-colors duration-200 group-hover:text-tape">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="flex-1 font-display text-[15px] italic tracking-[0.02em] text-paper/90 transition-colors duration-200 group-hover:text-paper">
-                  {lv.name}
-                </span>
-                {best[lv.id] !== undefined ? (
-                  <span className="text-[10px] tracking-[0.1em] text-tape tabular-nums">
-                    ✓ {best[lv.id]}
-                  </span>
-                ) : (
-                  // solved with a hint but never on the record: a dim mark, no
-                  // count and no amber — it reads as done without claiming a record
-                  hinted[lv.id] && (
-                    <span className="text-[10px] tracking-[0.1em] text-paper/40 tabular-nums">
-                      ✓
+          {LEVELS.map((lv, i) => {
+            const s = stamps(lv.id, best[lv.id], clean);
+            const newChapter = i === 0 || lv.ch !== LEVELS[i - 1].ch;
+            // the whole set is pulled once every one of its plates has a record
+            const chapterDone =
+              newChapter &&
+              LEVELS.filter((l) => l.ch === lv.ch).every(
+                (l) => best[l.id] !== undefined,
+              );
+            return (
+              <motion.div variants={rise} key={lv.id} className="flex flex-col">
+                {newChapter && (
+                  <div className="mx-0 mt-4 mb-2 flex items-baseline gap-2.5 text-[10px] tracking-[0.3em] text-paper/28 uppercase">
+                    <span>{m.select_set({ ch: lv.ch })}</span>
+                    <span className="flex-1 border-b border-paper/12" />
+                    <span className="font-display text-[15px] normal-case italic tracking-[0.02em] text-paper/50">
+                      {chapterName(lv.ch)}
                     </span>
-                  )
+                    {chapterDone && (
+                      <span
+                        role="img"
+                        className="text-[11px] text-tape/70"
+                        title={m.select_set_pulled()}
+                        aria-label={m.select_set_pulled()}
+                      >
+                        ✓
+                      </span>
+                    )}
+                  </div>
                 )}
-              </button>
-            </motion.div>
-          ))}
+                <button
+                  type="button"
+                  className="group relative flex cursor-pointer items-center gap-3.5 overflow-hidden rounded-xs border border-paper/12 bg-paper/[0.015] px-3.5 py-3 text-left transition-colors duration-200 hover:border-paper/25 hover:bg-paper/[0.045] active:border-paper/25 active:bg-paper/[0.06]"
+                  onClick={() => onPick(i)}
+                >
+                  {/* register tick — a slot mark on the sheet's edge that grows as
+                    the plate comes into register under the pointer (hover), or on
+                    tap (active) where touch has no hover */}
+                  <span className="absolute top-1/2 left-0 h-0 w-px -translate-y-1/2 bg-tape/70 transition-all duration-200 group-hover:h-5 group-active:h-5" />
+                  <span className="w-6 text-[11px] tabular-nums text-paper/28 transition-colors duration-200 group-hover:text-tape">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="flex-1 font-display text-[15px] italic tracking-[0.02em] text-paper/90 transition-colors duration-200 group-hover:text-paper">
+                    {lv.name}
+                  </span>
+                  {best[lv.id] !== undefined ? (
+                    <span className="flex shrink-0 items-center gap-1">
+                      {/* the record — "tiré"; at the solver's par it wears a
+                          hand-struck frame, "bon à tirer" (reusing the amber,
+                          not adding to it) */}
+                      <span
+                        title={s.bat ? m.stamp_bat() : m.stamp_tire()}
+                        className={`text-[10px] tracking-[0.1em] text-tape tabular-nums ${
+                          s.bat
+                            ? "-rotate-3 rounded-[2px] border border-tape/50 px-1 py-px"
+                            : ""
+                        }`}
+                      >
+                        ✓ {best[lv.id]}
+                      </span>
+                      {/* sans retouche — a minuscule struck tick, never amber,
+                          kept quieter than the count */}
+                      {s.sans && (
+                        <span
+                          role="img"
+                          aria-label={m.stamp_sans_retouche()}
+                          title={m.stamp_sans_retouche()}
+                          className="text-[10px] leading-none text-paper/40"
+                        >
+                          ′
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    // solved with a hint but never on the record: a dim mark, no
+                    // count and no amber — it reads as done without claiming a record
+                    hinted[lv.id] && (
+                      <span className="text-[10px] tracking-[0.1em] text-paper/40 tabular-nums">
+                        ✓
+                      </span>
+                    )
+                  )}
+                </button>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+
+        {/* the three stamps named once, quietly, under the edition */}
+        <motion.div
+          variants={rise}
+          className="mt-7 max-w-[min(92vw,420px)] text-center text-[10px] leading-relaxed tracking-[0.18em] text-paper/28 uppercase"
+        >
+          {m.stamps_legend()}
         </motion.div>
       </motion.div>
     </div>
