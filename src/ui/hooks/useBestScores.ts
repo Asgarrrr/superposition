@@ -4,7 +4,7 @@
 // `traces` keeps the winning trace of each level's best CLEAN solve, so a
 // signed-in player can replay-submit it (see progressSync / useProgressSync).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TraceStep } from "../../engine/types.ts";
 
 const STORAGE_KEY = "superposition.best";
@@ -29,6 +29,12 @@ export function useBestScores() {
   const [traces, setTraces] = useState<Record<string, TraceStep[]>>(() =>
     load<TraceStep[]>(TRACES_KEY),
   );
+  // latest committed `best`, mirrored into a ref so `record` can decide "is this
+  // a new best?" without riding on setState timing (React runs an updater
+  // synchronously at dispatch only via its eager-bailout path). Advanced
+  // in-place per record so several records in one tick stay consistent.
+  const bestRef = useRef(best);
+  bestRef.current = best;
 
   // persistence lives outside the updater: it must stay pure
   useEffect(() => {
@@ -42,19 +48,26 @@ export function useBestScores() {
   }, [traces]);
 
   // A clean win passes its trace; a downward sync (record from the server) omits
-  // it. The trace is kept only when this solve becomes the new best, so a worse
-  // replay never overwrites the better line. The "is this a new best?" decision
-  // is made inside the functional updater — against fresh state, never a stale
-  // render closure — and read back synchronously to gate the trace write.
+  // it. We keep a trace only for the CURRENT best, so it and `best` never
+  // disagree: a new clean best stores its trace, a new best pulled from the
+  // server (no trace) drops any now-stale trace, and a worse replay changes
+  // nothing. "Is this a new best?" is decided against the ref mirror of `best`,
+  // not a flag mutated inside the updater, so it never depends on setState
+  // timing.
   const record = (id: string, moves: number, trace?: TraceStep[]) => {
-    let isBest = false;
-    setBest((b) => {
-      const prev = b[id];
-      isBest = prev === undefined || moves < prev;
-      return isBest ? { ...b, [id]: moves } : b;
-    });
-    if (trace && isBest) {
+    const prev = bestRef.current[id];
+    if (prev !== undefined && moves >= prev) return;
+    bestRef.current = { ...bestRef.current, [id]: moves };
+    setBest((b) => ({ ...b, [id]: moves }));
+    if (trace) {
       setTraces((t) => ({ ...t, [id]: trace }));
+    } else {
+      setTraces((t) => {
+        if (!(id in t)) return t;
+        const next = { ...t };
+        delete next[id];
+        return next;
+      });
     }
   };
 

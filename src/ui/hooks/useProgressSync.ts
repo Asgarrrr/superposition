@@ -2,9 +2,10 @@
 // At the moment the session resolves to a signed-in user, reconcile local
 // progression with the server (planProgressSync): pull down better/absent
 // server scores into `record`, and replay-submit better/absent local clean
-// traces. Runs at most once per authenticated user (guarded by uid) — session
-// is a fresh object each render, so we key on the user id, not the object, and
-// read the mutating deps through a ref (as LeaderboardRail does for submit).
+// traces. Keyed on the user id (session is a fresh object each render), so it
+// runs once per account change; a genuine remount re-runs it, which is safe —
+// downloads re-apply min and uploads upsert the best, both idempotent. The
+// mutating deps are read through a ref (as LeaderboardRail does for submit).
 
 import { useEffect, useRef } from "react";
 import type { TraceStep } from "../../engine/types.ts";
@@ -20,33 +21,38 @@ interface Deps {
 export function useProgressSync(uid: string | null, deps: Deps) {
   const depsRef = useRef(deps);
   depsRef.current = deps;
-  const syncedFor = useRef<string | null>(null);
+  // stale-run guard: bumped on cleanup so an aborted mount's continuation can't
+  // apply its results. This is what makes StrictMode's throwaway first mount
+  // (and any account change mid-flight) safe — the discarded run never touches
+  // state, and the surviving run isn't suppressed. Mirrors LeaderboardRail's
+  // `generation` idiom; a boolean "have I started?" flag can't do both.
+  const generation = useRef(0);
 
   useEffect(() => {
-    if (!uid || syncedFor.current === uid) return;
-    syncedFor.current = uid;
-    let alive = true;
+    if (!uid) return;
+    const g = generation; // the counter object itself, not a DOM snapshot
+    const gen = ++g.current;
 
     (async () => {
       const server = await getMyLevelScores().catch(() => null);
-      if (!alive || !server) {
-        // release the guard so a later re-login (or remount) can retry — the
-        // effect is keyed on [uid], so nothing re-runs within this session
-        if (syncedFor.current === uid) syncedFor.current = null;
-        return;
-      }
+      if (gen !== g.current || !server) return;
       const { best, traces, record } = depsRef.current;
       const plan = planProgressSync(best, traces, server);
       for (const d of plan.downloads) record(d.levelId, d.moves);
-      // a stale/invalid trace must not break the sync — swallow per-upload
-      for (const u of plan.uploads)
-        await submitLevelScore({
-          data: { levelId: u.levelId, trace: u.trace },
-        }).catch(() => {});
+      // independent per-level upserts: fire together rather than serializing N
+      // round-trips. A stale/invalid trace must not break the others — swallow
+      // per-upload.
+      await Promise.all(
+        plan.uploads.map((u) =>
+          submitLevelScore({
+            data: { levelId: u.levelId, trace: u.trace },
+          }).catch(() => {}),
+        ),
+      );
     })();
 
     return () => {
-      alive = false;
+      g.current++;
     };
   }, [uid]);
 }
