@@ -32,14 +32,14 @@ export const MAX_TRACE = 2000;
 export interface TraceResult {
   ok: boolean;
   moves: number; // length of the final winning line (corrections don't count)
-  corrections: number; // undos + resets used to reach it (0 = clean solve)
+  corrections: number; // undos on the winning attempt, resets excluded (0 = clean solve)
 }
 
 const TRACE_REJECT: TraceResult = { ok: false, moves: 0, corrections: 0 };
 
 export interface ReplayRun {
   states: GameState[]; // initial state first, then one per surviving input
-  corrections: number; // undos + resets spent along the way
+  corrections: number; // undos since the last reset (a reset zeroes the tally)
 }
 
 /**

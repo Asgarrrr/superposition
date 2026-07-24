@@ -11,9 +11,31 @@ import {
   type SubmissionDecision,
   type SubmissionEvent,
   type SubmissionState,
+  undosOf,
 } from "./submissionPolicy.ts";
 
 const mv = (r: number, c: number): TraceStep => ({ kind: "move", dir: [r, c] });
+
+describe("undosOf — retouches on the winning attempt", () => {
+  const undo: TraceStep = { kind: "undo" };
+  const reset: TraceStep = { kind: "reset" };
+
+  it("counts undo steps", () => {
+    expect(undosOf([mv(0, 1), undo, mv(0, 1)])).toBe(1);
+  });
+
+  it("a clean run has none", () => {
+    expect(undosOf([mv(0, 1), mv(0, 1)])).toBe(0);
+  });
+
+  it("a reset is a fresh start, not a retouch", () => {
+    expect(undosOf([mv(0, 1), reset, mv(0, 1), mv(0, 1)])).toBe(0);
+  });
+
+  it("undos before a reset are discarded, those after count", () => {
+    expect(undosOf([mv(0, 1), undo, reset, mv(0, 1), undo, mv(0, 1)])).toBe(1);
+  });
+});
 
 const solveOf = (moves: number, undos = 0): Solve => {
   const trace: TraceStep[] = [];

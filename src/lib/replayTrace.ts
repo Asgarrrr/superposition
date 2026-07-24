@@ -30,6 +30,12 @@ const dirIndex = (dir: Pos): number => DIRS.findIndex((d) => eq(d, dir));
  * final stack (seed first) and the number of corrections spent, or null on an
  * aborted push. The single owner of the undo/reset collapse, shared by the
  * winning-line extractor (client) and the anti-cheat's state stack (server).
+ *
+ * Corrections count RETOUCHES on the winning attempt: each `undo` is one. A
+ * `reset` is a fresh start, not a retouch — in the print metaphor you scrap the
+ * plate and pull again, so it clears the tally (and the undos it discarded)
+ * back to zero rather than adding to it. A run whose final pass to the win used
+ * no undo is therefore "sans retouche" even if it began with a reset.
  */
 export function foldTrace<T>(
   seed: T[],
@@ -45,7 +51,7 @@ export function foldTrace<T>(
       corrections++;
     } else if (step.kind === "reset") {
       stack.length = floor;
-      corrections++;
+      corrections = 0; // fresh attempt — the discarded undos no longer count
     } else {
       const next = push(stack[stack.length - 1], step);
       if (next === null) return null;

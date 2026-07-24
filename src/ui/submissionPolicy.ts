@@ -17,6 +17,7 @@
 // post — the server re-derives both from the raw trace (see server/replay.ts).
 
 import type { TraceStep } from "../engine/types.ts";
+import { foldTrace } from "../lib/replayTrace.ts";
 
 /** The domain value of a win: the full raw trace (corrections included, for
  *  server-side replay) and the winning line's move count, computed once at the
@@ -74,11 +75,16 @@ export interface SubmissionDecision {
   readonly submit: TraceStep[] | null;
 }
 
-/** Corrections in a trace: undo and reset steps. Zero of them is a clean run
- *  (the "sans retouche" stamp); the leaderboard also ranks by it as a
- *  tie-break. Exported as the one definition of what a correction is. */
-export const undosOf = (trace: TraceStep[]) =>
-  trace.filter((s) => s.kind === "undo" || s.kind === "reset").length;
+/** Retouches on the winning attempt: undo steps since the last reset. A reset
+ *  is a fresh start, not a retouch — it clears the tally (and the undos before
+ *  it), so a run that reached the win in one clean pass is "sans retouche" even
+ *  if it began with a reset. Zero is a clean run (the "sans retouche" stamp);
+ *  the leaderboard also ranks by it as a tie-break. Delegates to foldTrace so
+ *  the client and the server's replay derive this number from ONE definition —
+ *  the identity push never aborts, so the non-null assertion is total (as in
+ *  winningLine). */
+export const undosOf = (trace: TraceStep[]): number =>
+  foldTrace<TraceStep>([], trace, (_top, step) => step)!.corrections;
 
 const stay = (state: SubmissionState): SubmissionDecision => ({
   state,

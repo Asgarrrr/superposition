@@ -193,7 +193,9 @@ export function useGame(
 
   const reset = () => {
     cancelStamp();
-    // only a reset that discards progress is a correction worth recording
+    // record a reset only when it discards progress — it opens a fresh attempt,
+    // clearing the retouch tally (see undosOf), so a clean run after it still
+    // earns "sans retouche"; a reset from the initial state is a no-op
     if (inputs.current.length) trace.current.push({ kind: "reset" });
     setSt(initialState(level));
     setMoves(0);

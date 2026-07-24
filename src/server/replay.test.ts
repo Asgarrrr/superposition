@@ -27,11 +27,30 @@ describe("validateTrace — clean-solve detection", () => {
     });
   });
 
-  it("counts a reset that discarded progress", () => {
+  it("treats a reset as a fresh start: a clean run after it is clean", () => {
+    // stumble two moves in, scrap the plate (reset), then pull it clean — the
+    // reset is not a retouch, so the winning attempt has zero corrections
     const trace: TraceStep[] = [
       solution[0],
       solution[1],
       { kind: "reset" },
+      ...solution,
+    ];
+    expect(validateTrace(level, trace)).toEqual({
+      ok: true,
+      moves: solution.length,
+      corrections: 0,
+    });
+  });
+
+  it("discards undos made before a reset, counts those after it", () => {
+    // an undo before the reset is wiped; an undo in the winning attempt counts
+    const trace: TraceStep[] = [
+      solution[0],
+      { kind: "undo" }, // wiped by the reset below
+      { kind: "reset" },
+      solution[0],
+      { kind: "undo" }, // a real retouch on the winning attempt
       ...solution,
     ];
     expect(validateTrace(level, trace)).toEqual({
