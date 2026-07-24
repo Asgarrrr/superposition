@@ -6,6 +6,9 @@ import type { TraceStep } from "../engine/types.ts";
 const T = (n: number): TraceStep[] =>
   Array.from({ length: n }, () => ({ kind: "move", dir: [0, 1] }) as TraceStep);
 
+// a trace of n moves plus one undo/reset: same winning line, but not clean
+const DIRTY = (n: number): TraceStep[] => [...T(n), { kind: "undo" }];
+
 describe("planProgressSync", () => {
   it("downloads a server level the player has never solved locally", () => {
     const plan = planProgressSync({}, {}, [{ levelId: "a", moves: 7 }]);
@@ -44,9 +47,28 @@ describe("planProgressSync", () => {
     expect(plan.uploads).toEqual([]);
   });
 
-  it("does not upload when the server is equal or better", () => {
+  it("uploads a clean local record tying the server (may earn the clean seal)", () => {
+    // the stored trace is a clean solve; a tie on moves still lets the server's
+    // undo tie-break replace a non-clean row, so the upload must fire. The
+    // server upsert is a no-op when its row is already clean.
     const plan = planProgressSync({ a: 5 }, { a: T(5) }, [
       { levelId: "a", moves: 5 },
+    ]);
+    expect(plan.uploads).toEqual([{ levelId: "a", trace: T(5) }]);
+  });
+
+  it("does not upload a non-clean local trace tying the server (pure no-op)", () => {
+    // DIRTY(5) wins in 5 moves but carries a correction; it can never win the
+    // undo tie-break, so uploading it would be a wasted round-trip.
+    const plan = planProgressSync({ a: 5 }, { a: DIRTY(5) }, [
+      { levelId: "a", moves: 5 },
+    ]);
+    expect(plan.uploads).toEqual([]);
+  });
+
+  it("does not upload when the server is strictly better", () => {
+    const plan = planProgressSync({ a: 5 }, { a: T(5) }, [
+      { levelId: "a", moves: 3 },
     ]);
     expect(plan.uploads).toEqual([]);
   });

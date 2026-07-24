@@ -6,6 +6,7 @@
 // is absent from) the server, replayed through the validated submit path.
 
 import type { TraceStep } from "../engine/types.ts";
+import { undosOf } from "./submissionPolicy.ts";
 
 export interface ServerScore {
   levelId: string;
@@ -34,7 +35,16 @@ export function planProgressSync(
     const local = best[levelId];
     if (local === undefined) continue; // a trace with no recorded best: ignore
     const remote = serverBy.get(levelId);
-    if (remote === undefined || local < remote)
+    // Fewer moves always uploads. On a tie, only a CLEAN local trace is worth
+    // sending: the server's undo tie-break lets it replace a non-clean row of
+    // equal moves and earn the "sans retouche" seal, whereas a non-clean tie
+    // would be a pure no-op upsert (wasted POST + replay). The stored best trace
+    // isn't necessarily clean, so gate the tie on it here.
+    if (
+      remote === undefined ||
+      local < remote ||
+      (local === remote && undosOf(trace) === 0)
+    )
       uploads.push({ levelId, trace });
   }
 
