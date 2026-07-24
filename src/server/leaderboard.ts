@@ -23,12 +23,13 @@ export interface LeaderRow {
   name: string;
   username: string | null; // links the row to /profile/$username (null: pre-plugin)
   moves: number;
-  clean?: boolean; // solved with no undo/reset (a "clean pull"); both boards set it
+  clean?: boolean; // won in one clean pass (no undo since the last reset); both boards set it
 }
 
 export interface MyResult {
   moves: number;
   rank: number;
+  clean: boolean; // own solve reached the win with no undo — shown in the footer
 }
 
 /** One board's worth of data, shared by the daily and the campaign. */
@@ -95,7 +96,11 @@ export async function standing(
     .select({ ahead: count() })
     .from(table)
     .where(and(scope, strictlyAhead(table, mine)));
-  return { moves: mine.moves, rank: Number(ahead) + 1 };
+  return {
+    moves: mine.moves,
+    rank: Number(ahead) + 1,
+    clean: mine.undos === 0,
+  };
 }
 
 /** Writes a validated result into its (scope, user) slot, keeping the better

@@ -13,7 +13,7 @@ import { motion, type Variants } from "motion/react";
 import type { TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { AuthPanel } from "./AuthPanel.tsx";
-import { LeaderboardRows } from "./LeaderboardRows.tsx";
+import { CleanSeal, LeaderboardRows } from "./LeaderboardRows.tsx";
 import { useSession } from "../../lib/auth-client.ts";
 import {
   decideSubmission,
@@ -196,8 +196,11 @@ export function LeaderboardRail({
           {phase === "idle" &&
             (uid ? (
               mine && (
-                <span className="text-paper/60">
-                  {m.daily_your_rank({ rank: mine.rank })} · {mine.moves}
+                <span className="inline-flex items-baseline gap-1.5 text-paper/60">
+                  <span>
+                    {m.daily_your_rank({ rank: mine.rank })} · {mine.moves}
+                  </span>
+                  {mine.clean && <CleanSeal />}
                 </span>
               )
             ) : (
