@@ -80,20 +80,47 @@ Ce n'est pas un dessin : c'est l'état initial réel du plateau, lu depuis
 `LEVELS` et `initialState`. Aucun bloc décoratif n'a été ajouté — la doctrine du
 projet veut que rien ne soit décoratif.
 
-## Deux images plutôt qu'une
+## Une seule carte, en anglais
 
-Le site est bilingue et l'image est statique : une phrase française serait fausse
-pour un visiteur anglophone. `scripts/gen-og.ts` émet donc `og-fr.png` et
-`og-en.png`, et `head()` choisit selon la locale résolue.
+Le site est bilingue, donc la première version émettait `og-fr.png` et
+`og-en.png` et laissait `head()` choisir selon la locale résolue. **Cette
+approche ne marche pas**, et la revue de code l'a rattrapée avant la mise en
+ligne.
 
-La phrase imprimée vient de la clé `og_tagline` du catalogue inlang, lue
-directement depuis le JSON source par le script. L'image et la balise
-`og:description` (clé voisine `og_description`) ne peuvent donc pas diverger sur
-la formulation.
+Le client qui lit ces balises n'est jamais le visiteur : c'est un dépliant de
+liens. Aucun n'envoie `Accept-Language` ni ne porte de cookie, si bien que la
+chaîne de stratégies de paraglide (`cookie` → `preferredLanguage` →
+`baseLocale`) retombe systématiquement sur `baseLocale`, qui vaut `fr`. Mesuré
+sur le serveur construit :
 
-- `og_tagline` — « Alignez deux mondes d'un seul geste. » / « Align two worlds
-  with a single move. »
-- `og_description` — la phrase longue de la balise.
+| Agent                    | `og:image` servie |
+| ------------------------ | ----------------- |
+| curl sans en-tête        | `og-fr.png`       |
+| `facebookexternalhit`    | `og-fr.png`       |
+| `Twitterbot`             | `og-fr.png`       |
+| `Slackbot-LinkExpanding` | `og-fr.png`       |
+| `Discordbot`             | `og-fr.png`       |
+
+La carte anglaise était donc inatteignable pour exactement le public visé. La
+vérification initiale ne l'avait pas vu parce qu'elle faisait varier
+`Accept-Language` — le seul signal qu'un vrai crawler n'envoie pas.
+
+Deux cartes atteignables supposeraient la locale dans l'URL (`/en/…`), que le
+crawler transmet forcément. Ce serait une refonte du routage, très au-delà d'une
+image de partage. Le choix retenu est donc **une carte unique en anglais**,
+langue d'un lien qui circule : `public/og.png`, et `og:*` / `twitter:*` épinglés
+sur `en` dans `head()` plutôt que suivant `getLocale()`, pour que les balises
+disent la même langue que l'image.
+
+Ce qui reste localisé : le `<title>` et la meta `description` de la page, que le
+navigateur d'un vrai visiteur négocie bel et bien. Un visiteur francophone lit
+donc une page en français dont la carte de partage est en anglais — deux
+consommateurs différents, deux réponses.
+
+La phrase imprimée vient de la clé `og_tagline` du catalogue inlang, lue depuis
+le JSON source par le script. L'image et `og:description` (clé voisine
+`og_description`, lue via `m.og_description({}, { locale: "en" })`) ne peuvent
+donc pas diverger sur la formulation.
 
 Note : les clés `title_tagline` et `title_cta` du catalogue sont orphelines, non
 référencées dans `src/`. Elles n'ont pas été touchées.
@@ -103,7 +130,9 @@ référencées dans `src/`. Elles n'ont pas été touchées.
 `head()` dans `__root.tsx`, conformément à la doc TanStack Start : `og:*` en
 `property`, `twitter:*` en `name`. L'URL absolue suit le motif déjà en place dans
 `profile.$username.tsx` — `window.location.origin` côté client,
-`process.env.BETTER_AUTH_URL` côté serveur.
+`process.env.BETTER_AUTH_URL` côté serveur — avec le slash final retiré :
+`https://host/` produirait `https://host//og.png`, une URL protocol-relative qui
+pointe vers l'hôte `og.png`. Une carte cassée partout pour un caractère.
 
 `buildTagsFromMatches` (routeur) parcourt les routes de la plus profonde à la
 plus superficielle et garde la première occurrence de chaque `name`/`property` :
@@ -114,16 +143,24 @@ qui aurait hérité du texte de la racine et mal décrit la carte de profil.
 
 ## Vérification
 
-`bun run build`, `bun run lint`, `bun run test` et `bun run verify` sortent en 0.
-Le serveur construit a été interrogé sur les deux langues : `og:image` pointe
-vers `og-fr.png` ou `og-en.png` selon l'en-tête `Accept-Language`, avec
-`og:locale` et `og:image:alt` accordés, et les deux PNG sont servis en 200
-(1200 × 630, ~168 ko chacun).
+`bun run build`, `bun run lint`, `bun run test` et `bun run verify` sortent en 0
+(10 avertissements de lint, identiques à la base : aucun introduit).
+
+Sur le serveur construit, interrogé avec les agents des dépliants de liens et
+sans `Accept-Language` : `og:image` pointe vers `og.png`, `og:description` et
+`og:image:alt` sont en anglais, `og:locale` vaut `en_US`. Interrogé avec
+`Accept-Language: fr` : la page revient en `lang="fr"` avec une meta
+`description` française, et la carte reste anglaise — c'est le comportement
+voulu. `og.png` est servi en 200 (1200 × 630, 168 ko) ; `og-fr.png` répond 404,
+les anciens fichiers ayant été retirés.
+
+Le script est déterministe : supprimer les PNG et relancer produit des fichiers
+bit-pour-bit identiques.
 
 ## Régénérer
 
 ```sh
-bun scripts/gen-og.ts
+bun run gen:og
 ```
 
 Les valeurs visuelles sont dupliquées depuis `InkLayer.tsx`, `RegMark.tsx` et

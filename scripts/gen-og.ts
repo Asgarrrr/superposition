@@ -21,7 +21,6 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { LEVELS } from "../src/engine/levels.ts";
 import { initialState } from "../src/engine/state.ts";
-import { add } from "../src/engine/grid.ts";
 import type { Level, Pos } from "../src/engine/types.ts";
 import { CELL, PAD, cellCenter } from "../src/ui/components/board-metrics.ts";
 
@@ -172,7 +171,11 @@ function card(tagline: string): string {
   parts.push(
     `<g clip-path="url(#frame)" opacity="${MATTER_OPACITY}" style="isolation:isolate"><g transform="translate(${ox}, ${oy}) scale(${SCALE})">` +
       matter(CYAN, st.a, lv.a.goal, lv.a.walls, 4, [0, 0]) +
-      matter(MAGENTA, add(st.b, st.off), lv.b.goal, lv.b.walls, -4, st.off) +
+      // st.b in layer coordinates, exactly as Board.tsx hands `pbBoard` to
+      // InkLayer: the group transform below is what carries `off`. Adding it
+      // here too would shift the magenta pawn a second time — invisible on a
+      // board that starts aligned, wrong the moment one doesn't.
+      matter(MAGENTA, st.b, lv.b.goal, lv.b.walls, -4, st.off) +
       `</g></g>`,
   );
 
@@ -192,32 +195,34 @@ function card(tagline: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${parts.join("")}</svg>`;
 }
 
-// the printed sentence comes from the same catalogue entry as og:description's
-// sibling key, so the image and the tag can never disagree about the wording
-const catalogue = (locale: string): Record<string, string> =>
-  JSON.parse(
-    readFileSync(join(root, `project.inlang/messages/${locale}.json`), "utf8"),
-  );
+// One card, in English, for every visitor — because the client that reads it is
+// never the visitor. Link unfurlers (facebookexternalhit, Twitterbot, Slackbot,
+// Discordbot…) send no `Accept-Language` and carry no cookie, so paraglide's
+// strategy chain always falls through to `baseLocale`. A per-language card is
+// unreachable without the locale in the URL, which this app's routing doesn't
+// carry. English is the pick for a link that travels; __root.tsx pins the
+// card's og:*/twitter:* tags to the same locale so the image and the tags agree.
+const SHARE_LOCALE = "en";
 
-// driven by the inlang project rather than a list of our own: __root.tsx builds
-// the path from the resolved locale, so a language configured there without a
-// card here would ask for a PNG that doesn't exist
-const { locales } = JSON.parse(
-  readFileSync(join(root, "project.inlang/settings.json"), "utf8"),
-) as { locales: string[] };
+// the printed sentence is the catalogue's own `og_tagline`, the sibling of the
+// `og_description` the tag uses, so image and tag can't drift on the wording
+const catalogue: Record<string, string> = JSON.parse(
+  readFileSync(
+    join(root, `project.inlang/messages/${SHARE_LOCALE}.json`),
+    "utf8",
+  ),
+);
 
-for (const locale of locales) {
-  const tagline = catalogue(locale).og_tagline;
-  if (!tagline) throw new Error(`no og_tagline in ${locale}.json`);
-  const png = new Resvg(card(tagline), {
-    font: { fontFiles: FONTS, loadSystemFonts: false },
-    fitTo: { mode: "width", value: W },
-  })
-    .render()
-    .asPng();
-  const out = join(root, "public", `og-${locale}.png`);
-  writeFileSync(out, png);
-  console.error(
-    `wrote public/og-${locale}.png (${W}×${H}, ${Math.round(png.length / 1024)} ko)`,
-  );
-}
+const tagline = catalogue.og_tagline;
+if (!tagline) throw new Error(`no og_tagline in ${SHARE_LOCALE}.json`);
+
+const png = new Resvg(card(tagline), {
+  font: { fontFiles: FONTS, loadSystemFonts: false },
+  fitTo: { mode: "width", value: W },
+})
+  .render()
+  .asPng();
+writeFileSync(join(root, "public", "og.png"), png);
+console.error(
+  `wrote public/og.png (${W}×${H}, ${Math.round(png.length / 1024)} ko, ${SHARE_LOCALE})`,
+);
