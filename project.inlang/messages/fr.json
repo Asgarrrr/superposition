@@ -1,5 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "og_tagline": "Alignez deux mondes d’un seul geste.",
+  "og_description": "Un puzzle à deux couches : un seul geste déplace les deux pions, et chacun doit atteindre sa cible.",
   "title_tagline": "Atelier · deux films · une lumière",
   "title_cta": "toucher pour ouvrir le tirage",
   "enter_annotation": "caler ici",

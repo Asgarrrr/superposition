@@ -1,5 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "og_tagline": "Align two worlds with a single move.",
+  "og_description": "A two-layer puzzle: one input moves both pawns, and each has to land on its own target.",
   "title_tagline": "Workshop · two films · one light",
   "title_cta": "tap to open the edition",
   "enter_annotation": "align here",
