@@ -57,6 +57,10 @@ export const Route = createFileRoute("/profile/$username")({
         { property: "og:image", content: image },
         { property: "og:image:width", content: "1200" },
         { property: "og:image:height", content: "630" },
+        // this route overrides og:image, so it has to override the alt text
+        // too — otherwise the root's, which describes the site's card, would
+        // survive the dedupe and mislabel this one
+        { property: "og:image:alt", content: description },
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
