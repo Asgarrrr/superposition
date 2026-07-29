@@ -46,11 +46,6 @@ export function RevealOverlay() {
     inset: "-40%",
     backgroundSize: "12px 12px",
     mixBlendMode: "screen",
-    // promote each ink screen to its own compositor layer. Unpromoted, Safari
-    // re-rasterises the 12px tiled gradient on the CPU every frame the
-    // transform moves — ~9.6M px per layer at DPR 3. Measured on iPhone /
-    // iOS 18.7: 17fps → 55fps. The overlay lives only for the ~1s reveal, so
-    // the hint is short-lived and costs no lasting GPU memory.
     willChange: "transform",
   } as const;
   const cyan =
