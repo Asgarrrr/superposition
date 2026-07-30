@@ -49,11 +49,21 @@ const DAYS = Number(arg("days", "3")); // today + buffer
 // the buffer days (J+1/J+2) don't repeat what today just took either.
 const usedSigs = new Set<string>();
 
+/** A stored row actually carries a board. Placeholder rows exist — seeded
+ *  score history attaches to `daily_puzzle` through a cascading FK, so giving
+ *  those scores a parent meant writing puzzle rows whose `level` is `{}`. They
+ *  are not puzzles that could be reissued, and levelSignature (which reads
+ *  `lv.mods` unguarded) throws on them. */
+const hasBoard = (lv: Level): boolean => Array.isArray(lv?.mods);
+
 async function loadHistory(): Promise<void> {
   const rows = await db.select({ level: dailyPuzzle.level }).from(dailyPuzzle);
-  for (const r of rows) usedSigs.add(levelSignature(r.level));
+  const boards = rows.map((r) => r.level).filter(hasBoard);
+  for (const lv of boards) usedSigs.add(levelSignature(lv));
+  const skipped = rows.length - boards.length;
   console.log(
-    `· ${usedSigs.size} past puzzle(s) loaded — will not repeat them`,
+    `· ${usedSigs.size} past puzzle(s) loaded — will not repeat them` +
+      (skipped ? ` (${skipped} placeholder row(s) skipped)` : ""),
   );
 }
 
@@ -109,7 +119,10 @@ async function ensureTier(
 
   await db
     .insert(dailyPuzzle)
-    .values({ date, tier: cfg.tier, level, optimal: pick.len });
+    // `generated: true` is this writer's alone — it is what makes the day
+    // clockable. A row pinned by a score submission keeps the default false,
+    // because its grid is the fallback and the client can recompute it.
+    .values({ date, tier: cfg.tier, level, optimal: pick.len, generated: true });
   console.log(
     `✓ ${date} T${cfg.tier} (${cfg.label}) · ${pick.len} coups · ${pick.proofs.join(", ")}`,
   );

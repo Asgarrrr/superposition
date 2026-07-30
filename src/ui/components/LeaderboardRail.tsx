@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, type Variants } from "motion/react";
 import type { TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
+import { formatClock } from "../hooks/useDiscoveryClock.ts";
 import { AuthPanel } from "./AuthPanel.tsx";
 import { CleanSeal, LeaderboardRows } from "./LeaderboardRows.tsx";
 import { useSession } from "../../lib/auth-client.ts";
@@ -35,6 +36,10 @@ export interface BoardSource {
   submit: (trace: TraceStep[]) => Promise<void>;
   title: string;
   emptyLabel: string;
+  /** Called whenever the caller's own standing is (re)read, so the play screen
+   *  can show the time the server RECORDED rather than a counter that keeps
+   *  running after a reload. Null when they have no result yet. */
+  onStanding?: (mine: MyResult | null) => void;
 }
 
 export function LeaderboardRail({
@@ -85,6 +90,7 @@ export function LeaderboardRail({
     setOptimal(b.optimal);
     setRows(b.rows);
     setMine(b.mine);
+    sourceRef.current.onStanding?.(b.mine);
   }, []);
 
   // feed one event to the policy, mirror its status, and execute its decision;
@@ -199,6 +205,9 @@ export function LeaderboardRail({
                 <span className="inline-flex items-baseline gap-1.5 text-paper/60">
                   <span>
                     {m.daily_your_rank({ rank: mine.rank })} · {mine.moves}
+                    {mine.elapsedMs != null
+                      ? ` · ${formatClock(mine.elapsedMs)}`
+                      : ""}
                   </span>
                   {mine.clean && <CleanSeal />}
                 </span>

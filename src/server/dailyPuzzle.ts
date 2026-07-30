@@ -113,3 +113,36 @@ export function puzzleFor(
     ? fetchRow(date, WEEKEND_TIER)
     : resolveDaily(date, tier);
 }
+
+/** `puzzleFor` plus where the board came from. The discovery clock needs the
+ *  provenance, not just the puzzle: a fallback grid is derived deterministically
+ *  from (date, tier) and the LEVELS bank, both of which ship in the client
+ *  bundle, so a player can recompute it offline and a time measured on it means
+ *  nothing. Only a cron-written row is `certified`, and only certified days are
+ *  clocked. The single owner of that distinction. */
+export async function resolveWithProvenance(
+  date: string,
+  tier: number,
+): Promise<{ puzzle: DailyPuzzle | null; certified: boolean }> {
+  const [row] = await db
+    .select()
+    .from(dailyPuzzle)
+    .where(and(eq(dailyPuzzle.date, date), eq(dailyPuzzle.tier, tier)))
+    .limit(1);
+  // `generated`, never mere existence: a submission pins the fallback as the
+  // day's official row so the score's FK holds, and that row carries a grid the
+  // client can still recompute offline. Trusting existence would let the first
+  // player to submit promote an uncertified day into a clocked one.
+  if (row)
+    return {
+      puzzle: {
+        date: row.date,
+        tier: row.tier,
+        level: row.level,
+        optimal: row.optimal,
+      },
+      certified: row.generated,
+    };
+  if (tier === WEEKEND_TIER) return { puzzle: null, certified: false };
+  return { puzzle: fallbackPuzzle(date, tier), certified: false };
+}

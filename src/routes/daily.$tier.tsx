@@ -3,7 +3,7 @@
 // each has its own shared leaderboard. Owns its own sound like the level route.
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { getDailyPuzzle, getWeekendDaily } from "../server/daily.ts";
+import { openDaily } from "../server/daily.ts";
 import { PlayScreen } from "../ui/screens/PlayScreen.tsx";
 import { usePersistedSound } from "../ui/hooks/useSound.ts";
 import { m } from "../paraglide/messages.js";
@@ -13,18 +13,30 @@ export const Route = createFileRoute("/daily/$tier")({
   // shareable head, so its loader runs on the client (the app-wide default is
   // `data-only` for the profile's crawler tags — the game opts back out here).
   ssr: false,
+  // The loader OPENS the puzzle: `openDaily` hands over the grid and starts the
+  // player's discovery clock in the same call, so the board can never be
+  // obtained without the clock (src/server/discovery.ts).
+  //
+  // `preload: false` is load-bearing, not caution. The router's app-wide
+  // `defaultPreload: 'intent'` fires a loader on hover — harmless today, since
+  // the daily is entered through buttons calling navigate() and the only <Link>
+  // in the app points at profiles, but adding a <Link> here would silently start
+  // players' clocks as their mouse crossed the plate. Turning preload off makes
+  // the invariant enforced rather than remembered.
+  //
+  // Re-running the loader is safe: the anchor is written once per (date, tier,
+  // player) and read back afterwards, so an exit-and-return re-reads the
+  // original time instead of restarting it.
+  preload: false,
   // tiers 0-2 always resolve; tier 3 (the weekend épreuve d'artiste) resolves
   // only on Sat/Sun with a generated 6×6 — a weekday or missing one bounces to
   // the selector rather than serving a stand-in. Any other URL bounces too.
   loader: async ({ params }) => {
     if (!/^[0-3]$/.test(params.tier)) throw redirect({ to: "/levels" });
     const tier = Number(params.tier);
-    if (tier === 3) {
-      const puzzle = await getWeekendDaily();
-      if (!puzzle) throw redirect({ to: "/levels" });
-      return puzzle;
-    }
-    return getDailyPuzzle({ data: { tier } });
+    const opened = await openDaily({ data: { tier } });
+    if (!opened.puzzle) throw redirect({ to: "/levels" });
+    return { ...opened, puzzle: opened.puzzle };
   },
   component: DailyRoute,
   // The loader hits server functions (daily puzzle, leaderboard) — the one part
@@ -67,7 +79,8 @@ function DailyError({ error }: { error: Error }) {
 }
 
 function DailyRoute() {
-  const { date, tier, level, optimal } = Route.useLoaderData();
+  const { puzzle, servedAt, serverNow } = Route.useLoaderData();
+  const { date, tier, level, optimal } = puzzle;
   const navigate = useNavigate();
   const { fx, muted, toggleMuted } = usePersistedSound();
 
@@ -79,7 +92,7 @@ function DailyRoute() {
       muted={muted}
       onToggleMute={toggleMuted}
       onExit={() => navigate({ to: "/levels" })}
-      daily={{ date, tier, optimal }}
+      daily={{ date, tier, optimal, servedAt, serverNow }}
     />
   );
 }

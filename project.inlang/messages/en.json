@@ -39,6 +39,7 @@
   "stat_current": "current",
   "stat_moves": "moves",
   "stat_record": "record",
+  "stat_clock": "time",
   "controls_undo": "undo",
   "controls_reset": "reset",
   "controls_reset_hold": "hold to reset",

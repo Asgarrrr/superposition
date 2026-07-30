@@ -39,6 +39,7 @@
   "stat_current": "actuel",
   "stat_moves": "passes",
   "stat_record": "record",
+  "stat_clock": "temps",
   "controls_undo": "annuler",
   "controls_reset": "reprendre",
   "controls_reset_hold": "maintenir pour reprendre",

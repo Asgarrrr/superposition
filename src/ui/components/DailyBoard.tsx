@@ -10,17 +10,20 @@ import { LeaderboardRail } from "./LeaderboardRail.tsx";
 import type { BoardSource } from "./LeaderboardRail.tsx";
 import type { Solve } from "../submissionPolicy.ts";
 import { getDailyBoard, submitDailyScore } from "../../server/daily.ts";
+import type { MyResult } from "../../server/leaderboard.ts";
 
 export function DailyBoard({
   date,
   tier,
   solve,
+  onStanding,
   className = "",
   variants,
 }: {
   date: string;
   tier: number;
   solve: Solve | null;
+  onStanding?: (mine: MyResult | null) => void;
   className?: string;
   variants?: Variants;
 }) {
@@ -36,8 +39,9 @@ export function DailyBoard({
       submit,
       title: m.daily_leaderboard_title(),
       emptyLabel: m.daily_leaderboard_empty(),
+      onStanding,
     }),
-    [submit, date, tier],
+    [submit, date, tier, onStanding],
   );
 
   return (

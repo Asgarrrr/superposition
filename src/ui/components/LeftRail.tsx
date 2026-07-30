@@ -9,11 +9,13 @@
 
 import { motion, type Variants } from "motion/react";
 import { m } from "../../paraglide/messages.js";
+import { formatClock } from "../hooks/useDiscoveryClock.ts";
 
 export function LeftRail({
   plate,
   total,
   moves,
+  clock,
   record,
   muted,
   onToggleMute,
@@ -26,6 +28,7 @@ export function LeftRail({
   plate: number; // level number, 1-based
   total: number;
   moves: number;
+  clock?: number | null; // daily only: ms since the server served the grid
   record?: number | undefined; // the player's best on this board, when known
   muted: boolean;
   onToggleMute: () => void;
@@ -134,6 +137,19 @@ export function LeftRail({
             {m.stat_moves()}
           </span>
         </div>
+
+        {/* the daily's discovery clock — null on the campaign, and on the daily
+            played signed out, where nothing is anchored so nothing is running */}
+        {clock !== null && clock !== undefined && (
+          <div className="flex flex-col items-end gap-1.5">
+            <span className="text-[10px] tracking-[0.28em] text-paper/40 uppercase">
+              {m.stat_clock()}
+            </span>
+            <span className="text-2xl leading-none text-paper/55 tabular-nums">
+              {formatClock(clock)}
+            </span>
+          </div>
+        )}
 
         {record !== undefined && (
           <div className="flex flex-col items-end gap-1.5">

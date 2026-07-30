@@ -1,10 +1,12 @@
 // The ranked list shared by both leaderboards (the daily win overlay and the
-// per-level rail): rank, name (with a "· you" badge on your row), move count,
-// and the amber highlight on your own entry. Callers own the surrounding title
+// per-level rail): rank, name (with a "· you" badge on your row), the daily's
+// discovery time where it applies, move count, and the amber highlight on your
+// own entry. Callers own the surrounding title
 // and container; this owns only the rows and the empty state.
 
 import { Link } from "@tanstack/react-router";
 import { m } from "../../paraglide/messages.js";
+import { formatClock } from "../hooks/useDiscoveryClock.ts";
 import type { LeaderRow } from "../../server/leaderboard.ts";
 
 // "sans repentir" seal — the two inks laid in perfect register: the game's own
@@ -79,6 +81,14 @@ export function LeaderboardRows({
           </span>
           <span className="flex shrink-0 items-baseline gap-1.5">
             {r.clean && <CleanSeal />}
+            {/* the daily's discovery time, the criterion that separates two
+                identical results. Absent on the campaign, which doesn't rank on
+                it, and absent on a result the server declined to measure. */}
+            {r.elapsedMs != null && (
+              <span className="tabular-nums text-paper/35">
+                {formatClock(r.elapsedMs)}
+              </span>
+            )}
             <span className="tabular-nums">{r.moves}</span>
           </span>
         </li>

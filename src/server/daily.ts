@@ -5,7 +5,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db/index.ts";
-import { dailyPuzzle, dailyScore } from "../db/schema.ts";
+import { dailyPuzzle, dailyScore, dailyView } from "../db/schema.ts";
 import { isValidDay, isWeekend, utcDay } from "../lib/day.ts";
 import { computeStreaks } from "../lib/streak.ts";
 import { Lru } from "../lib/lru.ts";
@@ -20,9 +20,10 @@ import {
   WEEKEND_TIER,
   fetchRow,
   puzzleFor,
-  resolveDaily,
+  resolveWithProvenance,
   type DailyPuzzle,
 } from "./dailyPuzzle.ts";
+import { discoveryTime, type Anchor } from "./discovery.ts";
 import type { BoardData } from "./leaderboard.ts";
 import type { TraceStep } from "../engine/types.ts";
 
@@ -48,29 +49,126 @@ function isSubmittableDay(date: string): boolean {
   return date === utcDay(0) || date === utcDay(-1);
 }
 
-export const getDailyPuzzle = createServerFn({ method: "GET" })
-  .validator((data: unknown): { tier: number } => {
-    const d = data as { tier?: unknown } | null;
-    const tier = asTier(d?.tier);
-    // the weekend tier has no bank fallback; it's served only by getWeekendDaily,
-    // so reject it here rather than letting resolveDaily hit the fallback throw
-    if (tier === WEEKEND_TIER) throw new Error("invalid tier");
-    return { tier };
-  })
-  .handler(({ data }): Promise<DailyPuzzle> =>
-    resolveDaily(utcDay(), data.tier),
-  );
+/** What the board needs to start: the grid, and the clock it starts. */
+export interface DailyOpening {
+  /** Null only for an absent weekend épreuve — the route redirects. */
+  puzzle: DailyPuzzle | null;
+  /** The immutable anchor for this player — null whenever this result will not
+   *  be timed: signed out (nothing to anchor to), or an uncertified day whose
+   *  grid the client could recompute offline. The clock on screen therefore
+   *  appears only when a clock actually counts, instead of running for minutes
+   *  beside a board that rightly shows no time. The server never reads this
+   *  back from the client; it is display only. */
+  servedAt: string | null;
+  /** The server's clock at reply time, so the client can offset its own rather
+   *  than trust it. Display only — the ranked time is measured server-side. */
+  serverNow: string;
+}
 
-/** Today's weekend épreuve d'artiste, or null when it's a weekday or the cron
- *  never wrote one. Never falls back to a bank level — the route redirects on
- *  null rather than serving a stand-in. */
-export const getWeekendDaily = createServerFn({ method: "GET" }).handler(
-  async (): Promise<DailyPuzzle | null> => {
+/**
+ * Opens a tier of the day: hands over the grid AND starts this player's
+ * discovery clock, in one call.
+ *
+ * The two are inseparable on purpose. If the grid were reachable through any
+ * other route, a player could take it, study it at leisure, and only then start
+ * an clock on a puzzle they had already solved — which is why the two functions
+ * that used to serve it (getDailyPuzzle, getWeekendDaily) are gone rather than
+ * merely unused: an exported server function is a public HTTP endpoint under
+ * /_serverFn, so leaving them in place would leave the grid reachable.
+ *
+ * POST, not GET, because it writes: the CSRF middleware only gates non-GET
+ * server functions (src/start.ts), and a GET here would let a crafted link
+ * burn a third party's anchor — which is immutable, so the damage would stick.
+ *
+ * The anchor is `onConflictDoNothing`: the FIRST delivery wins, so reloading
+ * the route, a second tab or a second device all read back the original time.
+ */
+export const openDaily = createServerFn({ method: "POST" })
+  .validator((data: unknown): { tier: number } => ({
+    tier: asTier((data as { tier?: unknown } | null)?.tier),
+  }))
+  .handler(async ({ data }): Promise<DailyOpening> => {
     const date = utcDay();
-    if (!isWeekend(date)) return null;
-    return fetchRow(date, WEEKEND_TIER);
+    const { tier } = data;
+    const serverNow = new Date();
+
+    // the weekend tier exists only on Sat/Sun and only if the cron wrote it
+    if (tier === WEEKEND_TIER && !isWeekend(date))
+      return {
+        puzzle: null,
+        servedAt: null,
+        serverNow: serverNow.toISOString(),
+      };
+
+    const { puzzle, certified } = await resolveWithProvenance(date, tier);
+    const userId = await currentUserId();
+    if (!puzzle || !userId)
+      return {
+        puzzle,
+        servedAt: null,
+        serverNow: serverNow.toISOString(),
+      };
+
+    const [written] = await db
+      .insert(dailyView)
+      .values({ date, tier, userId, servedAt: serverNow, certified })
+      .onConflictDoNothing()
+      .returning({ servedAt: dailyView.servedAt });
+    // a row we just wrote carries the `certified` we just computed; otherwise
+    // the stored anchor is the authority, flag included
+    // nothing written ⇒ this player already had an anchor; read the original,
+    // never the current time, or a reload would hand out a fresh clock
+    const anchor = written
+      ? { servedAt: written.servedAt, certified }
+      : await readAnchor(date, tier, userId);
+    return {
+      puzzle,
+      // Withheld unless the ANCHOR says the day is certified — never the value
+      // just computed. discoveryTime measures against the anchor's own flag, so
+      // reading a fresher one here would put a clock on screen for a submission
+      // the server will record as null: a day that gains its cron row after a
+      // player was anchored stays uncertified for that player, by design.
+      servedAt: anchor?.certified
+        ? anchor.servedAt.toISOString()
+        : null,
+      serverNow: serverNow.toISOString(),
+    };
+  });
+
+/** Whether today's weekend épreuve is playable. A boolean, deliberately: the
+ *  selector only needs to know whether to show the plate, and the previous
+ *  version answered that by handing the whole 6×6 grid to every visitor of
+ *  /levels — hours before anyone entered the puzzle. */
+export const getWeekendAvailable = createServerFn({ method: "GET" }).handler(
+  async (): Promise<boolean> => {
+    const date = utcDay();
+    return isWeekend(date) && (await fetchRow(date, WEEKEND_TIER)) !== null;
   },
 );
+
+/** This player's anchor for a (date, tier), or null when the grid was never
+ *  served to them signed in. */
+async function readAnchor(
+  date: string,
+  tier: number,
+  userId: string,
+): Promise<Anchor | null> {
+  const [row] = await db
+    .select({
+      servedAt: dailyView.servedAt,
+      certified: dailyView.certified,
+    })
+    .from(dailyView)
+    .where(
+      and(
+        eq(dailyView.date, date),
+        eq(dailyView.tier, tier),
+        eq(dailyView.userId, userId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
 
 export interface SubmitResult {
   ok: boolean;
@@ -116,6 +214,15 @@ export const submitDailyScore = createServerFn({ method: "POST" })
       .values({ date, tier, level: puzzle.level, optimal: puzzle.optimal })
       .onConflictDoNothing();
 
+    // The ranked discovery time, derived entirely server-side from this
+    // player's anchor; null when there is nothing we can honestly measure. The
+    // client sends a trace and nothing else — it has no way to state, shorten
+    // or round its own time.
+    const elapsedMs = discoveryTime(
+      await readAnchor(date, tier, userId),
+      new Date(),
+    );
+
     // Keep the best result for this (date, tier, user) per the shared rule.
     await upsertBestScore(
       dailyScore,
@@ -128,6 +235,7 @@ export const submitDailyScore = createServerFn({ method: "POST" })
         undos: result.corrections,
         trace: data.trace,
       },
+      elapsedMs,
     );
 
     return { ok: true, moves: result.moves };
@@ -161,6 +269,10 @@ export const getDailyBoard = createServerFn({ method: "GET" })
     const d = data as { date?: unknown; tier?: unknown } | null;
     if (typeof d?.date !== "string" || !isValidDay(d.date))
       throw new Error("invalid date");
+    // never answer for a day that hasn't happened: the cron writes J+1/J+2 in
+    // advance, and `optimal` would otherwise leak tomorrow's par — enough to
+    // tell a certified day from a fallback one, and to know it early
+    if (d.date > utcDay()) throw new Error("invalid date");
     return { date: d.date, tier: asTier(d?.tier) };
   })
   .handler(async ({ data }): Promise<BoardData> => {

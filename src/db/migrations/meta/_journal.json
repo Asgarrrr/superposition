@@ -50,6 +50,27 @@
       "when": 1784300000000,
       "tag": "0006_backfill_usernames",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785422367755,
+      "tag": "0007_slimy_polaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785424138597,
+      "tag": "0008_sticky_gressill",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785426776812,
+      "tag": "0009_conscious_tempest",
+      "breakpoints": true
     }
   ]
 }

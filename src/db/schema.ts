@@ -2,7 +2,8 @@
 // Better Auth CLI (`bun run auth:generate`) — do not hand-edit their shape. The
 // username plugin adds `username` / `display_username` to `user`. Re-running the
 // CLI rewrites this whole file, so re-append ALL of our tables from git after:
-// dailyPuzzle, dailyScore, levelScore (and restore the extra pg-core imports).
+// dailyPuzzle, dailyScore, dailyView, levelScore (and restore the extra pg-core
+// imports).
 
 import { relations } from "drizzle-orm";
 import {
@@ -125,6 +126,14 @@ export const dailyPuzzle = pgTable(
     date: text("date").notNull(), // YYYY-MM-DD (UTC)
     tier: integer("tier").notNull().default(1),
     level: jsonb("level").$type<Level>().notNull(),
+    // True only when the cron generator wrote this board. A submission also
+    // inserts a row — the score's FK needs a parent — which pins the
+    // deterministic fallback as the day's official puzzle; that row is NOT
+    // generated, and its grid stays computable offline from the bundled bank.
+    // Row existence therefore cannot stand in for provenance: without this flag
+    // the first player to submit would silently promote an uncertified day into
+    // a clocked one (see server/discovery.ts).
+    generated: boolean("generated").notNull().default(false),
     optimal: integer("optimal").notNull(), // solver's optimal move count
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -147,6 +156,14 @@ export const dailyScore = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     moves: integer("moves").notNull(),
     undos: integer("undos").notNull().default(0),
+    // Server-measured discovery time: how long after daily_view.served_at this
+    // player submitted a winning trace (see server/discovery.ts). The client
+    // never supplies it. NULLABLE, and null means "not measured": rows written
+    // before the criterion existed, and results we decline to clock (no anchor,
+    // or an uncertified fallback day). Those order NULLS LAST and tie with each
+    // other, falling through to created_at — exactly how the board ranked
+    // before. There is deliberately no ceiling; the day itself is the bound.
+    elapsedMs: integer("elapsed_ms"),
     // physical column is legacy-named "inputs"; it stores the full TraceStep[]
     trace: jsonb("inputs").$type<TraceStep[]>().notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -158,6 +175,29 @@ export const dailyScore = pgTable(
       foreignColumns: [dailyPuzzle.date, dailyPuzzle.tier],
     }).onDelete("cascade"),
   ],
+);
+
+/** The discovery-clock anchor: when the server first handed this player the
+ *  grid for a (date, tier). Written by `openDaily` with onConflictDoNothing, so
+ *  the FIRST delivery wins and the anchor is immutable — reloading the route, a
+ *  second tab or a second device cannot restart the clock.
+ *
+ *  `certified` records whether that delivery came from a real daily_puzzle row.
+ *  A cron-missed tier is served by the deterministic fallback, which the client
+ *  can recompute offline from the bundled LEVELS bank — so those days are not
+ *  clocked at all (see server/discovery.ts). */
+export const dailyView = pgTable(
+  "daily_view",
+  {
+    date: text("date").notNull(),
+    tier: integer("tier").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    servedAt: timestamp("served_at").defaultNow().notNull(),
+    certified: boolean("certified").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.date, t.tier, t.userId] })],
 );
 
 // ─── Campaign leaderboard ────────────────────────────────────

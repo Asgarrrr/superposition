@@ -105,6 +105,10 @@ function settle(state: SubmissionState): SubmissionDecision {
   // history — but keep the pending, so the account that owns the ledger can
   // still retry its own failed improvement when it comes back
   if (posted.uid !== uid) return stay(state);
+  // The daily's discovery time needs no relaxation here. It runs from an
+  // immutable anchor to submission time, so within one mount a later solve can
+  // only measure LONGER — an equal-result re-post could never win the server's
+  // guard, and allowing it only spent a request and a board re-read.
   const improved =
     pending.moves < posted.moves ||
     (pending.moves === posted.moves && pending.undos < posted.undos);

@@ -4,7 +4,7 @@ import { SelectScreen } from "../ui/screens/SelectScreen.tsx";
 import { InstallBanner } from "../ui/components/InstallBanner.tsx";
 import { useBestScores } from "../ui/hooks/useBestScores.ts";
 import { useProgressSync } from "../ui/hooks/useProgressSync.ts";
-import { getWeekendDaily } from "../server/daily.ts";
+import { getWeekendAvailable } from "../server/daily.ts";
 import { useSession } from "../lib/auth-client.ts";
 import { clearReveal, peekReveal } from "../ui/transition.ts";
 
@@ -28,8 +28,8 @@ function SelectRoute() {
   const [weekendReady, setWeekendReady] = useState(false);
   useEffect(() => {
     let alive = true;
-    getWeekendDaily()
-      .then((p) => alive && setWeekendReady(p !== null))
+    getWeekendAvailable()
+      .then((ready) => alive && setWeekendReady(ready))
       .catch(() => {});
     return () => {
       alive = false;
