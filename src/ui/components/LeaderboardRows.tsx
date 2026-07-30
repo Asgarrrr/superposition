@@ -45,7 +45,7 @@ export function LeaderboardRows({
 }) {
   if (rows.length === 0)
     return (
-      <p className="py-2 text-center text-[11px] text-paper/30">{emptyLabel}</p>
+      <p className="py-2 text-center text-[11px] text-paper/50">{emptyLabel}</p>
     );
 
   const shown = limit ? rows.slice(0, limit) : rows;
@@ -58,7 +58,7 @@ export function LeaderboardRows({
             r.userId === uid ? "text-tape" : "text-paper/70"
           }`}
         >
-          <span className="w-5 shrink-0 tabular-nums text-paper/35">
+          <span className="w-5 shrink-0 tabular-nums text-paper/40">
             {String(r.rank).padStart(2, "0")}
           </span>
           <span className="mx-2 flex-1 truncate">

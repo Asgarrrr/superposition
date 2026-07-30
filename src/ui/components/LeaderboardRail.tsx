@@ -164,7 +164,7 @@ export function LeaderboardRail({
           {title}
         </span>
         {optimal > 0 && (
-          <span className="text-[10px] tracking-[0.12em] text-paper/30">
+          <span className="text-[10px] tracking-[0.12em] text-paper/40">
             {m.daily_optimal({ optimal })}
           </span>
         )}
@@ -206,7 +206,7 @@ export function LeaderboardRail({
             ) : (
               <button
                 type="button"
-                className="btn border-none p-0 text-[11px] text-paper/40 transition-colors hover:text-paper/70"
+                className="btn border-none p-0 text-[11px] text-paper/50 transition-colors hover:text-paper/80"
                 onClick={() => setAuthOpen(true)}
               >
                 {m.level_signin_cta()} →

@@ -68,12 +68,12 @@ export function LeftRail({
             </span>
           ) : (
             <div className="flex items-baseline gap-2 text-[11px] tabular-nums">
-              <span className="tracking-[0.2em] text-paper/28 uppercase">
+              <span className="tracking-[0.2em] text-paper/40 uppercase">
                 {m.hud_level()}
               </span>
               <span className="tracking-[0.16em] text-paper/55">
                 {String(plate).padStart(2, "0")}
-                <span className="text-paper/25">/{total}</span>
+                <span className="text-paper/40">/{total}</span>
               </span>
             </div>
           )}
@@ -82,13 +82,13 @@ export function LeftRail({
           {/* move count folded inline below xl, where the big readout is hidden */}
           <span className="text-[11px] tabular-nums text-paper/50 xl:hidden">
             {moves}{" "}
-            <span className="text-paper/28">
+            <span className="text-paper/40">
               {m.hud_moves_word({ count: moves })}
             </span>
           </span>
           <button
             type="button"
-            className="btn border-none p-0 text-paper/28 transition-colors hover:text-paper/55"
+            className="btn border-none p-0 text-paper/50 transition-colors hover:text-paper/80"
             onClick={onToggleMute}
             aria-label={muted ? m.hud_sound_off() : m.hud_sound_on()}
             aria-pressed={muted}

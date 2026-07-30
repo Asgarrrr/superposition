@@ -33,7 +33,7 @@ export function Hud({
           </span>
         )}
       </div>
-      <div className="mt-0.5 font-display text-base not-italic tracking-[0.01em] text-paper/45">
+      <div className="mt-0.5 font-display text-base not-italic tracking-[0.01em] text-paper/50">
         {sub}
       </div>
     </div>

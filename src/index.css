@@ -33,10 +33,12 @@
       px-3.5 py-2 font-mono text-xs tracking-wide text-paper/50;
   }
 
-  /* keycap : la touche clavier gravée sur un bouton d'action */
+  /* keycap : la touche clavier gravée sur un bouton d'action.
+     /40 est le plancher « ambiant » : 3,45:1 sur --color-room. En dessous
+     (le /35 d'avant : 2,91:1) la gravure disparaît. */
   .kbd {
     @apply rounded-xs border border-paper/15 px-1.5 pt-0.5 pb-1 font-mono
-      text-[10px] leading-none text-paper/35;
+      text-[10px] leading-none text-paper/40;
   }
 
   /* grain photographique de l'atelier, par-dessus tout */

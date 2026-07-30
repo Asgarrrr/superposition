@@ -97,8 +97,16 @@ const boardRailClass = `mt-8 w-[min(90vw,420px)] ${railShape} xl:col-start-3 xl:
 // The tip stays top-aligned (a plain block, no flex) so its first line keeps a
 // fixed distance from the board it captions — the slack falls below it.
 const tipSlot =
-  "mt-3.5 h-[69px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28 sm:h-[52px]";
-const actionSlot = "mt-3 flex h-[17px] items-center gap-5";
+  "mt-3.5 h-[69px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/55 sm:h-[52px]";
+const actionSlot = "mt-3 flex h-[30px] items-center gap-3";
+
+// The two discovery affordances (ask for a hint, replay the tutorial). They were
+// bare text at /30 — 2.46:1, a 44×17 target — sitting beside two real buttons, so
+// they read as ambient print rather than something you can press. A chip keeps
+// them quieter than `.btn` (undo/reset keep the weight) while being bordered,
+// legible at /55 and 30px tall, which clears the 24×24 target minimum.
+const chip =
+  "rounded-xs border border-paper/18 px-2.5 py-1.5 font-mono text-[10.5px] tracking-[0.06em] transition-colors hover:border-paper/35";
 
 /** Daily mode: one tier of the day's challenge, played for the shared
  *  per-tier leaderboard rather than the campaign. Swaps the HUD banner and the
@@ -481,7 +489,7 @@ export function PlayScreen({
                 <button
                   type="button"
                   onClick={guided.skip}
-                  className="font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
+                  className={`${chip} text-paper/55 hover:text-paper/80`}
                 >
                   {m.demo_skip()}
                 </button>
@@ -496,10 +504,10 @@ export function PlayScreen({
                   <button
                     type="button"
                     onClick={game.showHint}
-                    className={`font-mono text-[11px] tracking-[0.06em] transition-colors ${
+                    className={`${chip} ${
                       game.hints > 0
-                        ? "text-tape/70 hover:text-tape"
-                        : "text-paper/30 hover:text-paper/60"
+                        ? "border-tape/40 text-tape/80 hover:text-tape"
+                        : "text-paper/55 hover:text-paper/80"
                     }`}
                   >
                     {game.hints > 0
@@ -511,7 +519,7 @@ export function PlayScreen({
                   <button
                     type="button"
                     onClick={() => setDemo(replayDemo)}
-                    className="font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
+                    className={`${chip} text-paper/55 hover:text-paper/80`}
                   >
                     {m.controls_demo()}
                   </button>
