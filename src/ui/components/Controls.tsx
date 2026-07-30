@@ -3,6 +3,7 @@
 import type { Pos } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import type { Hold } from "../hooks/useHold.ts";
+import type { Highlight } from "../plateDriver.ts";
 import { HoldButton } from "./HoldButton.tsx";
 
 export function Controls({
@@ -22,7 +23,7 @@ export function Controls({
   onUndo: () => void;
   reset?: Hold;
   guiding?: boolean; // tutorial: hide undo/reset, light the guided control
-  highlight?: { arm: boolean; dir: Pos | null; any?: boolean }; // which control to pulse (`any`: every arrow — pick one)
+  highlight?: Highlight; // which control to pulse (`any`: every arrow — pick one)
 }) {
   const lit = (d: Pos) =>
     highlight?.any ||
