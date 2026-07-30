@@ -6,7 +6,7 @@
 // itself. What this hook renders is the player's own view of the interval the
 // server is measuring.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /** Where the clock reads from: the server's anchor for this player, and the
  *  server's own time when it replied. */
@@ -48,6 +48,59 @@ export function useDiscoveryClock(
   }, [anchor, skew, frozen]);
 
   return anchor === null ? null : elapsed;
+}
+
+/**
+ * What the board's standing says about this player's recorded time. Three
+ * states on purpose, because "no answer yet" and "ranked, but never measured"
+ * are different answers and collapsing them was a bug: on an uncertified day
+ * the second case fell through to the live counter, so the rail ran a clock for
+ * minutes while the stored value was null and the board rightly showed no time.
+ *
+ *   · undefined — the board has not answered yet;
+ *   · null — ranked and unmeasured: there is no time to show;
+ *   · a number — ranked and measured.
+ */
+export type Recorded = number | null | undefined;
+
+export const recordedFrom = (
+  mine: { elapsedMs?: number | null } | null,
+): Recorded => (mine ? (mine.elapsedMs ?? null) : undefined);
+
+/** The live counter stops as soon as the run is won or the board has answered:
+ *  the measurement ends at submission, so a counter still running past either
+ *  would drift away from the value the server recorded. */
+export const clockFrozen = (solved: boolean, recorded: Recorded): boolean =>
+  solved || recorded !== undefined;
+
+/** What to put on screen: the recorded value once the board has one — not a
+ *  counter that would keep climbing past it on a reload — and the live counter
+ *  only while no answer has arrived. */
+export const displayedClock = (
+  recorded: Recorded,
+  live: number | null,
+): number | null => (recorded === undefined ? live : recorded);
+
+/** The daily's clock as the play screen needs it: one reading, plus the hook
+ *  the leaderboard rail calls back with the caller's standing. Composes the
+ *  three rules above so the screen holds none of them. */
+export function useDailyClock(
+  source: ClockSource | undefined,
+  solved: boolean,
+): {
+  clock: number | null;
+  onStanding: (mine: { elapsedMs?: number | null } | null) => void;
+} {
+  const [recorded, setRecorded] = useState<Recorded>(undefined);
+  const live = useDiscoveryClock(source, clockFrozen(solved, recorded));
+  return {
+    clock: displayedClock(recorded, live),
+    onStanding: useCallback(
+      (mine: { elapsedMs?: number | null } | null) =>
+        setRecorded(recordedFrom(mine)),
+      [],
+    ),
+  };
 }
 
 /** `m:ss`, growing to `h:mm:ss` past the hour — the reading the board and the

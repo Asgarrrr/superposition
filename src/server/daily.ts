@@ -23,7 +23,13 @@ import {
   resolveWithProvenance,
   type DailyPuzzle,
 } from "./dailyPuzzle.ts";
-import { discoveryTime, type Anchor } from "./discovery.ts";
+import {
+  claimAnchor,
+  discoveryTime,
+  shownAnchor,
+  type Anchor,
+  type AnchorStore,
+} from "./discovery.ts";
 import type { BoardData } from "./leaderboard.ts";
 import type { TraceStep } from "../engine/types.ts";
 
@@ -109,28 +115,17 @@ export const openDaily = createServerFn({ method: "POST" })
         serverNow: serverNow.toISOString(),
       };
 
-    const [written] = await db
-      .insert(dailyView)
-      .values({ date, tier, userId, servedAt: serverNow, certified })
-      .onConflictDoNothing()
-      .returning({ servedAt: dailyView.servedAt });
-    // a row we just wrote carries the `certified` we just computed; otherwise
-    // the stored anchor is the authority, flag included
-    // nothing written ⇒ this player already had an anchor; read the original,
-    // never the current time, or a reload would hand out a fresh clock
-    const anchor = written
-      ? { servedAt: written.servedAt, certified }
-      : await readAnchor(date, tier, userId);
+    // the lifecycle rules — first delivery wins, the stored flag is the
+    // authority, a clock is shown only where one is actually running — live in
+    // discovery.ts alongside the measurement they feed, and are tested there
+    const anchor = await claimAnchor(
+      anchorsFor(date, tier, userId),
+      serverNow,
+      certified,
+    );
     return {
       puzzle,
-      // Withheld unless the ANCHOR says the day is certified — never the value
-      // just computed. discoveryTime measures against the anchor's own flag, so
-      // reading a fresher one here would put a clock on screen for a submission
-      // the server will record as null: a day that gains its cron row after a
-      // player was anchored stays uncertified for that player, by design.
-      servedAt: anchor?.certified
-        ? anchor.servedAt.toISOString()
-        : null,
+      servedAt: shownAnchor(anchor),
       serverNow: serverNow.toISOString(),
     };
   });
@@ -146,28 +141,38 @@ export const getWeekendAvailable = createServerFn({ method: "GET" }).handler(
   },
 );
 
-/** This player's anchor for a (date, tier), or null when the grid was never
- *  served to them signed in. */
-async function readAnchor(
-  date: string,
-  tier: number,
-  userId: string,
-): Promise<Anchor | null> {
-  const [row] = await db
-    .select({
-      servedAt: dailyView.servedAt,
-      certified: dailyView.certified,
-    })
-    .from(dailyView)
-    .where(
-      and(
-        eq(dailyView.date, date),
-        eq(dailyView.tier, tier),
-        eq(dailyView.userId, userId),
-      ),
-    )
-    .limit(1);
-  return row ?? null;
+/** The Postgres adapter behind the anchor seam, bound to one (date, tier,
+ *  player). `onConflictDoNothing` is what makes the first delivery win: a
+ *  second call writes nothing and returns nothing, so claimAnchor reads the
+ *  original back. */
+function anchorsFor(date: string, tier: number, userId: string): AnchorStore {
+  const mine = and(
+    eq(dailyView.date, date),
+    eq(dailyView.tier, tier),
+    eq(dailyView.userId, userId),
+  );
+  return {
+    async insertIfAbsent(servedAt, certified): Promise<Anchor | null> {
+      const [written] = await db
+        .insert(dailyView)
+        .values({ date, tier, userId, servedAt, certified })
+        .onConflictDoNothing()
+        .returning({ servedAt: dailyView.servedAt });
+      // a row we just wrote carries the `certified` we just computed
+      return written ? { servedAt: written.servedAt, certified } : null;
+    },
+    async read(): Promise<Anchor | null> {
+      const [row] = await db
+        .select({
+          servedAt: dailyView.servedAt,
+          certified: dailyView.certified,
+        })
+        .from(dailyView)
+        .where(mine)
+        .limit(1);
+      return row ?? null;
+    },
+  };
 }
 
 export interface SubmitResult {
@@ -219,7 +224,7 @@ export const submitDailyScore = createServerFn({ method: "POST" })
     // client sends a trace and nothing else — it has no way to state, shorten
     // or round its own time.
     const elapsedMs = discoveryTime(
-      await readAnchor(date, tier, userId),
+      await anchorsFor(date, tier, userId).read(),
       new Date(),
     );
 

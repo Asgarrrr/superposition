@@ -14,7 +14,6 @@ import { Hud } from "../components/Hud.tsx";
 import { LeftRail } from "../components/LeftRail.tsx";
 import { DailyBoard } from "../components/DailyBoard.tsx";
 import { getMyStreak } from "../../server/daily.ts";
-import type { MyResult } from "../../server/leaderboard.ts";
 import { LevelBoard } from "../components/LevelBoard.tsx";
 import { Room } from "../components/Room.tsx";
 import { WinOverlay } from "../components/WinOverlay.tsx";
@@ -22,7 +21,7 @@ import { DailyOverlay } from "../components/DailyOverlay.tsx";
 import { DemoOverlay } from "../components/DemoOverlay.tsx";
 import { useGuidedDemo, useSeenDemos } from "../hooks/useDemo.ts";
 import { useGame } from "../hooks/useGame.ts";
-import { useDiscoveryClock } from "../hooks/useDiscoveryClock.ts";
+import { useDailyClock } from "../hooks/useDiscoveryClock.ts";
 import { useHold } from "../hooks/useHold.ts";
 import { useKeyboard } from "../hooks/useKeyboard.ts";
 import type { SoundFx } from "../hooks/useSound.ts";
@@ -145,28 +144,11 @@ export function PlayScreen({
   daily?: DailyMode;
 }) {
   const game = useGame(level, fx, onWin, onHintedWin);
-  // The daily's discovery clock.
-  //
-  // `recorded` is deliberately three-state, because "no standing yet" and
-  // "ranked, but never measured" are different answers and collapsing them was
-  // a bug: on an uncertified day the second case fell through to the live
-  // counter, so the rail ran a clock for minutes while the stored value was
-  // null and the board rightly showed no time at all.
-  //   · undefined — the board has not answered yet: run the live counter,
-  //     frozen at the win, since that is where the measurement ends;
-  //   · null — ranked and unmeasured: show nothing, there is no time;
-  //   · a number — ranked and measured: show THAT, not a counter that would
-  //     keep climbing past it on a reload.
-  const [recorded, setRecorded] = useState<number | null | undefined>(
-    undefined,
-  );
-  const onStanding = useCallback(
-    (mine: MyResult | null) =>
-      setRecorded(mine ? (mine.elapsedMs ?? null) : undefined),
-    [],
-  );
-  const live = useDiscoveryClock(daily, game.solved || recorded !== undefined);
-  const clock = recorded === undefined ? live : recorded;
+  // The daily's discovery clock: one reading, plus the callback the rail
+  // reports the caller's standing through. The three-state reconciliation
+  // behind it (no answer yet / ranked but unmeasured / measured) lives in the
+  // hook, where it is tested.
+  const { clock, onStanding } = useDailyClock(daily, game.solved);
 
   // The current daily streak, for the discreet reminder on the win overlay.
   // Fetched once the daily is solved. We pass the solved puzzle's date so the

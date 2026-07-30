@@ -29,6 +29,50 @@ export interface Anchor {
 }
 
 /**
+ * Where one player's anchor for one (date, tier) is kept. Scoped to that key by
+ * whoever builds it, so nothing here has to carry it around.
+ *
+ * A seam, not decoration: the rules below decide whether a player is clocked at
+ * all, and they used to live inline in the openDaily handler welded to Drizzle,
+ * where no test could reach them. Two adapters — Postgres in production, an
+ * in-memory fake in the tests.
+ */
+export interface AnchorStore {
+  /** Writes this delivery's anchor if the player has none, and returns what it
+   *  wrote — or null when one already existed, having written nothing. */
+  insertIfAbsent(servedAt: Date, certified: boolean): Promise<Anchor | null>;
+  /** The anchor that already stands, or null. */
+  read(): Promise<Anchor | null>;
+}
+
+/**
+ * Claims this player's anchor. The FIRST delivery wins: a reload, a second tab
+ * or a second device all read back the ORIGINAL time rather than being handed a
+ * fresh clock — which is the whole point, since a restartable anchor would let
+ * a player study the grid and only then start measuring.
+ */
+export async function claimAnchor(
+  store: AnchorStore,
+  servedAt: Date,
+  certified: boolean,
+): Promise<Anchor | null> {
+  return (await store.insertIfAbsent(servedAt, certified)) ?? store.read();
+}
+
+/**
+ * The anchor time to put on screen, as an ISO string, or null to show no clock.
+ *
+ * Withheld unless the ANCHOR ITSELF says the day is certified — never the
+ * provenance just computed. discoveryTime measures against the anchor's own
+ * flag, so trusting a fresher one would put a running clock on screen for a
+ * submission the server will record as null. A day that gains its cron row
+ * after a player was anchored stays uncertified for that player, by design.
+ */
+export function shownAnchor(anchor: Anchor | null): string | null {
+  return anchor?.certified ? anchor.servedAt.toISOString() : null;
+}
+
+/**
  * The ranked discovery time for a submission landing at `submittedAt`, or
  * `null` when there is nothing we can honestly measure.
  *
