@@ -1,21 +1,20 @@
 // src/ui/hooks/useProgressSync.ts
-// At the moment the session resolves to a signed-in user, reconcile local
-// progression with the server (planProgressSync): pull down better/absent
-// server scores into `record`, and replay-submit better/absent local clean
-// traces. Keyed on the user id (session is a fresh object each render), so it
-// runs once per account change; a genuine remount re-runs it, which is safe —
-// downloads re-apply min and uploads upsert the best, both idempotent. The
-// mutating deps are read through a ref (as LeaderboardRail does for submit).
+// At the moment the session resolves to a signed-in user, reconcile the local
+// progression ledger with the server (planProgressSync): pull down better/absent
+// server scores, and replay-submit better/absent local clean traces. Keyed on
+// the user id (session is a fresh object each render), so it runs once per
+// account change; a genuine remount re-runs it, which is safe — downloads
+// re-apply min and uploads upsert the best, both idempotent. The mutating deps
+// are read through a ref (as LeaderboardRail does for submit).
 
 import { useEffect, useRef } from "react";
-import type { TraceStep } from "../../engine/types.ts";
 import { getMyLevelScores, submitLevelScore } from "../../server/campaign.ts";
 import { planProgressSync } from "../progressSync.ts";
+import type { Ledger, Win } from "../progression.ts";
 
 interface Deps {
-  best: Record<string, number>;
-  traces: Record<string, TraceStep[]>;
-  record: (id: string, moves: number, trace?: TraceStep[]) => void;
+  ledger: Ledger;
+  record: (win: Win) => void;
 }
 
 export function useProgressSync(uid: string | null, deps: Deps) {
@@ -36,9 +35,11 @@ export function useProgressSync(uid: string | null, deps: Deps) {
     (async () => {
       const server = await getMyLevelScores().catch(() => null);
       if (gen !== g.current || !server) return;
-      const { best, traces, record } = depsRef.current;
-      const plan = planProgressSync(best, traces, server);
-      for (const d of plan.downloads) record(d.levelId, d.moves);
+      const { ledger, record } = depsRef.current;
+      const plan = planProgressSync(ledger, server);
+      // a pulled best carries no trace — the ledger drops any stale one
+      for (const d of plan.downloads)
+        record({ levelId: d.levelId, moves: d.moves });
       // independent per-level upserts: fire together rather than serializing N
       // round-trips. A stale/invalid trace must not break the others — swallow
       // per-upload.

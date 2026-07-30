@@ -2,7 +2,7 @@
 
 import type { TraceStep } from "../../engine/types.ts";
 import { LEVELS } from "../../engine/levels.ts";
-import { PAR } from "../../engine/par.ts";
+import { atPar } from "../progression.ts";
 import { Wordmark } from "./Wordmark.tsx";
 import { ReplayGifButton } from "./ReplayGifButton.tsx";
 import { m } from "../../paraglide/messages.js";
@@ -35,8 +35,12 @@ export function WinOverlay({
   // is the fiction's approval, shown on every win — these are the campaign
   // marks): "bon à tirer" at the solver's par, "sans retouche" for a run with no
   // correction. A hinted run is off the record, so it earns neither.
-  const par = level ? PAR[level.id] : undefined;
-  const atPar = !hinted && par !== undefined && moves === par;
+  //
+  // These read THIS pull, not the ledger — the selector shows what the player
+  // has earned overall, this shows what they just did — but the par rule itself
+  // comes from the ledger's own predicate, so the two can't disagree on what
+  // "bon à tirer" means.
+  const bat = !hinted && !!level && atPar(level.id, moves);
   const clean = !hinted && !!trace && undosOf(trace) === 0;
 
   return (
@@ -59,9 +63,9 @@ export function WinOverlay({
           {m.win_hinted()}
         </div>
       )}
-      {(atPar || clean) && (
+      {(bat || clean) && (
         <div className="flex items-center gap-2.5 font-mono text-[10px] tracking-[0.18em] uppercase">
-          {atPar && <span className="text-tape/70">{m.stamp_bat()}</span>}
+          {bat && <span className="text-tape/70">{m.stamp_bat()}</span>}
           {clean && (
             <span className="text-paper/45">{m.stamp_sans_retouche()}</span>
           )}

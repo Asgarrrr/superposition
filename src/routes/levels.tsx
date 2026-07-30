@@ -13,9 +13,9 @@ export const Route = createFileRoute("/levels")({ component: SelectRoute });
 
 function SelectRoute() {
   const navigate = useNavigate();
-  const { best, hinted, clean, traces, record } = useBestScores();
+  const { ledger, record } = useBestScores();
   const { data: session } = useSession();
-  useProgressSync(session?.user.id ?? null, { best, traces, record });
+  useProgressSync(session?.user.id ?? null, { ledger, record });
   // read the enter-screen hand-off once, on the first render (pure — no
   // mutation), latched in a ref; then clear it after commit so a plain return
   // to the selector never replays the reveal
@@ -39,9 +39,7 @@ function SelectRoute() {
   return (
     <>
       <SelectScreen
-        best={best}
-        hinted={hinted}
-        clean={clean}
+        ledger={ledger}
         reveal={reveal.current}
         weekendReady={weekendReady}
         signedIn={!!session}

@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { LEVELS } from "../../engine/levels.ts";
 import { m } from "../../paraglide/messages.js";
 import { chapterName } from "../copy.ts";
-import { stamps } from "../stamps.ts";
+import { emptyLedger, plate, setPulled, type Ledger } from "../progression.ts";
 import { Wordmark } from "../components/Wordmark.tsx";
 import { LangToggle } from "../components/LangToggle.tsx";
 import { Room } from "../components/Room.tsx";
@@ -36,9 +36,7 @@ const rise = {
 // continuous gesture. False on a plain return — then it renders at rest.
 
 export function SelectScreen({
-  best,
-  hinted = {},
-  clean = {},
+  ledger = emptyLedger,
   onPick,
   onDaily,
   onProfile,
@@ -46,11 +44,9 @@ export function SelectScreen({
   reveal = false,
   weekendReady = false,
 }: {
-  best: Record<string, number>;
-  // levels cleared with a hint (off the record) — a dim ✓, no move count
-  hinted?: Record<string, true>;
-  // levels ever cleared with no correction — backs the "sans retouche" mark
-  clean?: Record<string, true>;
+  // the player's own progression — the selector asks it questions (plate,
+  // setPulled) rather than indexing its dictionaries
+  ledger?: Ledger;
   onPick: (idx: number) => void;
   onDaily: (tier: number) => void;
   onProfile: () => void;
@@ -181,14 +177,9 @@ export function SelectScreen({
           className="flex w-[min(92vw,420px)] flex-col gap-2"
         >
           {LEVELS.map((lv, i) => {
-            const s = stamps(lv.id, best[lv.id], clean);
+            const s = plate(ledger, lv.id);
             const newChapter = i === 0 || lv.ch !== LEVELS[i - 1].ch;
-            // the whole set is pulled once every one of its plates has a record
-            const chapterDone =
-              newChapter &&
-              LEVELS.filter((l) => l.ch === lv.ch).every(
-                (l) => best[l.id] !== undefined,
-              );
+            const chapterDone = newChapter && setPulled(ledger, lv.ch);
             return (
               <motion.div variants={rise} key={lv.id} className="flex flex-col">
                 {newChapter && (
@@ -225,7 +216,7 @@ export function SelectScreen({
                   <span className="flex-1 font-display text-[15px] italic tracking-[0.02em] text-paper/90 transition-colors duration-200 group-hover:text-paper">
                     {lv.name}
                   </span>
-                  {best[lv.id] !== undefined ? (
+                  {s.record !== undefined ? (
                     <span className="flex shrink-0 items-center gap-1">
                       {/* the record — "tiré"; at the solver's par it wears a
                           hand-struck frame, "bon à tirer" (reusing the amber,
@@ -238,7 +229,7 @@ export function SelectScreen({
                             : ""
                         }`}
                       >
-                        ✓ {best[lv.id]}
+                        ✓ {s.record}
                       </span>
                       {/* sans retouche — a minuscule struck tick, never amber,
                           kept quieter than the count */}
@@ -256,7 +247,7 @@ export function SelectScreen({
                   ) : (
                     // solved with a hint but never on the record: a dim mark, no
                     // count and no amber — it reads as done without claiming a record
-                    hinted[lv.id] && (
+                    s.hinted && (
                       <span className="text-[10px] tracking-[0.1em] text-paper/40 tabular-nums">
                         ✓
                       </span>

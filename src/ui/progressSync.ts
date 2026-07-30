@@ -1,11 +1,12 @@
 // src/ui/progressSync.ts
-// Pure reconciliation of local progression (localStorage) with the server's
+// Pure reconciliation of the local progression ledger with the server's
 // levelScore rows. No React, no I/O — the hook that runs it is the only impure
-// part. Downward: pull a server best that beats (or fills) the local best.
-// Upward: push a clean local record (one with a stored trace) that beats (or
-// is absent from) the server, replayed through the validated submit path.
+// part. Downward: pull a server best that beats (or fills) the local record.
+// Upward: push a clean local record (one with a stored trace) that beats (or is
+// absent from) the server, replayed through the validated submit path.
 
 import type { TraceStep } from "../engine/types.ts";
+import type { Ledger } from "./progression.ts";
 import { undosOf } from "./submissionPolicy.ts";
 
 export interface ServerScore {
@@ -14,15 +15,15 @@ export interface ServerScore {
 }
 
 export interface SyncPlan {
-  downloads: ServerScore[]; // fed to useBestScores.record (which re-applies min)
+  downloads: ServerScore[]; // fed to the ledger's recordWin (which re-applies min)
   uploads: { levelId: string; trace: TraceStep[] }[]; // fed to submitLevelScore
 }
 
 export function planProgressSync(
-  best: Record<string, number>,
-  traces: Record<string, TraceStep[]>,
+  ledger: Ledger,
   server: ServerScore[],
 ): SyncPlan {
+  const { best, traces } = ledger;
   const serverBy = new Map(server.map((s) => [s.levelId, s.moves]));
 
   const downloads = server.filter((s) => {
