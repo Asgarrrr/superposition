@@ -242,6 +242,17 @@ Runtime network dependency: the Instrument Serif web font (Google Fonts).
 
 ### Next steps
 
+- **Known gap — the progress sync loses the "sans retouche" marks.**
+  `getMyLevelScores` returns `{ levelId, moves }` only, so a download feeds
+  `recordWin` a win with no `trace` and no `clean`. The ledger then restores the
+  move record but not the sticky clean flag (and drops any stale trace, which is
+  correct). A signed-in player moving to a new device therefore recovers every
+  record and none of their clean seals. The server already HAS the answer:
+  `level_score.undos` is stored and the boards rank on it. The fix is to return
+  `undos` alongside `moves` and have the download path pass
+  `clean: undos === 0`; the upload path needs nothing (it sends the raw trace,
+  which the server re-derives from). Left alone on purpose — it predates the
+  progression refactor and is a data-shape change to a public server function.
 - The route split is done (see "Stack & toolchain"); `<App />` and its screen
   router are gone.
 - Old project instructions live in `superposition-old/CLAUDE.md` (engine
