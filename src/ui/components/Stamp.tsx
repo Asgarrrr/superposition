@@ -130,7 +130,7 @@ function CalendarPlate({ ink, count }: { ink: string; count: number }) {
 function BoardPlate({ ink }: { ink: string }) {
   return (
     <g>
-      <g stroke={ink} fill="none" strokeWidth={0.8} opacity={0.5}>
+      <g stroke={ink} fill="none" strokeWidth={0.7} opacity={0.32}>
         <path d="M32 40h55M32 51h55M32 62h55M32 73h55M32 84h55M32 95h55M32 40v55M43 40v55M54 40v55M65 40v55M76 40v55M87 40v55" />
       </g>
       {/* one route across the whole board, two turns — long legs read as a path,
@@ -139,9 +139,9 @@ function BoardPlate({ ink }: { ink: string }) {
         d="M37.5 89.5 H59.5 V67.5 H70.5"
         fill="none"
         stroke={ink}
-        strokeWidth={1.8}
-        opacity={0.8}
-        strokeDasharray="3 2.6"
+        strokeWidth={2.3}
+        opacity={1}
+        strokeDasharray="3.4 2.6"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -174,7 +174,7 @@ function WideBoardPlate({ ink }: { ink: string }) {
   ] as const;
   return (
     <g>
-      <g stroke={ink} fill="none" strokeWidth={0.8} opacity={0.45}>
+      <g stroke={ink} fill="none" strokeWidth={0.7} opacity={0.3}>
         <path d="M30 38h60M30 48h60M30 58h60M30 68h60M30 78h60M30 88h60M30 98h60M30 38v60M40 38v60M50 38v60M60 38v60M70 38v60M80 38v60M90 38v60" />
       </g>
       <g fill={ink} opacity={0.55}>
@@ -488,7 +488,7 @@ export function Stamp({
         {/* the cancellation, landing on the engraving the way a real one does —
             never on the issuer's name */}
         {mark && (
-          <g transform="translate(89,45) rotate(-16)" opacity={0.44}>
+          <g transform="translate(89,45) rotate(-16)" opacity={0.5}>
             {/* the strike knocks the paper back before the rings land, so the
                 date reads over the engraving instead of tangling with it */}
             <circle r={19.5} fill="#f0e9dd" opacity={0.62} />
@@ -499,7 +499,7 @@ export function Stamp({
               textAnchor="middle"
               fill="#17130f"
               fontFamily="ui-monospace, Menlo, monospace"
-              fontSize={7.4}
+              fontSize={8.2}
             >
               {mark.day}
             </text>
@@ -508,7 +508,7 @@ export function Stamp({
               textAnchor="middle"
               fill="#17130f"
               fontFamily="ui-monospace, Menlo, monospace"
-              fontSize={6.4}
+              fontSize={7}
             >
               {mark.year}
             </text>

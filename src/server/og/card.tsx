@@ -10,7 +10,7 @@ import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import { renderToStaticMarkup } from "react-dom/server";
 import { historyByUsername } from "../profileData.ts";
-import { buildYear, SHADE_HEX as SHADE } from "../../lib/contribGrid.ts";
+
 import { computeStreaks } from "../../lib/streak.ts";
 import { distinctions, type Distinction } from "../../lib/distinctions.ts";
 import { Stamp } from "../../ui/components/Stamp.tsx";
@@ -23,7 +23,7 @@ const H = 630;
 const PAPER = "#f2ede4";
 const TAPE = "#e8b84b";
 
-const STAMP_W = 140;
+const STAMP_W = 198;
 const STAMP_H = Math.round((STAMP_W * 148) / 120);
 
 // Satori draws its OWN text as glyph outlines, so the name and the figures need
@@ -77,22 +77,37 @@ function stampImage(d: Distinction): string {
   return `data:image/png;base64,${png.toString("base64")}`;
 }
 
+// One sheet on the lit table, laid out like the profile page it stands for:
+// a masthead with the figures ranged right, the series across the middle, and
+// the year's grid holding the foot. The card used to be things placed on a black
+// rectangle; giving it the page's own sheet is most of what makes it read.
+// One sheet on the lit table, composed as a poster rather than as a dashboard:
+// the masthead with the figures ranged right on its baseline, and the series
+// large across the middle. The year's grid deliberately stays on the PAGE — on a
+// card read at thumbnail size it only competed with the stamps, and the "jours"
+// figure already carries what it had to say. Giving the stamps that room is what
+// finally makes their engravings legible at share size.
 function Card({
   name,
   streaks,
   marks,
-  weeks,
 }: {
   name: string;
   streaks: { current: number; longest: number; total: number };
   marks: Distinction[];
-  weeks: ReturnType<typeof buildYear>;
 }) {
   const stat = (value: number, label: string, accent = false) => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 7,
+      }}
+    >
       <span
         style={{
-          fontSize: 48,
+          fontSize: 46,
           fontFamily: "Instrument Serif",
           color: accent ? TAPE : PAPER,
           lineHeight: 1,
@@ -102,7 +117,7 @@ function Card({
       </span>
       <span
         style={{
-          fontSize: 14,
+          fontSize: 12,
           letterSpacing: 3,
           textTransform: "uppercase",
           color: "#8a8378",
@@ -119,66 +134,88 @@ function Card({
         width: W,
         height: H,
         display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        padding: 64,
+        padding: 30,
         background: "#14110e",
-        fontFamily: "Instrument Serif",
       }}
     >
-      {/* masthead */}
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <span
-          style={{
-            fontSize: 18,
-            letterSpacing: 8,
-            textTransform: "uppercase",
-            color: TAPE,
-          }}
-        >
-          Superposition · Tirages
-        </span>
-        {/* the name, pulled twice a hair out of register */}
-        <div style={{ display: "flex", position: "relative", marginTop: 14 }}>
-          <span
-            style={{
-              position: "absolute",
-              left: -3,
-              top: -2,
-              fontSize: 92,
-              fontStyle: "italic",
-              color: "#45e0ec",
-            }}
-          >
-            {name}
-          </span>
-          <span
-            style={{
-              position: "absolute",
-              left: 3,
-              top: 2,
-              fontSize: 92,
-              fontStyle: "italic",
-              color: "#ff4fa3",
-            }}
-          >
-            {name}
-          </span>
-          <span style={{ fontSize: 92, fontStyle: "italic", color: PAPER }}>
-            {name}
-          </span>
-        </div>
-      </div>
-
-      {/* the series, and the figures beside it */}
       <div
         style={{
           display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
+          flex: 1,
+          flexDirection: "column",
+          justifyContent: "center",
+          gap: 46,
+          padding: "44px 56px",
+          borderRadius: 4,
+          border: "1px solid rgba(242,237,228,0.10)",
+          // satori parses linear-gradient reliably; the page's radial glow came
+          // out flat here, and a top-lit ramp reads as the same lit box
+          backgroundImage:
+            "linear-gradient(180deg, #272119 0%, #1b1713 48%, #17130f 100%)",
+          fontFamily: "Instrument Serif",
         }}
       >
-        <div style={{ display: "flex", gap: 14 }}>
+        {/* masthead — the name at left, the figures ranged right on its baseline */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span
+              style={{
+                fontSize: 16,
+                letterSpacing: 7,
+                textTransform: "uppercase",
+                color: TAPE,
+              }}
+            >
+              Superposition · Tirages
+            </span>
+            {/* the name, pulled twice a hair out of register */}
+            <div
+              style={{ display: "flex", position: "relative", marginTop: 12 }}
+            >
+              <span
+                style={{
+                  position: "absolute",
+                  left: -3,
+                  top: -2,
+                  fontSize: 78,
+                  fontStyle: "italic",
+                  color: "#45e0ec",
+                }}
+              >
+                {name}
+              </span>
+              <span
+                style={{
+                  position: "absolute",
+                  left: 3,
+                  top: 2,
+                  fontSize: 78,
+                  fontStyle: "italic",
+                  color: "#ff4fa3",
+                }}
+              >
+                {name}
+              </span>
+              <span style={{ fontSize: 78, fontStyle: "italic", color: PAPER }}>
+                {name}
+              </span>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 46, paddingBottom: 10 }}>
+            {stat(streaks.current, "série en cours", true)}
+            {stat(streaks.longest, "record")}
+            {stat(streaks.total, "jours")}
+          </div>
+        </div>
+
+        {/* the series, centred across the sheet */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 30 }}>
           {marks.map((d) => (
             <img
               key={d.family}
@@ -188,35 +225,6 @@ function Card({
             />
           ))}
         </div>
-        <div style={{ display: "flex", gap: 52, paddingBottom: 6 }}>
-          {stat(streaks.current, "série en cours", true)}
-          {stat(streaks.longest, "record")}
-          {stat(streaks.total, "jours")}
-        </div>
-      </div>
-
-      {/* mini contribution grid */}
-      <div style={{ display: "flex", gap: 3 }}>
-        {weeks.map((col, i) => (
-          <div
-            key={i}
-            style={{ display: "flex", flexDirection: "column", gap: 3 }}
-          >
-            {col.map((cell, j) => (
-              <div
-                key={j}
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: 2,
-                  background: cell.spacer
-                    ? "transparent"
-                    : (SHADE[cell.count] ?? TAPE),
-                }}
-              />
-            ))}
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -232,15 +240,11 @@ export async function ogResponse(username: string): Promise<Response> {
     history.days.map((d) => d.date),
     today,
   );
-  // the card is a snapshot: show the current year, GitHub-style
-  const weeks = buildYear(history.days, Number(today.slice(0, 4)), today);
-
   const svg = await satori(
     <Card
       name={history.name}
       streaks={streaks}
       marks={distinctions(history.marks)}
-      weeks={weeks}
     />,
     {
       width: W,
