@@ -81,6 +81,25 @@ const railShape =
 const leftRailClass = `w-[min(92vw,520px)] ${railShape} xl:col-start-1 xl:justify-self-end`;
 const boardRailClass = `mt-8 w-[min(90vw,420px)] ${railShape} xl:col-start-3 xl:mt-0 xl:justify-self-start xl:self-stretch`;
 
+// ── the chrome band under the board ──────────────────────────────
+// The whole screen is a vertically centred column, so a row down here that hugs
+// its content drags the BOARD with it every time that content changes: the tip
+// swapping between 1, 2 and 3 lines, a flash replacing it, the hint row emptying
+// on the win. So both rows are SLOTS with a fixed height, never a min: the band
+// measures the same whatever it holds, the grid's height is constant, and the
+// centring never re-runs. The heights are the measured worst cases for the longest
+// tip (`rule_fusion_merged`, 128 chars in BOTH locales) at 11.5px/17.25px type: its
+// box is `min(100vw - 32px, 500px)`, which wraps to 4 lines at 288px (a 320px phone)
+// and 3 lines from 343px up — hence 69px below `sm`, 52px from `sm` up.
+// Measure these on the REAL element, never on a detached clone: the mono face comes
+// from `font-mono` on the screen root, so a clone parented to <body> wraps with a
+// narrower fallback font and under-reports the line count.
+// The tip stays top-aligned (a plain block, no flex) so its first line keeps a
+// fixed distance from the board it captions — the slack falls below it.
+const tipSlot =
+  "mt-3.5 h-[69px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28 sm:h-[52px]";
+const actionSlot = "mt-3 flex h-[17px] items-center gap-5";
+
 /** Daily mode: one tier of the day's challenge, played for the shared
  *  per-tier leaderboard rather than the campaign. Swaps the HUD banner and the
  *  win overlay. `tier` is 0 easy · 1 medium · 2 hard. */
@@ -421,51 +440,54 @@ export function PlayScreen({
           className="flex flex-col items-center xl:col-start-2 xl:row-start-3"
           variants={vControls}
         >
+          {/* Both modes render into the SAME two slots, so the tutorial's handoff
+              to the real level doesn't jump either — the tip is simply empty while
+              the demo owns the board (its captions live inside the Board). */}
+          <div className={tipSlot}>
+            {demoActive ? null : game.flash ? (
+              <span className="text-ink-magenta">{game.flash}</span>
+            ) : game.hintNote ? (
+              <span className="text-paper/55">{game.hintNote}</span>
+            ) : (
+              ruleLine(game.st, level)
+            )}
+          </div>
+
           {demoActive ? (
-            <>
-              <div className="mt-3.5 min-h-[30px]" />
-              <Controls
-                altLabel={guidedAltLabel}
-                altArmed={guided.armed}
-                onDir={play}
-                onToggleAlt={toggleAlt}
-                onUndo={() => {}}
-                guiding
-                highlight={guided.guidance}
-              />
-              {guided.phase !== "handoff" && (
+            <Controls
+              altLabel={guidedAltLabel}
+              altArmed={guided.armed}
+              onDir={play}
+              onToggleAlt={toggleAlt}
+              onUndo={() => {}}
+              guiding
+              highlight={guided.guidance}
+            />
+          ) : (
+            <Controls
+              altLabel={altLabel}
+              altArmed={game.altArmed}
+              onDir={play}
+              onToggleAlt={game.toggleAlt}
+              onUndo={game.undo}
+              reset={resetHold}
+              highlight={hintHighlight(game.hint, game.altArmed)}
+            />
+          )}
+
+          <div className={actionSlot}>
+            {demoActive ? (
+              guided.phase !== "handoff" && (
                 <button
                   type="button"
                   onClick={guided.skip}
-                  className="mt-3 font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
+                  className="font-mono text-[11px] tracking-[0.06em] text-paper/30 transition-colors hover:text-paper/60"
                 >
                   {m.demo_skip()}
                 </button>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="mt-3.5 min-h-[30px] max-w-[500px] text-center text-[11.5px] tracking-[0.02em] text-paper/28">
-                {game.flash ? (
-                  <span className="text-ink-magenta">{game.flash}</span>
-                ) : game.hintNote ? (
-                  <span className="text-paper/55">{game.hintNote}</span>
-                ) : (
-                  ruleLine(game.st, level)
-                )}
-              </div>
-
-              <Controls
-                altLabel={altLabel}
-                altArmed={game.altArmed}
-                onDir={play}
-                onToggleAlt={game.toggleAlt}
-                onUndo={game.undo}
-                reset={resetHold}
-                highlight={hintHighlight(game.hint, game.altArmed)}
-              />
-
-              <div className="mt-3 flex items-center gap-5">
+              )
+            ) : (
+              <>
                 {/* hint: campaign/free only. In daily its use can't be proven to
                     the server (a tampered client could strip it from the trace),
                     so hints are simply unavailable there rather than silently
@@ -494,9 +516,9 @@ export function PlayScreen({
                     {m.controls_demo()}
                   </button>
                 )}
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </motion.div>
 
         {daily ? (
