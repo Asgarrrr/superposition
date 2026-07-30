@@ -97,15 +97,25 @@ export const submitLevelScore = createServerFn({ method: "POST" })
     return { ok: true, moves: result.moves };
   });
 
-/** Every campaign score the current user holds — `{ levelId, moves }` per level.
- *  Read-only, public shape: returns `[]` when not signed in (no throw). Feeds
- *  the client's login-time progress reconciliation (useProgressSync). */
+/** Every campaign score the current user holds, per level. Read-only, public
+ *  shape: returns `[]` when not signed in (no throw). Feeds the client's
+ *  login-time progress reconciliation (useProgressSync).
+ *
+ *  `undos` rides along so a player arriving on a new device recovers their
+ *  "sans retouche" seals and not just their move records — the local ledger is
+ *  the only other place that flag lives, and localStorage does not travel. It
+ *  is the correction count of the STORED BEST row, which is what the boards
+ *  already rank and seal on. */
 export const getMyLevelScores = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ levelId: string; moves: number }[]> => {
+  async (): Promise<{ levelId: string; moves: number; undos: number }[]> => {
     const userId = await currentUserId();
     if (!userId) return [];
     return db
-      .select({ levelId: levelScore.levelId, moves: levelScore.moves })
+      .select({
+        levelId: levelScore.levelId,
+        moves: levelScore.moves,
+        undos: levelScore.undos,
+      })
       .from(levelScore)
       .where(eq(levelScore.userId, userId));
   },

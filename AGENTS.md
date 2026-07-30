@@ -242,17 +242,15 @@ Runtime network dependency: the Instrument Serif web font (Google Fonts).
 
 ### Next steps
 
-- **Known gap — the progress sync loses the "sans retouche" marks.**
-  `getMyLevelScores` returns `{ levelId, moves }` only, so a download feeds
-  `recordWin` a win with no `trace` and no `clean`. The ledger then restores the
-  move record but not the sticky clean flag (and drops any stale trace, which is
-  correct). A signed-in player moving to a new device therefore recovers every
-  record and none of their clean seals. The server already HAS the answer:
-  `level_score.undos` is stored and the boards rank on it. The fix is to return
-  `undos` alongside `moves` and have the download path pass
-  `clean: undos === 0`; the upload path needs nothing (it sends the raw trace,
-  which the server re-derives from). Left alone on purpose — it predates the
-  progression refactor and is a data-shape change to a public server function.
+- **Residual gap — a clean run that was never your best row can't be
+  recovered.** `getMyLevelScores` now returns `undos` alongside `moves`, and
+  `asWin` (`src/ui/progressSync.ts`) turns a stored row into a ledger win with
+  `clean: undos === 0`, so a new device recovers both records and seals. What it
+  still cannot recover: the server keeps ONE row per level, not a history, so a
+  player whose clean run was not their best row has no "ever solved cleanly"
+  fact for the server to return. Closing that needs a column
+  (`level_score.ever_clean`, set on any correction-free submission), which is a
+  migration — not worth it until someone asks.
 - The route split is done (see "Stack & toolchain"); `<App />` and its screen
   router are gone.
 - Old project instructions live in `superposition-old/CLAUDE.md` (engine
