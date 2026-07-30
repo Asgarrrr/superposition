@@ -61,9 +61,14 @@ routing, and build were migrated.
   child route can only be as SSR-permissive as its parents, so the root must
   allow it. Routes whose loader must stay client-side opt back out with
   `ssr: false` (e.g. `daily.$tier` — its board is a live client experience).
-- Single route `/` (`src/routes/index.tsx`) mounts the game's `<App />`, whose
-  internal screen router owns title / select / play. `__root.tsx` is the HTML
-  shell (`lang="fr"`, theme-color `#14110E`, `src/index.css`).
+- Every screen is a real route — there is no in-`App` screen router any more.
+  `/` is the "align to enter" title screen, `/levels` the edition, `/level/$plate`
+  one campaign board, `/daily/$tier` one tier of the day, `/profile/me` and
+  `/profile/$username` the player pages. Session state that used to be lifted
+  (sound, mute) is per-route via `usePersistedSound`; progression is read from
+  localStorage by `useBestScores` in whichever route needs it.
+  `__root.tsx` is the HTML shell (`lang="fr"`, theme-color `#14110E`,
+  `src/index.css`).
 - React Compiler kept, applied via `@rolldown/plugin-babel` +
   `reactCompilerPreset` from `@vitejs/plugin-react` (plugin-react v6 in
   rolldown-vite has **no** `babel` option — do not try `viteReact({ babel })`).
@@ -71,7 +76,13 @@ routing, and build were migrated.
   `vite.config.ts`; `src/paraglide/` is generated (gitignored) by
   `bun run paraglide` / the vite plugin.
 - Tailwind CSS 4 (`@tailwindcss/vite`), design tokens in `src/index.css` `@theme`.
-- Engine tests: Vitest, `*.test.ts` colocated, engine-only (`vitest.config.ts`).
+- Tests: Vitest, colocated, **two projects** (`vitest.config.ts`) split by
+  extension. `pure` — `*.test.ts`, node, no plugins: the engine, the solver, the
+  server rules and every extracted policy. `dom` — `*.test.tsx`, jsdom +
+  `@testing-library/react`, setup in `src/test/setup.ts`: components and hooks.
+  The split is deliberate pressure — a rule that needs jsdom to be tested is a
+  rule sitting in the wrong module, so prefer extracting it over reaching for
+  the `dom` project.
 - Solver CLI: `src/solver/` runs under **bun** with Node types
   (`src/solver/tsconfig.json`); excluded from the app `tsconfig.json`.
 
@@ -81,7 +92,8 @@ routing, and build were migrated.
 - `bun run build` — `paraglide` compile + `tsc --noEmit` + `vite build`
   (Nitro output → `.output/server/index.mjs` + `.output/public`)
 - `bun run start` — run the built Nitro server (`bun .output/server/index.mjs`)
-- `bun run test` — Vitest: engine tests + `src/server/replay.test.ts`
+- `bun run test` — Vitest, both projects. One project alone:
+  `bunx vitest run --project pure` / `--project dom`
 - `bun run verify` — solver certifies the 22-level bank (fails if any is unsolvable)
 - `bun run gen` — hunt new levels; `bun run gen:hero` — hero image
 - `bun run gen:daily` — generate + persist the daily puzzle (today + J+1/J+2), then exit
@@ -150,6 +162,12 @@ import that (or `db`) from a module the client route tree pulls in.
 
 | Concern                                       | Lives in                                                                                                                                                                                                                                              |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| who drives the board (game vs tutorial)       | `src/ui/plateDriver.ts` — the `PlateDriver` interface + its two PURE adapters (`playingPlate`, `guidedPlate`). PlayScreen binds ONE; never branch on "is the tutorial live?" anywhere else                                                            |
+| the tutorial's on-board content               | `src/ui/components/DemoOverlay.tsx`                                                                                                                                                                                                                   |
+| progression ledger + stamps + chapter folding | `src/ui/progression.ts` (`Ledger`, `recordWin`, `markHinted`, `plate`, `setPulled`, `atPar`). `useBestScores` is only its React/localStorage adapter — put no rule there                                                                              |
+| discovery-anchor lifecycle + the measurement  | `src/server/discovery.ts` (`AnchorStore`, `claimAnchor`, `shownAnchor`, `discoveryTime`); the Postgres adapter is `anchorsFor()` in `src/server/daily.ts`                                                                                             |
+| the daily clock's three-state reconciliation  | `useDailyClock` in `src/ui/hooks/useDiscoveryClock.ts`                                                                                                                                                                                                |
+| auth guard on score WRITES                    | `requireUserId()` in `src/server/leaderboard.ts` (reads keep `currentUserId`, which answers a signed-out caller instead of throwing)                                                                                                                  |
 | pg pool + drizzle client                      | `src/db/index.ts`                                                                                                                                                                                                                                     |
 | DB tables (auth + daily + campaign)           | `src/db/schema.ts`                                                                                                                                                                                                                                    |
 | Better Auth server / client                   | `src/lib/auth.ts` / `src/lib/auth-client.ts`                                                                                                                                                                                                          |
@@ -224,9 +242,7 @@ Runtime network dependency: the Instrument Serif web font (Google Fonts).
 
 ### Next steps
 
-- Optional: split the game's three screens into real routes
-  (`/`, `/levels`, `/play/$levelId`) for shareable URLs + back-button. Session
-  state (`useSound` AudioContext, `useBestScores`) would lift into `__root`.
-  A design for this exists; the current port keeps the in-`App` screen router.
+- The route split is done (see "Stack & toolchain"); `<App />` and its screen
+  router are gone.
 - Old project instructions live in `superposition-old/CLAUDE.md` (engine
   invariants, how to add a mechanic/level) — still authoritative for game rules.
