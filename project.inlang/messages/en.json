@@ -41,6 +41,7 @@
   "stat_record": "record",
   "controls_undo": "undo",
   "controls_reset": "reset",
+  "controls_reset_hold": "hold to reset",
   "controls_split": "✕ split",
   "controls_world": "⇄ world",
   "controls_arm": " · which way?",

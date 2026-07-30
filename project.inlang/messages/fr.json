@@ -41,6 +41,7 @@
   "stat_record": "record",
   "controls_undo": "annuler",
   "controls_reset": "reprendre",
+  "controls_reset_hold": "maintenir pour reprendre",
   "controls_split": "✕ scinder",
   "controls_world": "⇄ monde",
   "controls_arm": " · sens ?",

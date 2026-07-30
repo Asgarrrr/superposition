@@ -31,6 +31,7 @@ import {
   useSeenDemos,
 } from "../hooks/useDemo.ts";
 import { useGame } from "../hooks/useGame.ts";
+import { useHold } from "../hooks/useHold.ts";
 import { useKeyboard } from "../hooks/useKeyboard.ts";
 import type { SoundFx } from "../hooks/useSound.ts";
 import { useSwipe } from "../hooks/useSwipe.ts";
@@ -224,10 +225,17 @@ export function PlayScreen({
     onAim: (d) => setAim(demoActive || !altAvailable ? null : d),
   });
 
+  const resetHold = useHold(() => {
+    if (demoActive) return;
+    vibrate(18);
+    game.reset();
+  });
+
   useKeyboard({
     play,
     undo: () => !demoActive && game.undo(),
-    reset: () => !demoActive && game.reset(),
+    resetDown: resetHold.start,
+    resetUp: resetHold.cancel,
     toggleAlt,
     exit: onExit,
     next: () => {
@@ -422,7 +430,6 @@ export function PlayScreen({
                 onDir={play}
                 onToggleAlt={toggleAlt}
                 onUndo={() => {}}
-                onReset={() => {}}
                 guiding
                 highlight={guided.guidance}
               />
@@ -454,7 +461,7 @@ export function PlayScreen({
                 onDir={play}
                 onToggleAlt={game.toggleAlt}
                 onUndo={game.undo}
-                onReset={game.reset}
+                reset={resetHold}
                 highlight={hintHighlight(game.hint, game.altArmed)}
               />
 

@@ -1,7 +1,9 @@
-// Directional pad + alternate gestures (split / world), undo, reset.
+// Directional pad + alternate gestures (split / world), undo, hold-to-confirm reset.
 
 import type { Pos } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
+import type { Hold } from "../hooks/useHold.ts";
+import { HoldButton } from "./HoldButton.tsx";
 
 export function Controls({
   altLabel,
@@ -9,7 +11,7 @@ export function Controls({
   onDir,
   onToggleAlt,
   onUndo,
-  onReset,
+  reset,
   guiding = false,
   highlight,
 }: {
@@ -18,7 +20,7 @@ export function Controls({
   onDir: (d: Pos) => void;
   onToggleAlt: () => void;
   onUndo: () => void;
-  onReset: () => void;
+  reset?: Hold;
   guiding?: boolean; // tutorial: hide undo/reset, light the guided control
   highlight?: { arm: boolean; dir: Pos | null; any?: boolean }; // which control to pulse (`any`: every arrow — pick one)
 }) {
@@ -75,7 +77,15 @@ export function Controls({
                 : `border-paper/30 ${hover}`,
           )}
         {!guiding && action(m.controls_undo(), "Z", onUndo, hover)}
-        {!guiding && action(m.controls_reset(), "R", onReset, hover)}
+        {!guiding && reset && (
+          <HoldButton
+            label={m.controls_reset()}
+            hint={m.controls_reset_hold()}
+            keyCap="R"
+            hold={reset}
+            className={hover}
+          />
+        )}
       </div>
     </div>
   );
