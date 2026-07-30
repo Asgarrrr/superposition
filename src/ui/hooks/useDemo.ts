@@ -74,7 +74,7 @@ export interface DemoGuide {
   tone: "a" | "b" | "w";
 }
 
-interface GuidedDemo {
+export interface GuidedDemo {
   active: boolean;
   phase: DemoPhase;
   waiting: boolean; // a payoff is on screen; the player continues at their pace

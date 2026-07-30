@@ -3,18 +3,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, type Variants } from "motion/react";
-import type {
-  GameState,
-  Input,
-  Level,
-  Pos,
-  TraceStep,
-} from "../../engine/types.ts";
+import type { Level, Pos, TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
-import { altGesture } from "../altGesture.ts";
-import { vibrate } from "../haptics.ts";
 import { ruleLine } from "../ruleLine.ts";
 import { type Demo, levelDemo, pickDemo } from "../demos.ts";
+import { guidedPlate, playingPlate } from "../plateDriver.ts";
 import { Board } from "../components/Board.tsx";
 import { Controls } from "../components/Controls.tsx";
 import { Hud } from "../components/Hud.tsx";
@@ -26,11 +19,8 @@ import { LevelBoard } from "../components/LevelBoard.tsx";
 import { Room } from "../components/Room.tsx";
 import { WinOverlay } from "../components/WinOverlay.tsx";
 import { DailyOverlay } from "../components/DailyOverlay.tsx";
-import {
-  type DemoCaption,
-  useGuidedDemo,
-  useSeenDemos,
-} from "../hooks/useDemo.ts";
+import { DemoOverlay } from "../components/DemoOverlay.tsx";
+import { useGuidedDemo, useSeenDemos } from "../hooks/useDemo.ts";
 import { useGame } from "../hooks/useGame.ts";
 import { useDiscoveryClock } from "../hooks/useDiscoveryClock.ts";
 import { useHold } from "../hooks/useHold.ts";
@@ -127,41 +117,6 @@ export interface DailyMode {
   serverNow: string;
 }
 
-// the label for the state's alt gesture — the rule itself lives in altGesture.ts
-const altLabelFor = (st: GameState, level: Level) => {
-  switch (altGesture(st, level)) {
-    case "split":
-      return m.controls_split();
-    case "shift":
-      return m.controls_world();
-    case null:
-      return null;
-  }
-};
-
-// The hint spotlights the control to press next in two beats, mirroring the
-// guided demo (useDemo's `guidance`): a split/world hint lights ONLY the arm
-// control until the state is armed, then the arrow. Lighting both at once let a
-// bare arrow press slip through as an ordinary move — the hint pointing at a
-// gesture the press didn't perform.
-const hintHighlight = (
-  hint: Input | null,
-  armed: boolean,
-): { arm: boolean; dir: Pos | null } | undefined => {
-  if (!hint) return undefined;
-  return hint.kind !== "move" && !armed
-    ? { arm: true, dir: null }
-    : { arm: false, dir: hint.dir };
-};
-
-// the caption speaks in four voices; keep the mapping exhaustive and visible
-const captionTone: Record<DemoCaption["kind"], string> = {
-  say: "text-paper/85",
-  done: "text-tape",
-  hint: "text-ink-magenta",
-  hand: "text-tape",
-};
-
 export function PlayScreen({
   level,
   plate = 0,
@@ -206,7 +161,8 @@ export function PlayScreen({
     undefined,
   );
   const onStanding = useCallback(
-    (mine: MyResult | null) => setRecorded(mine ? (mine.elapsedMs ?? null) : undefined),
+    (mine: MyResult | null) =>
+      setRecorded(mine ? (mine.elapsedMs ?? null) : undefined),
     [],
   );
   const live = useDiscoveryClock(daily, game.solved || recorded !== undefined);
@@ -244,68 +200,36 @@ export function PlayScreen({
     });
   }, [markSeen]);
   const guided = useGuidedDemo(demo, fx, onDemoDone);
-  const demoActive = guided.active;
   const replayDemo = daily ? null : levelDemo(level);
 
-  // during the tutorial the real controls drive the sandbox on rails
-  const play = (d: Pos, alt = false) => {
-    if (demoActive) return guided.press(d, alt);
-    game.play(d, alt);
-  };
-  const toggleAlt = () => (demoActive ? guided.arm() : game.toggleAlt());
-  // Maintien-slide: on the real board, holding still before a swipe arms the
-  // alternate gesture (split / world) — the tactile echo of Maj+arrow. We only
-  // arm (and buzz) when the state actually offers one, so a hold on a plain
-  // level stays a plain move. In the tutorial the hold also arms the guided demo
-  // (but only on its alt beat — see onHold); the swipe itself never carries alt
-  // there, so a held push on a plain move-beat is still just a move — the arming
-  // is what lets an alt beat accept.
-  const altAvailable = altGesture(game.st, level) !== null;
+  // Who is driving the plate. The tutorial takes the table while it runs, then
+  // hands it back — and that is the ONLY place the question is asked: everything
+  // below (the board, the gestures, the controls) talks to one driver, so the
+  // two boards can no longer drift apart. See plateDriver.ts for the mapping,
+  // which is where the maintien-slide, the swipe's alt and the corrections rules
+  // now live — and where they are tested.
+  const driver =
+    guidedPlate(guided) ?? playingPlate(game, level, onNext ?? null);
+
   // the direction the finger is aiming mid-slide, so the split preview can
   // narrow to the move about to fire (cleared on release inside useSwipe)
   const [aim, setAim] = useState<Pos | null>(null);
-  const swipe = useSwipe((d, alt) => play(d, demoActive ? false : alt), {
-    onHold: (held) => {
-      if (demoActive) {
-        // in the tutorial the same gesture teaches itself, but arm ONLY when the
-        // current beat is the alt one (guidance.arm) — a hold on a plain push
-        // would otherwise fire a split/world the beat never asked for
-        if (held && guided.guidance.arm) {
-          guided.arm();
-          vibrate([10]);
-        }
-        return;
-      }
-      if (!altAvailable) return;
-      game.arm(held);
-      if (held) vibrate([10]);
-    },
-    onAim: (d) => setAim(demoActive || !altAvailable ? null : d),
+  const swipe = useSwipe(driver.swipe, {
+    onHold: driver.hold,
+    onAim: (d) => setAim(driver.previewsAim ? d : null),
   });
 
-  const resetHold = useHold(() => {
-    if (demoActive) return;
-    vibrate(18);
-    game.reset();
-  });
+  const resetHold = useHold(driver.reset);
 
   useKeyboard({
-    play,
-    undo: () => !demoActive && game.undo(),
+    play: driver.press,
+    undo: driver.undo,
     resetDown: resetHold.start,
     resetUp: resetHold.cancel,
-    toggleAlt,
+    toggleAlt: driver.toggleArm,
     exit: onExit,
-    next: () => {
-      if (demoActive) return guided.next(); // Enter continues the tutorial
-      if (game.solved) onNext?.();
-    },
+    next: () => driver.advance?.(),
   });
-
-  const altLabel = altLabelFor(game.st, level);
-  // the alt control the tutorial expects, from the sandbox state/mechanic
-  const guidedAltLabel =
-    guided.st && demo ? altLabelFor(guided.st, demo.level) : null;
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center-safe px-4 pt-20 pb-[calc(2.5rem_+_env(safe-area-inset-bottom))] font-mono text-paper select-none xl:py-10">
@@ -358,122 +282,65 @@ export function PlayScreen({
           <Hud level={level} daily={!!daily} dailyTier={daily?.tier} />
         </motion.div>
 
+        {/* ONE board, whoever is driving. The tutorial runs through the very same
+            component the game does — a title card names the mechanic, marching
+            arrows draw each gesture, and every payoff waits for the player: a tap
+            anywhere, an arrow, or Enter continues. A tap only advances where the
+            driver says it should, so on a real plate a stray one can't spend the
+            win. */}
         <motion.div
           className="xl:col-start-2 xl:row-start-2 xl:pt-4"
           variants={vBoard}
+          onClick={driver.tapAdvance ?? undefined}
         >
-          {demoActive && guided.st && guided.level ? (
-            // the tutorial runs through the real Board; the player drives it on
-            // rails. A title card names the mechanic, marching arrows draw each
-            // gesture, and every payoff waits for the player: a tap anywhere,
-            // an arrow, or Enter continues. On handoff the tape frame fades
-            // before the real level develops in.
-            <div onClick={guided.next}>
-              <Board
-                demo={guided.phase !== "handoff"}
-                level={guided.level}
-                st={guided.st}
-                solved={false}
-                bump={guided.bump}
-                bloom={guided.bloom}
-                armed={guided.armed}
-                guideGhosts={guided.ghosts}
-                guides={guided.guides}
-                iceTrailA={null}
-                iceTrailB={null}
-                {...swipe}
-              >
-                {guided.phase === "title" ? (
-                  // the mechanic's name arrives like the win screen's "Bon à
-                  // tirer": an amber stamp slammed onto the veiled print
-                  <motion.div
-                    className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-room/45"
-                    initial={reduced ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.35, ease: PRINT_EASE }}
-                  >
-                    <span className="rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
-                      {m.controls_demo_tag()}
-                    </span>
-                    <div
-                      className="sp-stamped rounded-sm border-[2.5px] border-tape px-5 py-2.5 font-mono text-[19px] tracking-[0.26em] text-tape uppercase"
-                      style={{ animationDelay: "250ms" }}
-                    >
-                      {demo?.title()}
-                    </div>
-                    <span className="mt-1 font-display text-[17px] text-paper/75">
-                      {demo?.sub()}
-                    </span>
-                    <span className="mt-3 animate-pulse font-mono text-[11px] tracking-[0.14em] text-tape/80 uppercase">
-                      {m.demo_continue()}
-                    </span>
-                  </motion.div>
-                ) : (
-                  guided.caption && (
-                    <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
-                      <div
-                        // remount on each refusal so the headshake retriggers
-                        key={guided.nudge?.t ?? "still"}
-                        className={`flex max-w-[92%] flex-col items-center gap-1 rounded-xs px-3.5 py-2 text-center font-display text-[16px] leading-snug tracking-[0.01em] ${
-                          guided.nudge ? "sp-nudge" : ""
-                        } ${captionTone[guided.caption.kind]}`}
-                        style={{ background: "rgba(18,16,14,0.78)" }}
-                      >
-                        <div className="flex items-center gap-2">
-                          {guided.caption.kind === "say" && (
-                            <span className="shrink-0 rounded-xs border border-tape/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-tape/90">
-                              {m.controls_demo_tag()}
-                            </span>
-                          )}
-                          {guided.caption.text}
-                        </div>
-                        {guided.waiting && (
-                          <span className="animate-pulse font-mono text-[11px] tracking-[0.14em] text-tape/80 uppercase">
-                            {m.demo_continue()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                )}
-              </Board>
-            </div>
-          ) : (
-            <Board
-              level={level}
-              st={game.st}
-              solved={game.solved}
-              bump={game.bump}
-              bloom={game.bloom}
-              armed={game.altArmed}
-              aim={aim}
-              iceTrailA={game.iceTrailA}
-              iceTrailB={game.iceTrailB}
-              {...swipe}
-            >
-              {game.solved &&
-                (daily ? (
-                  <DailyOverlay
-                    level={level}
-                    date={daily.date}
-                    tier={daily.tier}
-                    moves={game.moves}
-                    optimal={daily.optimal}
-                    streak={streak}
-                    trace={game.solve?.trace}
-                  />
-                ) : (
-                  <WinOverlay
-                    plate={plate}
-                    moves={game.moves}
-                    best={best}
-                    hinted={game.hints > 0}
-                    trace={game.solve?.trace}
-                    onNext={onNext}
-                  />
-                ))}
-            </Board>
-          )}
+          <Board
+            level={driver.level}
+            st={driver.st}
+            solved={driver.solved}
+            bump={driver.bump}
+            bloom={driver.bloom}
+            armed={driver.armed}
+            aim={driver.previewsAim ? aim : null}
+            demo={driver.framed}
+            guideGhosts={driver.guideGhosts}
+            guides={driver.guides}
+            iceTrailA={driver.iceTrailA}
+            iceTrailB={driver.iceTrailB}
+            {...swipe}
+          >
+            {driver.sandbox ? (
+              <DemoOverlay
+                phase={guided.phase}
+                title={demo?.title() ?? ""}
+                sub={demo?.sub() ?? ""}
+                caption={guided.caption}
+                nudge={guided.nudge}
+                waiting={guided.waiting}
+              />
+            ) : (
+              game.solved &&
+              (daily ? (
+                <DailyOverlay
+                  level={level}
+                  date={daily.date}
+                  tier={daily.tier}
+                  moves={game.moves}
+                  optimal={daily.optimal}
+                  streak={streak}
+                  trace={game.solve?.trace}
+                />
+              ) : (
+                <WinOverlay
+                  plate={plate}
+                  moves={game.moves}
+                  best={best}
+                  hinted={game.hints > 0}
+                  trace={game.solve?.trace}
+                  onNext={onNext}
+                />
+              ))
+            )}
+          </Board>
         </motion.div>
 
         <motion.div
@@ -484,7 +351,7 @@ export function PlayScreen({
               to the real level doesn't jump either — the tip is simply empty while
               the demo owns the board (its captions live inside the Board). */}
           <div className={tipSlot}>
-            {demoActive ? null : game.flash ? (
+            {driver.sandbox ? null : game.flash ? (
               <span className="text-ink-magenta">{game.flash}</span>
             ) : game.hintNote ? (
               <span className="text-paper/55">{game.hintNote}</span>
@@ -493,30 +360,19 @@ export function PlayScreen({
             )}
           </div>
 
-          {demoActive ? (
-            <Controls
-              altLabel={guidedAltLabel}
-              altArmed={guided.armed}
-              onDir={play}
-              onToggleAlt={toggleAlt}
-              onUndo={() => {}}
-              guiding
-              highlight={guided.guidance}
-            />
-          ) : (
-            <Controls
-              altLabel={altLabel}
-              altArmed={game.altArmed}
-              onDir={play}
-              onToggleAlt={game.toggleAlt}
-              onUndo={game.undo}
-              reset={resetHold}
-              highlight={hintHighlight(game.hint, game.altArmed)}
-            />
-          )}
+          <Controls
+            altLabel={driver.altLabel}
+            altArmed={driver.armed}
+            onDir={driver.press}
+            onToggleAlt={driver.toggleArm}
+            onUndo={driver.undo}
+            reset={resetHold}
+            guiding={driver.sandbox}
+            highlight={driver.highlight}
+          />
 
           <div className={actionSlot}>
-            {demoActive ? (
+            {driver.sandbox ? (
               guided.phase !== "handoff" && (
                 <button
                   type="button"
