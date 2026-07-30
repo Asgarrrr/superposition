@@ -184,6 +184,19 @@
   }
 }
 
+/* le passage de racle : la lueur qui balaie « reprendre » pendant le maintien */
+.sp-hold-fill {
+  transition: transform var(--sp-hold-ms, 180ms) var(--sp-hold-ease, linear);
+}
+@media (prefers-reduced-motion: reduce) {
+  /* le balayage EST l'affordance : sans lui, maintenir n'a plus aucun retour. Il
+     échappe donc au gel global plus bas — une classe l'emporte sur `*`. */
+  .sp-hold-fill {
+    transition-duration: var(--sp-hold-ms, 180ms) !important;
+    transition-timing-function: var(--sp-hold-ease, linear) !important;
+  }
+}
+
 /* grab-knob idle pulse — CSS so it can't be reset by React re-renders /
    StrictMode remounts the way a JS repeat animation was */
 @keyframes sp-knob-pulse {
