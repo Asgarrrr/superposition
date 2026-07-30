@@ -14,7 +14,8 @@ import type { TraceStep } from "../../engine/types.ts";
 import { m } from "../../paraglide/messages.js";
 import { formatClock } from "../hooks/useDiscoveryClock.ts";
 import { AuthPanel } from "./AuthPanel.tsx";
-import { CleanSeal, LeaderboardRows } from "./LeaderboardRows.tsx";
+import { CleanSeal } from "./CleanSeal.tsx";
+import { LeaderboardRows } from "./LeaderboardRows.tsx";
 import { useSession } from "../../lib/auth-client.ts";
 import {
   decideSubmission,

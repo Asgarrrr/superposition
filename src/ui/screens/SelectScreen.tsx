@@ -5,6 +5,7 @@ import { LEVELS } from "../../engine/levels.ts";
 import { m } from "../../paraglide/messages.js";
 import { chapterName } from "../copy.ts";
 import { emptyLedger, plate, setPulled, type Ledger } from "../progression.ts";
+import { CleanSeal } from "../components/CleanSeal.tsx";
 import { Wordmark } from "../components/Wordmark.tsx";
 import { LangToggle } from "../components/LangToggle.tsx";
 import { Room } from "../components/Room.tsx";
@@ -231,18 +232,10 @@ export function SelectScreen({
                       >
                         ✓ {s.record}
                       </span>
-                      {/* sans retouche — a minuscule struck tick, never amber,
-                          kept quieter than the count */}
-                      {s.sans && (
-                        <span
-                          role="img"
-                          aria-label={m.stamp_sans_retouche()}
-                          title={m.stamp_sans_retouche()}
-                          className="text-[10px] leading-none text-paper/40"
-                        >
-                          ′
-                        </span>
-                      )}
+                      {/* sans retouche — the same seal the boards use for a
+                          clean pull, so one idea wears one mark across the app.
+                          Never amber: it is the two inks, not the tape. */}
+                      {s.sans && <CleanSeal label={m.stamp_sans_retouche()} />}
                     </span>
                   ) : (
                     // solved with a hint but never on the record: a dim mark, no
