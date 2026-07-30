@@ -12,6 +12,7 @@ import { Lru } from "../lib/lru.ts";
 import {
   boardRows,
   currentUserId,
+  requireUserId,
   standing,
   upsertBestScore,
 } from "./leaderboard.ts";
@@ -202,8 +203,7 @@ export const submitDailyScore = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data }): Promise<SubmitResult> => {
-    const userId = await currentUserId();
-    if (!userId) throw new Error("Not authenticated");
+    const userId = await requireUserId();
     if (!isSubmittableDay(data.date)) throw new Error("Puzzle no longer open");
 
     const { date, tier } = data;

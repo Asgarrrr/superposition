@@ -60,6 +60,17 @@ export async function currentUserId(): Promise<string | null> {
   return session?.user.id ?? null;
 }
 
+/** The caller, or a throw. Every server function that WRITES a score gates on
+ *  this: an exported server function is a public endpoint, so the check has to
+ *  live inside the handler rather than anywhere around it. Named here so a new
+ *  write path can't quietly ship without one — the read paths deliberately do
+ *  NOT use it (they answer for a signed-out caller instead of throwing). */
+export async function requireUserId(): Promise<string> {
+  const userId = await currentUserId();
+  if (!userId) throw new Error("Not authenticated");
+  return userId;
+}
+
 /** Top 50 rows under `scope`, ranked by the table's own criteria — (moves,
  *  undos, createdAt) for the campaign, with discovery time inserted before the
  *  submission tiebreak on the daily. */

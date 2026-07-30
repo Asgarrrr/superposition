@@ -12,6 +12,7 @@ import { solve } from "../solver/bfs.ts";
 import {
   boardRows,
   currentUserId,
+  requireUserId,
   standing,
   upsertBestScore,
 } from "./leaderboard.ts";
@@ -78,8 +79,7 @@ export const submitLevelScore = createServerFn({ method: "POST" })
     return { levelId, trace };
   })
   .handler(async ({ data }): Promise<SubmitResult> => {
-    const userId = await currentUserId();
-    if (!userId) throw new Error("Not authenticated");
+    const userId = await requireUserId();
 
     const level = BY_ID.get(data.levelId)!;
     const result = validateTrace(level, data.trace);
