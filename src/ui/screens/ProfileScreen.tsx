@@ -1,17 +1,26 @@
-// The player's page: their name, streak figures and daily contribution grid,
-// composed as a single lit proof-sheet on the workshop table — the name printed
-// in two mis-registered inks (the game's own motif), a register strip of stats,
-// and the grid framed under a section rule. Presentational: the /profile routes
-// own the session gate and the history fetch and hand a resolved history down.
+// The player's page: their name, the series of four stamps, the register strip
+// of figures, the daily grid and the campaign edition — composed as a single lit
+// proof-sheet on the workshop table. The name is printed in two mis-registered
+// inks (the game's own motif), the distinctions are printed as a philatelic
+// series (see components/Stamp.tsx), and the two halves of the game — the daily
+// and the edition — each get a section under a rule.
+//
+// Presentational: the /profile routes own the session gate and the history fetch
+// and hand a resolved history down. Every rule about tiers lives in
+// lib/distinctions.ts; this screen only lays out what it is given.
 
 import { useEffect } from "react";
 import { motion, type Variants } from "motion/react";
 import { m } from "../../paraglide/messages.js";
 import { getLocale } from "../../paraglide/runtime.js";
 import { computeStreaks } from "../../lib/streak.ts";
+import { distinctions } from "../../lib/distinctions.ts";
+import { LEVELS } from "../../engine/levels.ts";
+import { PAR } from "../../engine/par.ts";
 import { Room } from "../components/Room.tsx";
 import { LangToggle } from "../components/LangToggle.tsx";
 import { ContributionGraph } from "../components/ContributionGraph.tsx";
+import { Stamp } from "../components/Stamp.tsx";
 import { PRINT_EASE, reducedMotion as reduced } from "../motion.ts";
 import type { DailyHistory } from "../../server/profile.ts";
 
@@ -86,6 +95,53 @@ function Stat({
   );
 }
 
+function SectionRule({ title }: { title: string }) {
+  return (
+    <div className="mb-4 flex items-center gap-3 text-[10px] tracking-[0.3em] text-paper/28 uppercase">
+      <span className="tracking-[0.28em] text-paper/45">{title}</span>
+      <span className="flex-1 border-b border-paper/12" />
+    </div>
+  );
+}
+
+/** The 22 campaign plates, one row per chapter, in the edition's own order. A
+ *  plate pulled at the solver's optimum AND without a correction wears the ink
+ *  frame — the same mark, and the same class, the edition screen uses. */
+function EditionPlates({ plates }: { plates: DailyHistory["plates"] }) {
+  const byId = new Map(plates.map((p) => [p.levelId, p]));
+  const chapters = [...new Set(LEVELS.map((lv) => lv.ch))];
+  return (
+    <div className="flex flex-col gap-1.5">
+      {chapters.map((ch) => (
+        <div key={ch} className="flex flex-wrap gap-1.5">
+          {LEVELS.filter((lv) => lv.ch === ch).map((lv) => {
+            const rec = byId.get(lv.id);
+            const par = PAR[lv.id];
+            const sealed =
+              rec !== undefined &&
+              par !== undefined &&
+              rec.moves <= par &&
+              rec.undos === 0;
+            return (
+              <span
+                key={lv.id}
+                title={rec ? `${lv.name} · ${rec.moves}` : lv.name}
+                className={`h-[19px] w-[26px] rounded-[2px] border ${
+                  sealed
+                    ? "sp-ink-frame border-transparent"
+                    : rec
+                      ? "border-tape/50 bg-tape/[0.09]"
+                      : "border-paper/14"
+                }`}
+              />
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ProfileScreen({
   history,
   today,
@@ -106,6 +162,8 @@ export function ProfileScreen({
     history.days.map((d) => d.date),
     today,
   );
+  const marks = distinctions(history.marks);
+  const bat = marks.find((d) => d.family === "maitrise")!.count;
   const since = new Intl.DateTimeFormat(getLocale(), {
     month: "long",
     year: "numeric",
@@ -147,7 +205,17 @@ export function ProfileScreen({
           </span>
         </motion.header>
 
-        {/* register strip — the three figures, streak struck in tape */}
+        {/* the series — four stamps, or the empty mounts where they will go */}
+        <motion.div
+          variants={rise}
+          className="mt-9 flex flex-wrap items-start justify-center gap-3 sm:gap-5"
+        >
+          {marks.map((d) => (
+            <Stamp key={d.family} distinction={d} />
+          ))}
+        </motion.div>
+
+        {/* register strip — two figures of presence, two of quality */}
         <motion.div
           variants={rise}
           className="mt-9 mb-8 flex items-stretch justify-center divide-x divide-paper/10"
@@ -157,26 +225,33 @@ export function ProfileScreen({
             label={m.profile_streak_current()}
             accent
           />
-          <Stat value={streaks.longest} label={m.profile_streak_longest()} />
           <Stat value={streaks.total} label={m.profile_total()} />
+          <Stat value={bat} label={m.profile_bat_total()} />
+          <Stat value={history.cleanCount} label={m.profile_clean_total()} />
         </motion.div>
 
-        {/* section rule + the grid, in the same idiom as the edition's SET rules */}
+        {/* the daily — the grid is always shown, an empty year reads as a
+            timeline waiting to be filled, not a dead end */}
         <motion.div variants={rise}>
-          <div className="mb-4 flex items-center gap-3 text-[10px] tracking-[0.3em] text-paper/28 uppercase">
-            <span className="tracking-[0.28em] text-paper/45">
-              {m.profile_grid_title()}
-            </span>
-            <span className="flex-1 border-b border-paper/12" />
-          </div>
-          {/* the grid is always shown — an empty year reads as a timeline
-              waiting to be filled, not a dead-end. The hint sits below it. */}
+          <SectionRule title={m.profile_grid_title()} />
           <ContributionGraph history={history} today={today} />
           {history.days.length === 0 && (
             <p className="mt-4 text-center text-[12px] text-paper/40">
               {m.profile_empty()}
             </p>
           )}
+        </motion.div>
+
+        {/* the edition — the other half of the game, absent from this page until
+            now even though the server has always known it */}
+        <motion.div variants={rise} className="mt-9">
+          <SectionRule
+            title={`${m.profile_edition_title()} · ${m.profile_plates_of({
+              done: history.plates.length,
+              all: LEVELS.length,
+            })}`}
+          />
+          <EditionPlates plates={history.plates} />
         </motion.div>
       </motion.section>
     </div>
