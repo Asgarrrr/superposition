@@ -26,22 +26,37 @@ const show = (ledger: Ledger) =>
   );
 
 describe("SelectScreen — the plate marks", () => {
-  it("wears the clean seal on a plate cleared with no correction", () => {
+  /** The record chip of the first plate. */
+  const chip = () => screen.getByText(/^✓ \d/).closest("span")!;
+
+  it("inks the frame of a plate pulled at par in one clean pass", () => {
     show({
       ...emptyLedger,
       best: { [FIRST.id]: PAR[FIRST.id] },
       clean: { [FIRST.id]: true },
     });
-    expect(
-      screen.getAllByRole("img", { name: m.stamp_sans_retouche() }),
-    ).toHaveLength(1);
+    expect(chip().className).toContain("sp-ink-frame");
+    // the gradient says nothing to a screen reader, so the stamp is also named
+    expect(screen.getByText(m.stamp_sans_retouche())).toBeDefined();
   });
 
-  it("wears no seal on a plate that has a record but no clean run", () => {
+  it("keeps the amber frame on a plate at par that used corrections", () => {
     show({ ...emptyLedger, best: { [FIRST.id]: PAR[FIRST.id] } });
-    expect(
-      screen.queryByRole("img", { name: m.stamp_sans_retouche() }),
-    ).toBeNull();
+    expect(chip().className).toContain("border-tape/50");
+    expect(chip().className).not.toContain("sp-ink-frame");
+    expect(screen.queryByText(m.stamp_sans_retouche())).toBeNull();
+  });
+
+  it("frames nothing above par — the clean mark rides the frame, so it is lost", () => {
+    // an accepted consequence of putting the clean mark ON the frame: a plate
+    // cleared without a correction but above par has no frame to ink
+    show({
+      ...emptyLedger,
+      best: { [FIRST.id]: PAR[FIRST.id] + 3 },
+      clean: { [FIRST.id]: true },
+    });
+    expect(chip().className).not.toContain("sp-ink-frame");
+    expect(screen.queryByText(m.stamp_sans_retouche())).toBeNull();
   });
 
   it("shows the record, and only a dim tick for a hinted clear", () => {

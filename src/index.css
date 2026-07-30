@@ -216,6 +216,41 @@
   animation: sp-knob-pulse 2.2s ease-out infinite;
 }
 
+/* « bon à tirer » tiré sans retouche : le cadre du record quitte l'ambre du
+   ruban pour les deux encres du jeu, cyan vers magenta. Une seule marque au
+   lieu d'un badge posé à côté — le cadre dit à la fois que le tirage est au par
+   et qu'il s'est fait en une passe.
+
+   Le dégradé est peint sur la BOÎTE DE BORDURE puis masqué de sorte que seul
+   l'anneau subsiste : la plaque continue de transparaître à l'intérieur,
+   exactement comme sous le cadre ambré. Le masque vit sur un ::after et non sur
+   l'élément lui-même, sinon il découperait aussi le « ✓ 4 » qu'il encadre. */
+.sp-ink-frame {
+  position: relative;
+  border-color: transparent;
+}
+.sp-ink-frame::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    100deg,
+    var(--color-ink-cyan),
+    var(--color-ink-magenta)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

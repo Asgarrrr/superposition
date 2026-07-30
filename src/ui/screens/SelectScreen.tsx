@@ -4,8 +4,20 @@ import { motion } from "motion/react";
 import { LEVELS } from "../../engine/levels.ts";
 import { m } from "../../paraglide/messages.js";
 import { chapterName } from "../copy.ts";
-import { emptyLedger, plate, setPulled, type Ledger } from "../progression.ts";
-import { CleanSeal } from "../components/CleanSeal.tsx";
+import {
+  emptyLedger,
+  plate,
+  setPulled,
+  type Ledger,
+  type Plate,
+} from "../progression.ts";
+
+/** The stamps a plate has earned, named. The clean mark rides the frame, so it
+ *  is only ever claimed on a plate that has one — see the chip below. */
+const stampNames = (s: Plate): string => {
+  const base = s.bat ? m.stamp_bat() : m.stamp_tire();
+  return s.bat && s.sans ? `${base} · ${m.stamp_sans_retouche()}` : base;
+};
 import { Wordmark } from "../components/Wordmark.tsx";
 import { LangToggle } from "../components/LangToggle.tsx";
 import { Room } from "../components/Room.tsx";
@@ -219,23 +231,36 @@ export function SelectScreen({
                   </span>
                   {s.record !== undefined ? (
                     <span className="flex shrink-0 items-center gap-1">
-                      {/* the record — "tiré"; at the solver's par it wears a
-                          hand-struck frame, "bon à tirer" (reusing the amber,
-                          not adding to it) */}
+                      {/* The record — "tiré". At the solver's par it wears a
+                          hand-struck frame, "bon à tirer"; and when that pull
+                          was also made in one pass, the frame itself changes
+                          ink — the tape's amber gives way to cyan→magenta, so
+                          the two stamps are ONE object rather than a badge
+                          pinned beside it.
+
+                          The consequence, accepted deliberately: only a framed
+                          plate can carry the clean mark, so a plate cleared
+                          without a correction but above par shows nothing for
+                          it. A gradient also says nothing to a screen reader,
+                          which is why the stamp names are spelled out in the
+                          title and in the off-screen text below. */}
                       <span
-                        title={s.bat ? m.stamp_bat() : m.stamp_tire()}
+                        title={stampNames(s)}
                         className={`text-[10px] tracking-[0.1em] text-tape tabular-nums ${
                           s.bat
-                            ? "-rotate-3 rounded-[2px] border border-tape/50 px-1 py-px"
+                            ? "-rotate-3 rounded-[2px] border px-1 py-px"
                             : ""
+                        } ${s.bat && s.sans ? "sp-ink-frame" : ""} ${
+                          s.bat && !s.sans ? "border-tape/50" : ""
                         }`}
                       >
                         ✓ {s.record}
                       </span>
-                      {/* sans retouche — the same seal the boards use for a
-                          clean pull, so one idea wears one mark across the app.
-                          Never amber: it is the two inks, not the tape. */}
-                      {s.sans && <CleanSeal label={m.stamp_sans_retouche()} />}
+                      {s.bat && s.sans && (
+                        <span className="sr-only">
+                          {m.stamp_sans_retouche()}
+                        </span>
+                      )}
                     </span>
                   ) : (
                     // solved with a hint but never on the record: a dim mark, no
