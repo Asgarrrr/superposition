@@ -274,6 +274,7 @@ export function Stamp({
     const goal = d.next === null ? "" : m.profile_stamp_goal({ next: d.next });
     return (
       <svg
+        xmlns="http://www.w3.org/2000/svg"
         width={width}
         height={height}
         viewBox={`0 0 ${W} ${H}`}
@@ -336,7 +337,10 @@ export function Stamp({
   });
 
   return (
+    // xmlns is redundant in the DOM but required once this same markup is
+    // serialised standalone into the OG card's data URI
     <svg
+      xmlns="http://www.w3.org/2000/svg"
       width={width}
       height={height}
       viewBox={`0 0 ${W} ${H}`}
