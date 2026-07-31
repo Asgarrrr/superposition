@@ -20,7 +20,7 @@ import { PAR } from "../../engine/par.ts";
 import { Room } from "../components/Room.tsx";
 import { LangToggle } from "../components/LangToggle.tsx";
 import { ContributionGraph } from "../components/ContributionGraph.tsx";
-import { Stamp } from "../components/Stamp.tsx";
+import { CommemorativeStamp, Stamp } from "../components/Stamp.tsx";
 import { PRINT_EASE, reducedMotion as reduced } from "../motion.ts";
 import type { DailyHistory } from "../../server/profile.ts";
 
@@ -214,6 +214,22 @@ export function ProfileScreen({
             <Stamp key={d.family} distinction={d} />
           ))}
         </motion.div>
+
+        {/* the hors-série. Shown only to whoever holds one: a commemorative was
+            never put on sale, so it cannot be missing from anyone's album — no
+            empty mount here, unlike the series above. The row can grow without
+            ever widening the series, which is the point of keeping the two
+            apart (see lib/commemoratives.ts). */}
+        {history.commemoratives.length > 0 && (
+          <motion.div variants={rise} className="mt-7">
+            <SectionRule title={m.profile_horsserie_title()} />
+            <div className="flex flex-wrap items-start justify-center gap-3 sm:gap-5">
+              {history.commemoratives.map((h) => (
+                <CommemorativeStamp key={h.key} held={h} />
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* register strip — two figures of presence, two of quality */}
         <motion.div
