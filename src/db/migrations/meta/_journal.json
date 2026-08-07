@@ -71,6 +71,13 @@
       "when": 1785426776812,
       "tag": "0009_conscious_tempest",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786135862775,
+      "tag": "0010_foamy_emma_frost",
+      "breakpoints": true
     }
   ]
 }

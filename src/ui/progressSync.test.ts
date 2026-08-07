@@ -20,12 +20,14 @@ const L = (
   traces: Record<string, TraceStep[]> = {},
 ): Ledger => ({ ...emptyLedger, best, traces });
 
-// `undos` is irrelevant to the upload decision (the server re-derives it from
-// the trace we send), so the rows here carry a plain zero
+// `undos` and `everClean` are irrelevant to the upload decision (the server
+// re-derives the corrections from the trace we send), so the rows here carry
+// plain defaults
 const remote = (levelId: string, moves: number): ServerScore => ({
   levelId,
   moves,
   undos: 0,
+  everClean: false,
 });
 
 describe("planUploads", () => {
@@ -80,49 +82,80 @@ describe("planUploads", () => {
 });
 
 describe("asWin — a stored row offered to the ledger", () => {
-  it("carries the record and seals a row solved with no correction", () => {
-    expect(asWin({ levelId: "a", moves: 4, undos: 0 })).toEqual({
+  it("carries the record and seals a level ever solved cleanly", () => {
+    expect(
+      asWin({ levelId: "a", moves: 4, undos: 0, everClean: true }),
+    ).toEqual({
       levelId: "a",
       moves: 4,
       clean: true,
     });
   });
 
-  it("does not seal a row whose best solve used corrections", () => {
-    expect(asWin({ levelId: "a", moves: 4, undos: 2 })).toMatchObject({
-      clean: false,
-    });
+  it("does not seal a level never solved cleanly", () => {
+    expect(
+      asWin({ levelId: "a", moves: 4, undos: 2, everClean: false }),
+    ).toMatchObject({ clean: false });
+  });
+
+  it("seals on the level's history, not on the stored row's corrections", () => {
+    // THE gap this column closes: the clean run was not the best row, so the
+    // stored best carries corrections — the seal must come from `everClean`
+    expect(
+      asWin({ levelId: "a", moves: 4, undos: 2, everClean: true }),
+    ).toMatchObject({ clean: true });
+  });
+
+  it("withholds the seal from a clean-looking row the server never marked", () => {
+    // the mirror case: `undos === 0` is the boards' rule, not progression's.
+    // Reading it here would resurrect the old spelling behind the new column.
+    expect(
+      asWin({ levelId: "a", moves: 4, undos: 0, everClean: false }),
+    ).toMatchObject({ clean: false });
   });
 
   it("carries no trace — the ledger drops any that no longer fits", () => {
-    expect(asWin({ levelId: "a", moves: 4, undos: 0 }).trace).toBeUndefined();
+    expect(
+      asWin({ levelId: "a", moves: 4, undos: 0, everClean: true }).trace,
+    ).toBeUndefined();
   });
 
   it("restores records and seals when folded over a fresh ledger", () => {
     // the new-device path: an empty ledger, every stored row offered to it
     const server: ServerScore[] = [
-      { levelId: "accord", moves: 4, undos: 0 },
-      { levelId: "retenue", moves: 9, undos: 3 },
+      { levelId: "accord", moves: 4, undos: 0, everClean: true },
+      { levelId: "retenue", moves: 9, undos: 3, everClean: false },
     ];
     const restored = server.reduce(
       (acc, s) => recordWin(acc, asWin(s)),
       emptyLedger,
     );
     expect(plate(restored, "accord")).toMatchObject({ record: 4, sans: true });
-    expect(plate(restored, "retenue")).toMatchObject({ record: 9, sans: false });
+    expect(plate(restored, "retenue")).toMatchObject({
+      record: 9,
+      sans: false,
+    });
   });
 
   it("leaves a better local record alone while still raising its seal", () => {
     // partial local progress: the ledger's own min rule keeps the local 3, and
     // the seal rises anyway because it is sticky and ungated
     const local = recordWin(emptyLedger, { levelId: "accord", moves: 3 });
-    const merged = recordWin(local, asWin({ levelId: "accord", moves: 5, undos: 0 }));
+    const merged = recordWin(
+      local,
+      asWin({ levelId: "accord", moves: 5, undos: 0, everClean: true }),
+    );
     expect(plate(merged, "accord")).toMatchObject({ record: 3, sans: true });
   });
 
   it("costs nothing when the row tells the ledger nothing new", () => {
     const l = recordWin(emptyLedger, { levelId: "accord", moves: 4 });
     // same reference back: React bails out, no render
-    expect(recordWin(l, asWin({ levelId: "accord", moves: 9, undos: 1 }))).toBe(l);
+    expect(
+      recordWin(
+        l,
+        asWin({ levelId: "accord", moves: 9, undos: 1, everClean: false }),
+      ),
+    ).toBe(l);
   });
 });

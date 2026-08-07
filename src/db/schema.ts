@@ -218,6 +218,11 @@ export const levelScore = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     moves: integer("moves").notNull(),
     undos: integer("undos").notNull().default(0),
+    // The row is a BEST score, not a history: a "sans retouche" run that does
+    // not beat the stored row leaves no trace in it. This flag keeps the "ever
+    // solved cleanly" fact across every replacement of the row — outside the
+    // player's own localStorage it is the only memory of the seal.
+    everClean: boolean("ever_clean").notNull().default(false),
     // physical column is legacy-named "inputs"; it stores the full TraceStep[]
     trace: jsonb("inputs").$type<TraceStep[]>().notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),

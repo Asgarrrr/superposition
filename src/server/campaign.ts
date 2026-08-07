@@ -4,7 +4,7 @@
 // through the pure engine (see replay.ts) before a row is written.
 
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { levelScore } from "../db/schema.ts";
 import { db } from "../db/index.ts";
 import { LEVELS } from "../engine/levels.ts";
@@ -67,6 +67,26 @@ export interface SubmitResult {
 }
 
 /**
+ * Stamps the "ever solved cleanly" fact onto a player's row for a level.
+ *
+ * A second statement rather than one more field on `upsertBestScore`, because
+ * that upsert's `onConflictDoUpdate` is gated by `beatenBy(...)`: a "sans
+ * retouche" run that does NOT beat the stored row writes nothing — precisely
+ * the case this column exists to cover. Grafted onto the upsert, it would only
+ * ever fill in where the seal was already recoverable.
+ *
+ * It lives here and not in leaderboard.ts because the column exists on
+ * `level_score` alone; sharing it would mean a per-table guard (cf.
+ * `elapsedColumn`) for a rule with exactly one caller.
+ */
+async function markEverClean(levelId: string, userId: string): Promise<void> {
+  await db
+    .update(levelScore)
+    .set({ everClean: true })
+    .where(and(eq(levelScore.levelId, levelId), eq(levelScore.userId, userId)));
+}
+
+/**
  * Records a player's best result for a campaign level. The server re-resolves
  * the level from the code bank (never from the client) and replays the full
  * trace, deriving both the winning move count and the correction count itself.
@@ -94,6 +114,9 @@ export const submitLevelScore = createServerFn({ method: "POST" })
       trace: data.trace,
     });
 
+    // the row is guaranteed to exist after the upsert, so this always lands
+    if (result.corrections === 0) await markEverClean(data.levelId, userId);
+
     return { ok: true, moves: result.moves };
   });
 
@@ -101,13 +124,16 @@ export const submitLevelScore = createServerFn({ method: "POST" })
  *  shape: returns `[]` when not signed in (no throw). Feeds the client's
  *  login-time progress reconciliation (useProgressSync).
  *
- *  `undos` rides along so a player arriving on a new device recovers their
- *  "sans retouche" seals and not just their move records — the local ledger is
- *  the only other place that flag lives, and localStorage does not travel. It
- *  is the correction count of the STORED BEST row, which is what the boards
- *  already rank and seal on. */
+ *  Two facts, two columns, and both are needed. `undos` is the correction count
+ *  of the STORED BEST row — what the boards rank and seal on, and what
+ *  `planUploads` breaks a tie of equal moves on. `everClean` is the progression
+ *  fact: the level has been solved "sans retouche" at least once, true even
+ *  when that run is not the row the server kept. It is the one the local ledger
+ *  restores on a new device, where localStorage does not travel. */
 export const getMyLevelScores = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ levelId: string; moves: number; undos: number }[]> => {
+  async (): Promise<
+    { levelId: string; moves: number; undos: number; everClean: boolean }[]
+  > => {
     const userId = await currentUserId();
     if (!userId) return [];
     return db
@@ -115,6 +141,7 @@ export const getMyLevelScores = createServerFn({ method: "GET" }).handler(
         levelId: levelScore.levelId,
         moves: levelScore.moves,
         undos: levelScore.undos,
+        everClean: levelScore.everClean,
       })
       .from(levelScore)
       .where(eq(levelScore.userId, userId));

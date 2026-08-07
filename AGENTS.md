@@ -164,6 +164,7 @@ import that (or `db`) from a module the client route tree pulls in.
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | who drives the board (game vs tutorial)       | `src/ui/plateDriver.ts` — the `PlateDriver` interface + its two PURE adapters (`playingPlate`, `guidedPlate`). PlayScreen binds ONE; never branch on "is the tutorial live?" anywhere else                                                                    |
 | the "clean pull" mark                         | two forms, one idea: `src/ui/components/CleanSeal.tsx` on the BOARDS (ranked rows, standing footer), and the `sp-ink-frame` class in `src/index.css` on the EDITION (a plate's record frame changes ink instead of wearing a badge)                           |
+| the "ever solved cleanly" fact                | `level_score.ever_clean` — set by `markEverClean` in `src/server/campaign.ts` (a SECOND statement: the upsert's guard skips a clean run that isn't a best), read by `asWin` in `src/ui/progressSync.ts`. Progression, not ranking: boards seal what they show |
 | profile distinctions (families + thresholds)  | `src/lib/distinctions.ts` — the SOLE owner of what a family measures, where its four face values sit, and which day postmarks a tier. `Stamp.tsx` draws what it is handed; `profileData.ts` only gathers dates. Put no threshold in either                    |
 | the profile stamp artwork                     | `src/ui/components/Stamp.tsx` — the four engravings, the perforation, the burelage, the empty album mount. The OG card must reuse it rather than paint a second version. No `mix-blend-mode`: satori cannot render it, so the two inks are painted explicitly |
 | the tutorial's on-board content               | `src/ui/components/DemoOverlay.tsx`                                                                                                                                                                                                                           |
@@ -245,15 +246,6 @@ Runtime network dependency: the Instrument Serif web font (Google Fonts).
 
 ### Next steps
 
-- **Residual gap — a clean run that was never your best row can't be
-  recovered.** `getMyLevelScores` now returns `undos` alongside `moves`, and
-  `asWin` (`src/ui/progressSync.ts`) turns a stored row into a ledger win with
-  `clean: undos === 0`, so a new device recovers both records and seals. What it
-  still cannot recover: the server keeps ONE row per level, not a history, so a
-  player whose clean run was not their best row has no "ever solved cleanly"
-  fact for the server to return. Closing that needs a column
-  (`level_score.ever_clean`, set on any correction-free submission), which is a
-  migration — not worth it until someone asks.
 - The route split is done (see "Stack & toolchain"); `<App />` and its screen
   router are gone.
 - Old project instructions live in `superposition-old/CLAUDE.md` (engine
