@@ -10,7 +10,7 @@ import { levelSignature } from "./signature.ts";
 
 const rnd = (n: number) => Math.floor(Math.random() * n);
 
-function randomLevel(mods: MechanicId[], size: number): Level {
+function randomLevel(mods: readonly MechanicId[], size: number): Level {
   const cell = (): Pos => [rnd(size), rnd(size)];
   const ck = (p: Pos) => p[0] * size + p[1];
   const aStart = cell();
@@ -33,7 +33,9 @@ function randomLevel(mods: MechanicId[], size: number): Level {
     ch: "GEN",
     name: "gen",
     size,
-    mods,
+    // copied, not aliased: `Level.mods` is mutable across the engine, and every
+    // generated level would otherwise share the caller's one array
+    mods: [...mods],
     a: {
       start: aStart,
       goal: aGoal,
@@ -67,7 +69,10 @@ export interface Found {
 }
 
 interface HuntOpts {
-  mods: MechanicId[];
+  // readonly: the hunt only ever reads this list, and every caller passes a
+  // literal (`["fusion", "scission"] as const` in the tests, the tier tables in
+  // generate-daily). A mutable array here rejected all of them.
+  mods: readonly MechanicId[];
   size: number;
   minLen: number;
   budgetMs: number;
