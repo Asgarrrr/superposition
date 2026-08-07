@@ -242,7 +242,7 @@ export const DEMOS: Demo[] = [
 
 /** One played input: the resulting state (unchanged when `blocked`), plus flags
  *  the player turns into feedback — `blocked` bumps the box, `merged` blooms. */
-export interface DemoStep {
+interface DemoStep {
   input: Input;
   state: GameState;
   blocked: boolean;

@@ -18,7 +18,7 @@ import type { DistinctionInput } from "../lib/distinctions.ts";
 import type { Held } from "../lib/commemoratives.ts";
 
 /** One campaign board the player has put on the record. */
-export interface PlateRecord {
+interface PlateRecord {
   levelId: string;
   moves: number;
   undos: number;

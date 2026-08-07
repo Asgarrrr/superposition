@@ -16,7 +16,7 @@ const DIRS: Record<string, Pos> = {
 // turns the release into "R", the abandon is missed, and the sweep confirms anyway.
 const isReset = (e: KeyboardEvent) => e.key.toLowerCase() === "r";
 
-export interface KeyHandlers {
+interface KeyHandlers {
   play: (dir: Pos, wantAlt: boolean) => void;
   undo: () => void;
   resetDown: () => void;

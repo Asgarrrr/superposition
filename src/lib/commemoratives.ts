@@ -16,7 +16,7 @@
 // list. When the trigger exists it only has to fill that list — the artwork, the
 // layout and the profile plumbing are already in place.
 
-export type Commemorative = "sissi";
+type Commemorative = "sissi";
 
 /** A commemorative a player holds, with the day it was struck — the postmark.
  *  Mirrors what a series stamp carries, so `Stamp` can render either. */

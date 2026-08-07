@@ -22,7 +22,7 @@ export const MECHANICS: Record<MechanicId, Mechanic> = {
 
 /** Per-level derived mechanics, computed once — successors() runs per BFS
  * expansion, so anything re-derivable from the immutable level is hoisted here. */
-export interface CompiledMechanics {
+interface CompiledMechanics {
   mechs: Mechanic[];
   resolveMove?: (pos: Pos, dir: Pos, ctx: MoveCtx) => Pos;
   mapDirB?: (dir: Pos) => Pos;

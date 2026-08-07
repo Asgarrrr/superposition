@@ -19,7 +19,7 @@ export interface GifFrame {
   delayCs: number;
 }
 
-export interface GifOptions {
+interface GifOptions {
   width: number;
   height: number;
   palette: Palette;

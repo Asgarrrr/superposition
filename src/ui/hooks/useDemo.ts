@@ -51,7 +51,7 @@ export function useSeenDemos() {
 
 /** Which control to light up next. `arm`: the ✕/world control must be pressed
  *  first; `dir`: the arrow to press; `any`: every arrow works — pick one. */
-export interface DemoGuidance {
+interface DemoGuidance {
   arm: boolean;
   dir: Pos | null;
   any: boolean;

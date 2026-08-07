@@ -7,7 +7,7 @@
 
 import type { GameState, Input, Level } from "../engine/types.ts";
 
-export type AltKind = "split" | "shift";
+type AltKind = "split" | "shift";
 
 /** The alt gesture `st` offers on `level`, or null when there is none. */
 export function altGesture(st: GameState, level: Level): AltKind | null {

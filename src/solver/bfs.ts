@@ -6,7 +6,7 @@ import { hashState, initialState, isWin } from "../engine/state.ts";
 import { successors } from "../engine/successors.ts";
 import { MECHANICS } from "../engine/mechanics/registry.ts";
 
-export interface Solution {
+interface Solution {
   inputs: Input[];
 }
 

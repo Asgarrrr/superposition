@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 
 /** Where the clock reads from: the server's anchor for this player, and the
  *  server's own time when it replied. */
-export interface ClockSource {
+interface ClockSource {
   servedAt: string | null;
   serverNow: string;
 }
@@ -61,7 +61,7 @@ export function useDiscoveryClock(
  *   · null — ranked and unmeasured: there is no time to show;
  *   · a number — ranked and measured.
  */
-export type Recorded = number | null | undefined;
+type Recorded = number | null | undefined;
 
 export const recordedFrom = (
   mine: { elapsedMs?: number | null } | null,

@@ -47,7 +47,7 @@ export const asWin = (s: ServerScore): Win => ({
   clean: s.everClean,
 });
 
-export interface Upload {
+interface Upload {
   levelId: string;
   trace: TraceStep[];
 }

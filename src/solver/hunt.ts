@@ -10,7 +10,7 @@ import { levelSignature } from "./signature.ts";
 
 const rnd = (n: number) => Math.floor(Math.random() * n);
 
-export function randomLevel(mods: MechanicId[], size: number): Level {
+function randomLevel(mods: MechanicId[], size: number): Level {
   const cell = (): Pos => [rnd(size), rnd(size)];
   const ck = (p: Pos) => p[0] * size + p[1];
   const aStart = cell();
@@ -66,7 +66,7 @@ export interface Found {
   sig: string; // symmetry-aware canonical signature (see signature.ts)
 }
 
-export interface HuntOpts {
+interface HuntOpts {
   mods: MechanicId[];
   size: number;
   minLen: number;

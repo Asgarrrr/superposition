@@ -39,7 +39,7 @@ import {
 
 /** The columns the rule reads. Both score tables expose the first three;
  *  `elapsedMs` is the daily's alone. */
-export interface RankColumns {
+interface RankColumns {
   moves: Column;
   undos: Column;
   createdAt: Column;
