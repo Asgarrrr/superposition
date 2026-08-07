@@ -133,6 +133,12 @@
   "offline_daily_back": "back to the boards",
   "error_daily_title": "Something went wrong",
   "error_daily_body": "The daily challenge failed to load. Try again in a moment.",
+  "fallback_not_found_title": "No such plate",
+  "fallback_not_found_body": "This page was never pulled. The edition, though, is still on the table.",
+  "fallback_error_title": "The pull failed",
+  "fallback_error_body": "Something slipped out of register on the way. We can run the sheet again.",
+  "fallback_retry": "run the sheet again",
+  "fallback_back": "back to the boards",
   "daily_solved": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],

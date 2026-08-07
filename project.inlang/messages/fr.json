@@ -133,6 +133,12 @@
   "offline_daily_back": "retour aux planches",
   "error_daily_title": "Une erreur est survenue",
   "error_daily_body": "Le défi du jour n'a pas pu se charger. Réessayez dans un instant.",
+  "fallback_not_found_title": "Planche introuvable",
+  "fallback_not_found_body": "Cette page n'a jamais été tirée. L'édition, elle, est toujours sur la table.",
+  "fallback_error_title": "Le tirage a raté",
+  "fallback_error_body": "Quelque chose s'est décalé en chemin. On peut repasser la feuille.",
+  "fallback_retry": "repasser la feuille",
+  "fallback_back": "retour aux planches",
   "daily_solved": [
     {
       "declarations": ["input count", "local countPlural = count: plural"],
