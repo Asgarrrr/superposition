@@ -146,10 +146,14 @@ export function ProfileScreen({
   history,
   today,
   onBack,
+  onSignOut,
 }: {
   history: DailyHistory;
   today: string;
   onBack: () => void;
+  /** Ending the session — handed in by /profile/me only. A public profile is
+   *  somebody else's sheet, so the control is simply not printed there. */
+  onSignOut?: () => void;
 }) {
   // true on the server render and the client render that hydrates it, false on
   // every subsequent client navigation — gates the entrance animation (below).
@@ -203,6 +207,19 @@ export function ProfileScreen({
           <span className="mt-3.5 font-display text-[15px] tracking-[0.02em] text-paper/40 italic">
             {m.profile_member_since({ since })}
           </span>
+          {/* under the colophon, where the sheet says whose it is — the one
+              place an account can be put down again. On a shared machine that
+              matters more than being discreet, so it sits above the fold
+              rather than at the foot of a very long sheet. */}
+          {onSignOut && (
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="btn mt-5 tracking-[0.2em] uppercase"
+            >
+              {m.profile_signout()}
+            </button>
+          )}
         </motion.header>
 
         {/* the series — four stamps, or the empty mounts where they will go */}

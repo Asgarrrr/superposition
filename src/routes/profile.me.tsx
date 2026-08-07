@@ -7,7 +7,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { m } from "../paraglide/messages.js";
 import { getMyDailyHistory, type DailyHistory } from "../server/profile.ts";
-import { useSession } from "../lib/auth-client.ts";
+import { signOut, useSession } from "../lib/auth-client.ts";
 import { utcDay } from "../lib/day.ts";
 import { ProfileScreen } from "../ui/screens/ProfileScreen.tsx";
 import { AuthPanel } from "../ui/components/AuthPanel.tsx";
@@ -41,9 +41,26 @@ function MeRoute() {
 
   const back = () => navigate({ to: "/levels" });
 
+  // Better Auth clears its session store on /sign-out exactly as it fills it on
+  // /sign-in, so `useSession` flips and this page would fall through to its own
+  // sign-in gate — a private page inviting the player back in, with the account
+  // they just put down. Leave for the edition instead: that is already where
+  // the gate's own way out points. Navigating from onSuccess so a request that
+  // never landed leaves both the session and the page as they were.
+  const leave = () => {
+    void signOut({ fetchOptions: { onSuccess: back } });
+  };
+
   // signed in with history loaded — the real page
   if (session && history)
-    return <ProfileScreen history={history} today={utcDay()} onBack={back} />;
+    return (
+      <ProfileScreen
+        history={history}
+        today={utcDay()}
+        onBack={back}
+        onSignOut={leave}
+      />
+    );
 
   // the fetch failed while signed in — offer a way out rather than a dead-end
   // blank table (a transient error would otherwise strand the page forever)

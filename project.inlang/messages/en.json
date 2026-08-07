@@ -221,6 +221,7 @@
   "profile_more": "more",
   "profile_empty": "No prints yet — solve today's puzzle.",
   "profile_signin_prompt": "Sign in to see your prints.",
+  "profile_signout": "leave the table",
   "profile_edition_title": "The edition",
   "profile_bat_total": "ready to print",
   "profile_clean_total": "no touch-ups",

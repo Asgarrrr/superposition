@@ -6,4 +6,4 @@ import { usernameClient } from "better-auth/client/plugins";
 
 const authClient = createAuthClient({ plugins: [usernameClient()] });
 
-export const { signIn, signUp, useSession } = authClient;
+export const { signIn, signUp, signOut, useSession } = authClient;

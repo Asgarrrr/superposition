@@ -221,6 +221,7 @@
   "profile_more": "plus",
   "profile_empty": "Aucun tirage encore — résous le défi du jour.",
   "profile_signin_prompt": "Connecte-toi pour voir tes tirages.",
+  "profile_signout": "quitter la table",
   "profile_edition_title": "L'édition",
   "profile_bat_total": "bons à tirer",
   "profile_clean_total": "sans retouche",
