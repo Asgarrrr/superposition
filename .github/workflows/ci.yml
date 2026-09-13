@@ -37,6 +37,12 @@ jobs:
       # route modules, a thirteenth is a regression.
       - run: bun run lint
 
+      # The root tsconfig EXCLUDES src/solver, so `bun run build`'s tsc never
+      # reads the cron's entrypoint (generate-daily.ts). Its own project does.
+      # Railway's cron build runs the same check — this one fails the PR
+      # instead of the deploy.
+      - run: bun run typecheck:solver
+
       # `test` and `build` each compile paraglide first; src/paraglide is
       # gitignored, so no separate generation step is needed.
       - run: bun run test

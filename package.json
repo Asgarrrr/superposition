@@ -11,6 +11,7 @@
     "paraglide": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide",
     "generate-routes": "tsr generate",
     "build": "bun run paraglide && tsc --noEmit && vite build",
+    "typecheck:solver": "tsc --noEmit -p src/solver/tsconfig.json",
     "gen:icons": "bun scripts/gen-icons.ts",
     "start": "bun .output/server/index.mjs",
     "preview": "vite preview",
