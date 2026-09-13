@@ -1,0 +1,46 @@
+# The gate in front of Railway. Railway's build runs `tsc --noEmit`, but nothing
+# else: a red test suite or a broken level bank reaches production and only
+# surfaces after the deploy. These five steps run first, on every push to main
+# and every pull request.
+#
+# No Postgres service here on purpose: no test file imports `src/db/index.ts` or
+# reads DATABASE_URL, so the suite is stateless and stays fast. The day a test
+# needs a database, add the service then — not in advance.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same ref makes the run in flight pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Same literal as `packageManager` in package.json — CI and Railway build
+      # on one version of bun, or the pin means nothing.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      - run: bun install --frozen-lockfile
+
+      # --max-warnings=12 is the invariant from AGENTS.md made executable: the
+      # dozen react(only-export-components) warnings are inherent to TanStack
+      # route modules, a thirteenth is a regression.
+      - run: bun run lint
+
+      # `test` and `build` each compile paraglide first; src/paraglide is
+      # gitignored, so no separate generation step is needed.
+      - run: bun run test
+
+      - run: bun run verify
+
+      - run: bun run build
