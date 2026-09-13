@@ -40,12 +40,21 @@ export default defineRailway(() => {
   // schedule, then exits (restart NEVER — it's a one-shot per run).
   const cron = service("cron", {
     source: github(REPO),
-    build: "bun install",
+    // Skips the vite build (this service serves nothing), but still typechecks
+    // what it actually runs: the root tsconfig EXCLUDES src/solver, so the web
+    // build's `tsc --noEmit` never sees generate-daily.ts. Without this line the
+    // cron ships code no compiler has read.
+    build: "bun install && bun run typecheck:solver",
     start: "bun run gen:daily",
     deploy: {
       cronSchedule: "0 5 * * *",
       restartPolicyType: "NEVER",
     },
+    // NOTE: this service has a generated public domain
+    // (cron-production-ad37.up.railway.app) that serves nothing — a process
+    // which exits has no port to expose. It is NOT removable from here: both
+    // `serviceDomains: { "<host>": null }` and `serviceDomains: null` plan as
+    // no-ops in railway 3.5.7. Delete it from the dashboard.
     env: {
       DATABASE_URL: Postgres.env.DATABASE_URL,
     },

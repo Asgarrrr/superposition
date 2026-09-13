@@ -104,12 +104,15 @@ routing, and build were migrated.
   overwrites `src/db/schema.ts` — re-append our tables from git after:
   `dailyPuzzle`, `dailyScore`, `dailyView`, `levelScore`)
 - `bun run lint` — oxlint, capped at `--max-warnings=12` (see "Key decisions")
+- `bun run typecheck:solver` — `tsc` over `src/solver`, which the root tsconfig
+  excludes. `bun run build` does NOT cover it, and it is what the cron runs.
 - `bun run generate-routes` — regenerate the route tree (`tsr generate`)
 
-CI (`.github/workflows/ci.yml`) runs `lint` → `test` → `verify` → `build` on
-every push to `main` and every pull request, on the bun version pinned by
-`packageManager`. No Postgres service: no test imports `src/db/index.ts` or
-reads `DATABASE_URL`, and the suite stays stateless on purpose.
+CI (`.github/workflows/ci.yml`) runs `lint` → `typecheck:solver` → `test` →
+`verify` → `build` on every push to `main` and every pull request, on the bun
+version pinned by `packageManager`. No Postgres service: no test imports
+`src/db/index.ts` or reads `DATABASE_URL`, and the suite stays stateless on
+purpose.
 
 ### Environment variables
 
@@ -233,10 +236,15 @@ Topology in `.railway/railway.ts`:
   (secrets, `preserve()`d in IaC).
 - **Postgres** — `postgres("Postgres")`; other services reference its
   `DATABASE_URL`.
-- **cron** — `source: github(...)`, build `bun install` (skips the vite build),
-  start `bun run gen:daily`, `deploy.cronSchedule = "0 5 * * *"` (UTC),
-  `restartPolicyType: "NEVER"`. The generator closes the pool and `exit(0)` or
-  the next run is skipped.
+- **cron** — `source: github(...)`, build `bun install && bun run
+typecheck:solver` (skips the vite build, but still typechecks what it runs —
+  the root tsconfig excludes `src/solver`, so the web build never reads
+  `generate-daily.ts`), start `bun run gen:daily`,
+  `deploy.cronSchedule = "0 5 * * *"` (UTC), `restartPolicyType: "NEVER"`. The
+  generator closes the pool and `exit(0)` or the next run is skipped.
+  Two known gaps: a run that fails at 05:00 on code that _compiles_ is still
+  silent (Railway IaC has no notification primitive — `webhook`/`notification`
+  appear nowhere in the SDK types), and tier 3 has no bank fallback.
 
 `/api/health` (`src/routes/api/health.ts` → `src/server/health.ts`) runs
 `select 1` against the pool and answers 200 `{"status":"ok"}` or 503
