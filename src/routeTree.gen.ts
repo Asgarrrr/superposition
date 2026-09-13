@@ -18,6 +18,7 @@ import { Route as ProfileMeRouteImport } from './routes/profile.me'
 import { Route as ProfileUsernameRouteImport } from './routes/profile.$username'
 import { Route as LevelPlateRouteImport } from './routes/level.$plate'
 import { Route as DailyTierRouteImport } from './routes/daily.$tier'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiReplaySplatRouteImport } from './routes/api/replay/$'
 import { Route as ApiOgUsernameRouteImport } from './routes/api/og/$username'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -67,6 +68,11 @@ const DailyTierRoute = DailyTierRouteImport.update({
   path: '/daily/$tier',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiReplaySplatRoute = ApiReplaySplatRouteImport.update({
   id: '/api/replay/$',
   path: '/api/replay/$',
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/levels': typeof LevelsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/health': typeof ApiHealthRoute
   '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
   '/profile/$username': typeof ProfileUsernameRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/levels': typeof LevelsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/health': typeof ApiHealthRoute
   '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
   '/profile/$username': typeof ProfileUsernameRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/levels': typeof LevelsRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/health': typeof ApiHealthRoute
   '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
   '/profile/$username': typeof ProfileUsernameRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/levels'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/api/health'
     | '/daily/$tier'
     | '/level/$plate'
     | '/profile/$username'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/levels'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/api/health'
     | '/daily/$tier'
     | '/level/$plate'
     | '/profile/$username'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/levels'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/api/health'
     | '/daily/$tier'
     | '/level/$plate'
     | '/profile/$username'
@@ -177,6 +189,7 @@ export interface RootRouteChildren {
   LevelsRoute: typeof LevelsRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   DailyTierRoute: typeof DailyTierRoute
   LevelPlateRoute: typeof LevelPlateRoute
   ProfileUsernameRoute: typeof ProfileUsernameRoute
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DailyTierRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/replay/$': {
       id: '/api/replay/$'
       path: '/api/replay/$'
@@ -281,6 +301,7 @@ const rootRouteChildren: RootRouteChildren = {
   LevelsRoute: LevelsRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiHealthRoute: ApiHealthRoute,
   DailyTierRoute: DailyTierRoute,
   LevelPlateRoute: LevelPlateRoute,
   ProfileUsernameRoute: ProfileUsernameRoute,

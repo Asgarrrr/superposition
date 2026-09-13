@@ -25,7 +25,9 @@ export default defineRailway(() => {
     build: "bun run build",
     start: "bun run start",
     preDeployCommand: ["bun run db:migrate"],
-    healthcheckPath: "/",
+    // `/` is the SPA shell: it answers 200 with the database on the floor.
+    // /api/health runs `select 1` first.
+    healthcheckPath: "/api/health",
     env: {
       DATABASE_URL: Postgres.env.DATABASE_URL,
       // secrets set out-of-band (dashboard / CLI) — keep their remote values
