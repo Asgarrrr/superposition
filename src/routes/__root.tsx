@@ -1,7 +1,14 @@
 import { useEffect } from "react";
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
+import {
+  HeadContent,
+  Scripts,
+  createRootRoute,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router";
 
 import appCss from "../index.css?url";
+import { FallbackScreen } from "../ui/screens/FallbackScreen.tsx";
 import { m } from "../paraglide/messages.js";
 import {
   cookieName,
@@ -88,8 +95,43 @@ export const Route = createRootRoute({
       ],
     };
   },
+  // The app's two boundaries, mounted here because an unknown URL matches no
+  // child route: without them the visitor lands on the router's default screen —
+  // outside the art direction, unlocalised, with no way back into the game. One
+  // screen renders both.
+  notFoundComponent: NotFound,
+  errorComponent: RouteError,
   shellComponent: RootDocument,
 });
+
+function NotFound() {
+  const navigate = useNavigate();
+  return (
+    <FallbackScreen
+      title={m.fallback_not_found_title()}
+      body={m.fallback_not_found_body()}
+      onBack={() => navigate({ to: "/levels" })}
+    />
+  );
+}
+
+// The error itself is never rendered: a loader failure carries server detail
+// (the query, a path, sometimes a fragment of SQL) the visitor cannot act on and
+// has no business seeing. It stays in the logs.
+function RouteError() {
+  const router = useRouter();
+  const navigate = useNavigate();
+  return (
+    <FallbackScreen
+      title={m.fallback_error_title()}
+      body={m.fallback_error_body()}
+      onBack={() => navigate({ to: "/levels" })}
+      // invalidate() reruns the loader AND rearms the boundary; merely
+      // remounting the component would replay the same failure
+      onRetry={() => router.invalidate()}
+    />
+  );
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   // One-time migration off the old localStorage strategy. Before the switch to

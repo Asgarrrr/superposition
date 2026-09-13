@@ -1,39 +1,29 @@
-// The contribution grid geometry, shared by the on-screen ContributionGraph and
-// the server-rendered OG card so the two can't drift. Pure: it lays out one
-// calendar year (Jan–Dec) of played days as Monday-first week columns, GitHub
-// style. Colour/markup is the caller's job — this owns only the shape.
+// The contribution grid geometry behind the on-screen ContributionGraph. Pure:
+// it lays out one calendar year (Jan–Dec) of played days as Monday-first week
+// columns, GitHub style. Colour/markup is the caller's job — this owns only the
+// shape.
 
 import { shiftDay } from "./day.ts";
 
-export interface DayCount {
+interface DayCount {
   date: string;
   count: number;
 }
 
-export interface GridCell {
+interface GridCell {
   date: string;
   count: number;
   spacer: boolean; // a pad cell: outside the year, or a future day not yet played
 }
 
 // The completion ramp, indexed by tiers solved (0 = empty base … 4 = amber lock).
-// Two representations of the SAME ramp, kept adjacent so a retint touches both:
-// the on-screen grid blends alpha over its panel (Tailwind opacity classes), the
-// OG card has no alpha-over-background so it needs pre-blended opaque hex. Keep
-// these two arrays visually in sync.
+// Tailwind opacity classes: the on-screen grid blends alpha over its panel.
 export const SHADE_CLASSES = [
   "bg-paper/[0.07]",
   "bg-paper/25",
   "bg-paper/45",
   "bg-paper/70",
   "bg-tape/90",
-] as const;
-export const SHADE_HEX = [
-  "#2a2620",
-  "#4a453c",
-  "#7d766a",
-  "#b8b0a2",
-  "#e8b84b",
 ] as const;
 
 /** Monday-first weekday index (0 = Monday … 6 = Sunday). */

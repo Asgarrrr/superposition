@@ -57,7 +57,7 @@ function isSubmittableDay(date: string): boolean {
 }
 
 /** What the board needs to start: the grid, and the clock it starts. */
-export interface DailyOpening {
+interface DailyOpening {
   /** Null only for an absent weekend épreuve — the route redirects. */
   puzzle: DailyPuzzle | null;
   /** The immutable anchor for this player — null whenever this result will not

@@ -16,8 +16,9 @@ same way.
 <p align="center"><sub>The last level, <em>Tectonique</em>, played out by the solver: moves, world drift (<code>decalage</code>), fusion (the pawns overlap to white), scission, then the amber lock — "ready to print".</sub></p>
 
 A React web game running on TanStack Start, fully playable in the browser. The
-core game is client-only; the optional **daily mode** (accounts, shared board,
-leaderboard) is the one part that talks to a server.
+core game is client-only. Everything that talks to a server is optional: the
+**daily mode** (accounts, shared board, leaderboard), the per-level
+leaderboards, and the public player pages.
 
 ## The idea
 
@@ -49,28 +50,31 @@ hashable**: no randomness during play, no real time, no hidden information. The
 direct consequence is that the game and the solver consume exactly the same API
 (`successors` / `isWin` / `hashState`), so they cannot drift apart.
 
-| Path                                    | Purpose                                                                              |
-| --------------------------------------- | ------------------------------------------------------------------------------------ |
-| `src/engine/types.ts`                   | The contract: the game state and the mechanic protocol                               |
-| `src/engine/{grid,state,successors}.ts` | Geometry, lifecycle, move enumeration                                                |
-| `src/engine/mechanics/`                 | One mechanic = one file + `registry.ts`                                              |
-| `src/engine/levels.ts`                  | The level bank (pure data, 22 boards)                                                |
-| `src/solver/`                           | Rule-agnostic BFS + the `verify` / `gen` CLIs                                        |
-| `src/ui/screens/`                       | The title / select / play screens                                                    |
-| `src/ui/components/`                    | Board, InkLayer, RegMark, Wordmark, Hud, Controls…                                   |
-| `src/ui/hooks/`                         | `useGame`, `useSound`, `useKeyboard`, `useSwipe`, `useBestScores`                    |
-| `src/routes/`                           | TanStack Start file-based routes (single `/` mounts the game; `api/` for daily mode) |
-| `src/db/`                               | Postgres + Drizzle: schema, client, `drizzle.config.ts`, `migrations/`               |
-| `src/lib/`                              | Better Auth setup (email + password)                                                 |
-| `project.inlang/messages/{fr,en}.json`  | i18n catalogue (translation source, inlang format)                                   |
+| Path                                    | Purpose                                                                                     |
+| --------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `src/engine/types.ts`                   | The contract: the game state and the mechanic protocol                                      |
+| `src/engine/{grid,state,successors}.ts` | Geometry, lifecycle, move enumeration                                                       |
+| `src/engine/mechanics/`                 | One mechanic = one file + `registry.ts`                                                     |
+| `src/engine/levels.ts`                  | The level bank (pure data, 22 boards)                                                       |
+| `src/solver/`                           | Rule-agnostic BFS + the `verify` / `gen` CLIs                                               |
+| `src/ui/screens/`                       | The title / select / play / profile screens, plus the 404-and-error fallback                |
+| `src/ui/components/`                    | Board, InkLayer, RegMark, Wordmark, Hud, Controls…                                          |
+| `src/ui/hooks/`                         | `useGame`, `useSound`, `useKeyboard`, `useSwipe`, `useBestScores`                           |
+| `src/routes/`                           | TanStack Start file-based routes — one per screen, plus `api/`, `sitemap.xml`, `robots.txt` |
+| `src/server/`                           | Server-only: daily puzzle, leaderboards, trace replay, OG cards, crawler documents          |
+| `src/db/`                               | Postgres + Drizzle: schema, client, `drizzle.config.ts`, `migrations/`                      |
+| `src/lib/`                              | Better Auth setup (email + password), streaks, distinctions                                 |
+| `project.inlang/messages/{fr,en}.json`  | i18n catalogue (translation source, inlang format)                                          |
 
 Data flow: input (keyboard / swipe / buttons) → `useGame.play` →
 `engine.applyInput` → new state → render.
 
 This repo is a TanStack Start (React 19 + Vite + Nitro) shell around the
-original game. SSR is disabled app-wide — the game needs `AudioContext`,
-`localStorage`, and keyboard/swipe — so the core loop is client-only. See
-`AGENTS.md` for the full port history and toolchain notes.
+original game. Components render client-side by default — the game needs
+`AudioContext`, `localStorage`, and keyboard/swipe — so the core loop is
+client-only; loaders and `<head>` still run on the server, and the public
+profile page renders there in full so crawlers see it. See `AGENTS.md` for the
+full port history and toolchain notes.
 
 ## Getting started
 
@@ -95,7 +99,7 @@ bun run db:migrate        # apply migrations to the database
 ```sh
 bun run dev          # dev server
 bun run build        # paraglide + tsc typecheck + vite build
-bun run test         # Vitest suite (engine only)
+bun run test         # Vitest: pure (engine, solver, rules) + dom (components)
 bun run lint         # oxlint
 bun run verify       # certify every board in the bank is solvable (via the solver)
 bun run gen          # hunt for new boards
@@ -126,8 +130,9 @@ bun run gen -- --mods fusion,scission --size 5 --min 18 --ms 30000
 
 Every displayed string goes through a key in `project.inlang/messages/{fr,en}.json`
 and is read as `m.key()` (Paraglide). `src/paraglide/` is generated (git-ignored)
-and regenerated on build, or by hand with `bun run paraglide`. The default
-language follows the browser, with a French fallback.
+and regenerated on build, or by hand with `bun run paraglide`. The locale is
+resolved from a cookie first, then the browser's preference, with a French
+fallback.
 
 ## Adding content
 

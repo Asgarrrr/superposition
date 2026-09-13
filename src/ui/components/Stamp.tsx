@@ -13,6 +13,7 @@
 
 import { m } from "../../paraglide/messages.js";
 import type { Distinction, Family } from "../../lib/distinctions.ts";
+import type { Held } from "../../lib/commemoratives.ts";
 
 // One plate colour per family. The four stamps carry four different engravings,
 // so it is the FAMILY that needs telling apart at a glance; the tier is read off
@@ -254,87 +255,219 @@ function Engraving({ d, ink }: { d: Distinction; ink: string }) {
   }
 }
 
-// ─── The stamp ───────────────────────────────────────────────
+// ─── Sissi ───────────────────────────────────────────────────
+// The workshop's cat, loafed across a board. Not an allegory of anything: it is
+// what she actually does, which is sit on whatever you are working on. Drawn
+// solid grey and white — she is a bicolour, not a tabby, so there is not a
+// single stripe on her anywhere.
+
+const CAT = "#55504a";
+const CAT_FUR = "#f7f3ec";
+const CAT_EAR = "#e2a8ad";
+const CAT_NOSE = "#e08a9a";
+const CAT_EYE = "#8ca55e";
+const CAT_LID = "#e6c2c4";
+
+/** One eye: a wide green ring around a big round pupil, the lid dark only along
+ *  the top. Ringing it all round is what made earlier passes read as a cartoon. */
+function CatEye() {
+  return (
+    <g>
+      <ellipse rx={4.5} ry={4} fill={CAT_LID} opacity={0.55} />
+      <path
+        d="M-4.1 0 C-3.9 -3.5 -0.6 -4.4 1.2 -3.4 C3 -2.4 4.1 -1.2 4.1 0 C4.1 2.4 2 3.7 0 3.7 C-2.2 3.7 -4.1 2.3 -4.1 0 Z"
+        fill={CAT_EYE}
+      />
+      <circle r={2.15} fill="#17130f" />
+      <circle cx={-0.75} cy={-0.95} r={0.5} fill={CAT_FUR} opacity={0.92} />
+      <path
+        d="M-4.2 -.6 C-3.9 -3.7 -0.5 -4.7 1.3 -3.6 C3.1 -2.6 4.2 -1.4 4.2 -.3"
+        fill="none"
+        stroke="#3f3a35"
+        strokeWidth={0.95}
+        strokeLinecap="round"
+      />
+      <path
+        d="M-4 .8 C-3.2 2.9 -1.6 3.8 0 3.8 C1.8 3.8 3.3 2.9 4 .8"
+        fill="none"
+        stroke="#8d8579"
+        strokeWidth={0.55}
+        strokeLinecap="round"
+        opacity={0.85}
+      />
+    </g>
+  );
+}
+
+const SKULL =
+  "M0 -13.5 C9 -13.5 14 -7 14 0 C14 8 8 13 0 13 C-8 13 -14 8 -14 0 C-14 -7 -9 -13.5 0 -13.5 Z";
+
+/** Her head. The markings are the likeness: a grey cap that comes down to a
+ *  POINT between the eyes, split by a white blaze running up to the right ear —
+ *  not a left/right split, which is what several earlier passes drew. */
+function CatHead() {
+  return (
+    <g>
+      <clipPath id="sissi-skull">
+        <path d={SKULL} />
+      </clipPath>
+
+      <path
+        d="M-13.5 -6 L-11.5 -19.5 L-1.5 -12.5 Z"
+        fill={CAT}
+        stroke={CAT}
+        strokeWidth={1.1}
+        strokeLinejoin="round"
+      />
+      <path d="M-11.4 -7.8 L-10.2 -16.6 L-4 -12z" fill={CAT_EAR} opacity={0.85} />
+      <path
+        d="M13.5 -6 L11.5 -19.5 L1.5 -12.5 Z"
+        fill={CAT_FUR}
+        stroke={CAT}
+        strokeWidth={1.15}
+        strokeLinejoin="round"
+      />
+      <path d="M11.4 -7.8 L10.2 -16.6 L4 -12z" fill={CAT_EAR} opacity={0.7} />
+      <path d="M13.5 -6 L11.5 -19.5 L8.4 -16.8z" fill={CAT} opacity={0.5} />
+      <g stroke={CAT_FUR} strokeWidth={0.8} strokeLinecap="round">
+        <path d="M-9.8 -9 l-1.8 -3.2M-7.4 -10.2 l-1.2 -3.4" />
+      </g>
+      <g stroke="#c9c2b6" strokeWidth={0.75} strokeLinecap="round">
+        <path d="M9.8 -9 l1.8 -3.2M7.4 -10.2 l1.2 -3.4" />
+      </g>
+
+      <path d={SKULL} fill={CAT_FUR} stroke={CAT} strokeWidth={1.2} />
+
+      <g clipPath="url(#sissi-skull)">
+        <path
+          d="M-22 -22 L22 -22 L22 -7.6 C16 -7.4 11 -6.6 7 -5.6 C4 -4.8 1.4 -3.8 -1.4 -3.1 C-3.4 -3.9 -5.6 -4.8 -8 -5.4 C-10.2 -6 -11.6 -4.4 -12.2 -1.6 C-12.8 1.6 -12.4 5.2 -11.4 8.4 L-22 12 Z"
+          fill={CAT}
+          opacity={0.52}
+        />
+        <path
+          d="M-0.6 -3.2 C1.4 -6 3.6 -9 5.6 -12 C6.8 -13.8 7.6 -15.6 8 -17.4 L13.6 -17.4 C13 -13.6 11.4 -10 9 -7.4 C7 -5.2 4 -3.8 0.8 -3.0 Z"
+          fill={CAT_FUR}
+        />
+      </g>
+
+      <g transform="translate(-6.2,-1.2)">
+        <CatEye />
+      </g>
+      <g transform="translate(6.2,-1.2) scale(-1,1)">
+        <CatEye />
+      </g>
+
+      <path
+        d="M-2.3 4.6 L2.3 4.6 L0 7.1 Z"
+        fill={CAT_NOSE}
+        stroke="#c4707f"
+        strokeWidth={0.5}
+      />
+      <g fill="none" stroke={CAT} strokeLinecap="round">
+        <path d="M0 7.1 V8.6" strokeWidth={0.9} />
+        <path d="M0 8.6 C-1.4 10.7 -4.4 10.5 -5.2 8.3" strokeWidth={0.95} />
+        <path d="M0 8.6 C1.4 10.7 4.4 10.5 5.2 8.3" strokeWidth={0.95} />
+      </g>
+      <g fill={CAT} opacity={0.34}>
+        <circle cx={-4.4} cy={5.9} r={0.36} />
+        <circle cx={-6.2} cy={7} r={0.36} />
+        <circle cx={4.4} cy={5.9} r={0.36} />
+        <circle cx={6.2} cy={7} r={0.36} />
+      </g>
+      <g stroke={CAT} strokeWidth={0.45} opacity={0.38} strokeLinecap="round">
+        <path d="M-8 5.2 C-13.4 3.2 -18 2.6 -21.6 3" />
+        <path d="M-8.2 6.8 C-13.8 6 -18.6 6.4 -21.8 7.6" />
+        <path d="M-7.8 8.4 C-13 8.8 -17.2 10.4 -20 12.4" />
+        <path d="M8 5.2 C13.4 3.2 18 2.6 21.6 3" />
+        <path d="M8.2 6.8 C13.8 6 18.6 6.4 21.8 7.6" />
+        <path d="M7.8 8.4 C13 8.8 17.2 10.4 20 12.4" />
+      </g>
+    </g>
+  );
+}
+
+/** The board she is lying on: 5 × 5 SQUARE cells, because the game's board is
+ *  square. An earlier pass stretched it to 13.6 × 10 and it read as wrong. */
+function SissiPlate() {
+  return (
+    <g>
+      <g stroke={CAT} fill="none" strokeWidth={0.75} opacity={0.3}>
+        <path d="M30 36h60M30 48h60M30 60h60M30 72h60M30 84h60M30 96h60M30 36v60M42 36v60M54 36v60M66 36v60M78 36v60M90 36v60" />
+      </g>
+      {/* the two inks, on a square she has not taken yet */}
+      <Fusion x={36.25} y={90} r={3.5} />
+
+      <path
+        d="M82 84 C92 84.5 94.5 76.5 90.5 71"
+        fill="none"
+        stroke={CAT}
+        strokeWidth={4.4}
+        strokeLinecap="round"
+        opacity={0.92}
+      />
+      <path
+        d="M36 89 C32.4 82.6 34.8 72.4 42.8 66.8 C50.6 61.4 63.6 60.8 72 65.4 C81 70.4 84 80 81 86.8 C79.6 89.8 75.6 90.8 70.6 90.8 L43.2 90.8 C39.4 90.8 37 90.2 36 89 Z"
+        fill={CAT}
+        opacity={0.3}
+      />
+      <path
+        d="M36 89 C32.4 82.6 34.8 72.4 42.8 66.8 C50.6 61.4 63.6 60.8 72 65.4 C81 70.4 84 80 81 86.8 C79.6 89.8 75.6 90.8 70.6 90.8 L43.2 90.8 C39.4 90.8 37 90.2 36 89 Z"
+        fill="none"
+        stroke={CAT}
+        strokeWidth={1.3}
+      />
+      <path
+        d="M40.4 89 C37.4 82.6 39.5 74.6 46.4 69.8 C52.4 65.6 59.5 64.4 64.3 65.4 C58.2 72.4 53.4 81.4 52.4 90.8 L44.2 90.8 C41.9 90.8 41 90.2 40.4 89 Z"
+        fill={CAT_FUR}
+      />
+      <g fill={CAT_FUR} stroke={CAT} strokeWidth={1}>
+        <path d="M42.8 86 h8.9 a2.85 2.85 0 0 1 0 4.9 h-8.9 a2.45 2.45 0 0 1 0 -4.9 z" />
+        <path d="M53.8 86 h8.9 a2.85 2.85 0 0 1 0 4.9 h-8.9 a2.45 2.45 0 0 1 0 -4.9 z" />
+      </g>
+      <g stroke={CAT} strokeWidth={0.55} opacity={0.45} strokeLinecap="round">
+        <path d="M45.8 87.7 v2.6M48.7 87.7 v2.6M56.8 87.7 v2.6M59.7 87.7 v2.6" />
+      </g>
+      <g transform="translate(51,59.5) scale(.84)">
+        <CatHead />
+      </g>
+    </g>
+  );
+}
+
+// ─── The sheet ───────────────────────────────────────────────
 
 const W = 120;
 const H = 148;
 
-export function Stamp({
-  distinction: d,
-  width = 116,
+/** The stamp itself, minus its subject: perforation, paper, burelage, frame,
+ *  issuer, footer band and cancellation. Shared so a commemorative and a series
+ *  value are the same object with a different engraving in the middle. */
+function Sheet({
+  uid,
+  ink,
+  width,
+  label,
+  face,
+  alt,
+  mark,
+  thickInner = false,
+  children,
 }: {
-  distinction: Distinction;
-  width?: number;
+  uid: string;
+  ink: string;
+  width: number;
+  label: string;
+  face: string;
+  alt: string;
+  mark: { day: string; year: string } | null;
+  thickInner?: boolean;
+  children: React.ReactNode;
 }) {
   const height = Math.round((width * H) / W);
-  const name = FAMILY_NAME[d.family]();
-
-  // an unopened family: the empty album mount, with what it takes written in
-  if (d.tier === 0) {
-    const goal = d.next === null ? "" : m.profile_stamp_goal({ next: d.next });
-    return (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width={width}
-        height={height}
-        viewBox={`0 0 ${W} ${H}`}
-        role="img"
-        aria-label={`${name} — ${goal}`}
-      >
-        <title>{`${name} — ${goal}`}</title>
-        <rect
-          x={8}
-          y={8}
-          width={104}
-          height={132}
-          rx={2}
-          fill="rgba(242,237,228,.02)"
-          stroke="rgba(242,237,228,.16)"
-          strokeWidth={1.4}
-          strokeDasharray="4 4"
-        />
-        <g fill="none" stroke="rgba(242,237,228,.13)" strokeWidth={1.2}>
-          <path d="M22 22h10M22 22v10M98 22H88M98 22v10M22 126h10M22 126v-10M98 126H88M98 126v-10" />
-        </g>
-        <text
-          x={60}
-          y={68}
-          textAnchor="middle"
-          fill="rgba(242,237,228,.30)"
-          fontFamily="Instrument Serif, Georgia, serif"
-          fontStyle="italic"
-          fontSize={15}
-        >
-          {m.profile_stamp_pending()}
-        </text>
-        <text
-          x={60}
-          y={86}
-          textAnchor="middle"
-          fill="rgba(242,237,228,.22)"
-          fontFamily="ui-monospace, Menlo, monospace"
-          fontSize={6.5}
-          letterSpacing={1.6}
-        >
-          {goal.toUpperCase()}
-        </text>
-      </svg>
-    );
-  }
-
-  const ink = INK[d.family];
-  const uid = `st-${d.family}`;
-  const face = String(d.threshold);
   // a four-figure value needs a wider cartouche than "5" does
   const wide = face.length > 3;
   const cartoucheX = wide ? 70 : 76;
   const cartoucheW = wide ? 32 : 26;
-  const mark = d.earnedOn ? postmark(d.earnedOn) : null;
-  const alt = m.profile_stamp_earned({
-    family: name,
-    threshold: d.threshold ?? 0,
-    date: d.earnedOn ?? "",
-  });
 
   return (
     // xmlns is redundant in the DOM but required once this same markup is
@@ -416,8 +549,6 @@ export function Stamp({
           />
         </g>
 
-        {/* frame — the top value thickens the inner rule, the only difference
-            between two values of one series besides the figure itself */}
         <rect
           x={15}
           y={15}
@@ -435,7 +566,7 @@ export function Stamp({
           height={112}
           fill="none"
           stroke={ink}
-          strokeWidth={d.next === null ? 1.1 : 0.6}
+          strokeWidth={thickInner ? 1.1 : 0.6}
           opacity={0.45}
         />
 
@@ -452,7 +583,7 @@ export function Stamp({
           SUPERPOSITION
         </text>
 
-        <Engraving d={d} ink={ink} />
+        {children}
 
         {/* footer band: label left, face value right — they can never collide */}
         <text
@@ -464,15 +595,9 @@ export function Stamp({
           fontSize={6}
           letterSpacing={1.4}
         >
-          {FAMILY_LABEL[d.family]()}
+          {label}
         </text>
-        <rect
-          x={cartoucheX}
-          y={106}
-          width={cartoucheW}
-          height={19}
-          fill={ink}
-        />
+        <rect x={cartoucheX} y={106} width={cartoucheW} height={19} fill={ink} />
         <text
           x={cartoucheX + cartoucheW / 2}
           y={120}
@@ -516,5 +641,115 @@ export function Stamp({
         )}
       </g>
     </svg>
+  );
+}
+
+// ─── The two kinds of stamp ──────────────────────────────────
+
+export function Stamp({
+  distinction: d,
+  width = 116,
+}: {
+  distinction: Distinction;
+  width?: number;
+}) {
+  const name = FAMILY_NAME[d.family]();
+
+  // an unopened family: the empty album mount, with what it takes written in
+  if (d.tier === 0) {
+    const height = Math.round((width * H) / W);
+    const goal = d.next === null ? "" : m.profile_stamp_goal({ next: d.next });
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width={width}
+        height={height}
+        viewBox={`0 0 ${W} ${H}`}
+        role="img"
+        aria-label={`${name} — ${goal}`}
+      >
+        <title>{`${name} — ${goal}`}</title>
+        <rect
+          x={8}
+          y={8}
+          width={104}
+          height={132}
+          rx={2}
+          fill="rgba(242,237,228,.02)"
+          stroke="rgba(242,237,228,.16)"
+          strokeWidth={1.4}
+          strokeDasharray="4 4"
+        />
+        <g fill="none" stroke="rgba(242,237,228,.13)" strokeWidth={1.2}>
+          <path d="M22 22h10M22 22v10M98 22H88M98 22v10M22 126h10M22 126v-10M98 126H88M98 126v-10" />
+        </g>
+        <text
+          x={60}
+          y={68}
+          textAnchor="middle"
+          fill="rgba(242,237,228,.30)"
+          fontFamily="Instrument Serif, Georgia, serif"
+          fontStyle="italic"
+          fontSize={15}
+        >
+          {m.profile_stamp_pending()}
+        </text>
+        <text
+          x={60}
+          y={86}
+          textAnchor="middle"
+          fill="rgba(242,237,228,.22)"
+          fontFamily="ui-monospace, Menlo, monospace"
+          fontSize={6.5}
+          letterSpacing={1.6}
+        >
+          {goal.toUpperCase()}
+        </text>
+      </svg>
+    );
+  }
+
+  return (
+    <Sheet
+      uid={`st-${d.family}`}
+      ink={INK[d.family]}
+      width={width}
+      label={FAMILY_LABEL[d.family]()}
+      face={String(d.threshold)}
+      thickInner={d.next === null}
+      mark={d.earnedOn ? postmark(d.earnedOn) : null}
+      alt={m.profile_stamp_earned({
+        family: name,
+        threshold: d.threshold ?? 0,
+        date: d.earnedOn ?? "",
+      })}
+    >
+      <Engraving d={d} ink={INK[d.family]} />
+    </Sheet>
+  );
+}
+
+/** A hors-série. It carries no face value to climb, so its cartouche reads
+ *  "H.S." — the philatelic mark for an issue outside the current series. */
+export function CommemorativeStamp({
+  held,
+  width = 116,
+}: {
+  held: Held;
+  width?: number;
+}) {
+  const name = m.profile_stamp_sissi();
+  return (
+    <Sheet
+      uid={`hs-${held.key}`}
+      ink={CAT}
+      width={width}
+      label={name.toUpperCase()}
+      face="H.S."
+      mark={postmark(held.earnedOn)}
+      alt={m.profile_stamp_commemorative({ name, date: held.earnedOn })}
+    >
+      <SissiPlate />
+    </Sheet>
   );
 }

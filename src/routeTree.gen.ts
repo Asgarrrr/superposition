@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as LevelsRouteImport } from './routes/levels'
 import { Route as AlignRouteImport } from './routes/align'
 import { Route as IndexRouteImport } from './routes/index'
@@ -16,10 +18,21 @@ import { Route as ProfileMeRouteImport } from './routes/profile.me'
 import { Route as ProfileUsernameRouteImport } from './routes/profile.$username'
 import { Route as LevelPlateRouteImport } from './routes/level.$plate'
 import { Route as DailyTierRouteImport } from './routes/daily.$tier'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiReplaySplatRouteImport } from './routes/api/replay/$'
 import { Route as ApiOgUsernameRouteImport } from './routes/api/og/$username'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LevelsRoute = LevelsRouteImport.update({
   id: '/levels',
   path: '/levels',
@@ -55,6 +68,11 @@ const DailyTierRoute = DailyTierRouteImport.update({
   path: '/daily/$tier',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiReplaySplatRoute = ApiReplaySplatRouteImport.update({
   id: '/api/replay/$',
   path: '/api/replay/$',
@@ -75,6 +93,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/align': typeof AlignRoute
   '/levels': typeof LevelsRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/health': typeof ApiHealthRoute
   '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
   '/profile/$username': typeof ProfileUsernameRoute
@@ -87,6 +108,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/align': typeof AlignRoute
   '/levels': typeof LevelsRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/health': typeof ApiHealthRoute
   '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
   '/profile/$username': typeof ProfileUsernameRoute
@@ -100,6 +124,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/align': typeof AlignRoute
   '/levels': typeof LevelsRoute
+  '/robots.txt': typeof RobotsDottxtRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/health': typeof ApiHealthRoute
   '/daily/$tier': typeof DailyTierRoute
   '/level/$plate': typeof LevelPlateRoute
   '/profile/$username': typeof ProfileUsernameRoute
@@ -114,6 +141,9 @@ export interface FileRouteTypes {
     | '/'
     | '/align'
     | '/levels'
+    | '/robots.txt'
+    | '/sitemap.xml'
+    | '/api/health'
     | '/daily/$tier'
     | '/level/$plate'
     | '/profile/$username'
@@ -126,6 +156,9 @@ export interface FileRouteTypes {
     | '/'
     | '/align'
     | '/levels'
+    | '/robots.txt'
+    | '/sitemap.xml'
+    | '/api/health'
     | '/daily/$tier'
     | '/level/$plate'
     | '/profile/$username'
@@ -138,6 +171,9 @@ export interface FileRouteTypes {
     | '/'
     | '/align'
     | '/levels'
+    | '/robots.txt'
+    | '/sitemap.xml'
+    | '/api/health'
     | '/daily/$tier'
     | '/level/$plate'
     | '/profile/$username'
@@ -151,6 +187,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlignRoute: typeof AlignRoute
   LevelsRoute: typeof LevelsRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   DailyTierRoute: typeof DailyTierRoute
   LevelPlateRoute: typeof LevelPlateRoute
   ProfileUsernameRoute: typeof ProfileUsernameRoute
@@ -162,6 +201,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/levels': {
       id: '/levels'
       path: '/levels'
@@ -211,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DailyTierRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/replay/$': {
       id: '/api/replay/$'
       path: '/api/replay/$'
@@ -239,6 +299,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlignRoute: AlignRoute,
   LevelsRoute: LevelsRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiHealthRoute: ApiHealthRoute,
   DailyTierRoute: DailyTierRoute,
   LevelPlateRoute: LevelPlateRoute,
   ProfileUsernameRoute: ProfileUsernameRoute,

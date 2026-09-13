@@ -4,7 +4,7 @@
 
 import { shiftDay } from "./day.ts";
 
-export interface Streaks {
+interface Streaks {
   total: number; // distinct days played
   current: number; // consecutive days ending today (or yesterday, grace window)
   longest: number; // longest consecutive run ever

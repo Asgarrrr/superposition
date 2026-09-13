@@ -92,10 +92,7 @@ export async function fetchRow(
 /** A campaign-band tier (0–2): the DB row, else the deterministic bank fallback,
  *  so /daily is always playable. NOT for the weekend tier (it has no fallback —
  *  use `puzzleFor`, which may resolve null). */
-export async function resolveDaily(
-  date: string,
-  tier: number,
-): Promise<DailyPuzzle> {
+async function resolveDaily(date: string, tier: number): Promise<DailyPuzzle> {
   return (await fetchRow(date, tier)) ?? fallbackPuzzle(date, tier);
 }
 

@@ -102,7 +102,7 @@ const chip =
 /** Daily mode: one tier of the day's challenge, played for the shared
  *  per-tier leaderboard rather than the campaign. Swaps the HUD banner and the
  *  win overlay. `tier` is 0 easy · 1 medium · 2 hard. */
-export interface DailyMode {
+interface DailyMode {
   date: string;
   tier: number;
   optimal: number;

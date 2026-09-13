@@ -3,7 +3,10 @@
 # database to talk to locally. Data lives in a named volume.
 services:
   postgres:
-    image: postgres:17-alpine
+    # Same major as production (Railway runs postgres-ssl:18). Bumping this
+    # major invalidates the existing volume: `docker compose down -v` then
+    # `bun run db:migrate`.
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: superposition

@@ -15,9 +15,10 @@ import { USERNAME_RE } from "../lib/username.ts";
 import { PAR } from "../engine/par.ts";
 import { WEEKEND_TIER } from "./dailyPuzzle.ts";
 import type { DistinctionInput } from "../lib/distinctions.ts";
+import type { Held } from "../lib/commemoratives.ts";
 
 /** One campaign board the player has put on the record. */
-export interface PlateRecord {
+interface PlateRecord {
   levelId: string;
   moves: number;
   undos: number;
@@ -33,6 +34,10 @@ export interface DailyHistory {
   plates: PlateRecord[];
   /** Correction-free solves, daily and campaign — one of the four figures. */
   cleanCount: number;
+  /** The hors-série this account holds. Always empty for now: no easter egg
+   *  grants one yet, so the Sissi stamp is issued but unobtainable. When the
+   *  trigger exists it fills this list and nothing else has to change. */
+  commemoratives: Held[];
 }
 
 const FIELDS = {
@@ -120,6 +125,7 @@ async function historyFor(row: {
     cleanCount:
       daily.filter((r) => r.undos === 0).length +
       campaign.filter((r) => r.undos === 0).length,
+    commemoratives: [],
   };
 }
 

@@ -16,12 +16,16 @@ import type { TraceStep } from "../engine/types.ts";
 import type { Ledger, Win } from "./progression.ts";
 import { undosOf } from "./submissionPolicy.ts";
 
-/** One of the caller's stored rows. `undos` is the correction count of that
- *  stored best — zero means the row earned the clean seal. */
+/** One of the caller's stored rows. Two facts, deliberately not one: `undos` is
+ *  the correction count of that STORED BEST — what the boards rank and seal on,
+ *  and what `planUploads` breaks a tie on — while `everClean` says the level was
+ *  once solved with no correction at all, true even when that run is not the row
+ *  the server kept. */
 export interface ServerScore {
   levelId: string;
   moves: number;
   undos: number;
+  everClean: boolean;
 }
 
 /**
@@ -31,18 +35,19 @@ export interface ServerScore {
  * store a trace for a record it may not match. The ledger drops any stale one
  * instead, and the upload path re-reads the trace from the server anyway.
  *
- * The seal comes from the row's own correction count, which is what the boards
- * already rank and seal on. Note what this cannot recover: the server keeps one
- * row per level, not a history, so a player whose clean run was NOT their best
- * row has no "ever solved cleanly" fact for the server to return.
+ * The seal comes from `everClean`, NOT from the row's own correction count. The
+ * server keeps one best row per level, not a history, so reading the row would
+ * drop the seal of a player whose "sans retouche" run was not their record —
+ * the very gap that column was added to close. It remembers the fact on the
+ * player's behalf; here the ledger just takes it, sticky as ever.
  */
 export const asWin = (s: ServerScore): Win => ({
   levelId: s.levelId,
   moves: s.moves,
-  clean: s.undos === 0,
+  clean: s.everClean,
 });
 
-export interface Upload {
+interface Upload {
   levelId: string;
   trace: TraceStep[];
 }

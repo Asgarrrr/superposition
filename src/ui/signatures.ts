@@ -7,7 +7,7 @@
 import type { GameState, Input, Level } from "../engine/types.ts";
 import type { SoundFx } from "./hooks/useSound.ts";
 
-export interface Signature {
+interface Signature {
   fx: keyof Pick<
     SoundFx,
     "block" | "merge" | "shift" | "split" | "slide" | "move"

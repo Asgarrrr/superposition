@@ -2,6 +2,7 @@
   "name": "superposition",
   "private": true,
   "type": "module",
+  "packageManager": "bun@1.4.0",
   "imports": {
     "#/*": "./src/*"
   },
@@ -13,7 +14,7 @@
     "gen:icons": "bun scripts/gen-icons.ts",
     "start": "bun .output/server/index.mjs",
     "preview": "vite preview",
-    "lint": "oxlint",
+    "lint": "oxlint --max-warnings=12",
     "test": "bun run paraglide && vitest run",
     "verify": "bun src/solver/verify.ts",
     "gen": "bun src/solver/generate.ts",

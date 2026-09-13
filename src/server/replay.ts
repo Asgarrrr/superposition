@@ -27,9 +27,9 @@ function assertValidInput(step: { kind?: unknown; dir?: unknown }): void {
 // Hard ceiling on submitted length: a raw trace carries corrections (undo/reset)
 // so it runs longer than a clean solution, but no honest play is near this long
 // and it bounds replay work per request.
-export const MAX_TRACE = 2000;
+const MAX_TRACE = 2000;
 
-export interface TraceResult {
+interface TraceResult {
   ok: boolean;
   moves: number; // length of the final winning line (corrections don't count)
   corrections: number; // undos on the winning attempt, resets excluded (0 = clean solve)
@@ -37,7 +37,7 @@ export interface TraceResult {
 
 const TRACE_REJECT: TraceResult = { ok: false, moves: 0, corrections: 0 };
 
-export interface ReplayRun {
+interface ReplayRun {
   states: GameState[]; // initial state first, then one per surviving input
   corrections: number; // undos since the last reset (a reset zeroes the tally)
 }

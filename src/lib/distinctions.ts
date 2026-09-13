@@ -13,14 +13,6 @@ import { shiftDay } from "./day.ts";
 
 export type Family = "regularite" | "maitrise" | "rarete" | "edition";
 
-/** The four families, in the order they are printed on the sheet. */
-export const FAMILIES: readonly Family[] = [
-  "regularite",
-  "maitrise",
-  "rarete",
-  "edition",
-] as const;
-
 /** Each family's four face values. Ascending, always four. */
 export const THRESHOLDS: Record<Family, readonly number[]> = {
   regularite: [7, 30, 100, 365],
@@ -122,9 +114,9 @@ function resolve(
   };
 }
 
-/** The four distinctions, always all four and always in `FAMILIES` order. A
- *  family the player has not opened yet comes back at tier 0 with `next` set —
- *  that is the empty album mount, not an absence. */
+/** The four distinctions, always all four and always in the order they are
+ *  printed on the sheet. A family the player has not opened yet comes back at
+ *  tier 0 with `next` set — that is the empty album mount, not an absence. */
 export function distinctions(input: DistinctionInput): Distinction[] {
   const runs = runsOf(input.days);
 
