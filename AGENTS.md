@@ -103,8 +103,13 @@ routing, and build were migrated.
 - `bun run auth:generate` — regenerate the Better Auth tables via the CLI (`bunx`,
   overwrites `src/db/schema.ts` — re-append our tables from git after:
   `dailyPuzzle`, `dailyScore`, `dailyView`, `levelScore`)
-- `bun run lint` — oxlint
+- `bun run lint` — oxlint, capped at `--max-warnings=12` (see "Key decisions")
 - `bun run generate-routes` — regenerate the route tree (`tsr generate`)
+
+CI (`.github/workflows/ci.yml`) runs `lint` → `test` → `verify` → `build` on
+every push to `main` and every pull request, on the bun version pinned by
+`packageManager`. No Postgres service: no test imports `src/db/index.ts` or
+reads `DATABASE_URL`, and the suite stays stateless on purpose.
 
 ### Environment variables
 
@@ -115,7 +120,10 @@ Copy `.env.example` → `.env` for local dev (bun auto-loads it); Railway inject
 the real values.
 
 - `DATABASE_URL` — Postgres connection. Local dev via `docker-compose.yml`; on
-  Railway use `${{Postgres.DATABASE_URL}}` (private host, no SSL).
+  Railway use `${{Postgres.DATABASE_URL}}` (private host, no SSL). The compose
+  image is `postgres:18-alpine`, matching production's major. It was 17: a data
+  directory written by 17 will not start under 18, so a checkout that predates
+  the bump needs `docker compose down -v` then `bun run db:migrate`.
 - `BETTER_AUTH_SECRET` — `openssl rand -base64 32`.
 - `BETTER_AUTH_URL` — the app's public origin (also added to `trustedOrigins`).
   Doubles as the origin for every absolute URL the server emits: `og:image` and
@@ -220,7 +228,7 @@ NOT serve the client assets alongside the handler — that's why we use Nitro.)
 Topology in `.railway/railway.ts`:
 
 - **web** — `source: github(...)`, build `bun run build`, start `bun run start`,
-  `preDeployCommand: bun run db:migrate`, healthcheck `/`. Env: `DATABASE_URL`
+  `preDeployCommand: bun run db:migrate`, healthcheck `/api/health`. Env: `DATABASE_URL`
   from the Postgres ref; `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` set out of band
   (secrets, `preserve()`d in IaC).
 - **Postgres** — `postgres("Postgres")`; other services reference its
@@ -229,6 +237,19 @@ Topology in `.railway/railway.ts`:
   start `bun run gen:daily`, `deploy.cronSchedule = "0 5 * * *"` (UTC),
   `restartPolicyType: "NEVER"`. The generator closes the pool and `exit(0)` or
   the next run is skipped.
+
+`/api/health` (`src/routes/api/health.ts` → `src/server/health.ts`) runs
+`select 1` against the pool and answers 200 `{"status":"ok"}` or 503
+`{"status":"degraded"}`, `cache-control: no-store`. The old target, `/`, served
+the SPA shell and answered 200 to an instance that could not reach its database.
+`pg` has no timeout configured, so the probe races the query against a 2 s
+deadline — that race is in `probe()`, not on the shared pool; putting a deadline
+on every query is a separate decision. The failure reason goes to the logs, not
+the body: the route is public and a driver error names the host and user.
+
+Railpack builds `web`; it reads `packageManager` from `package.json`, which is
+why bun is pinned there (`bun@1.4.0`) and why CI's `setup-bun` repeats the same
+literal.
 
 Secrets to set once (dashboard/CLI, not in the file): `BETTER_AUTH_SECRET`
 (`openssl rand -base64 32`) and `BETTER_AUTH_URL` (the web service's public
@@ -246,7 +267,12 @@ Runtime network dependency: the Instrument Serif web font (Google Fonts).
 - The dozen `react/only-export-components` oxlint warnings are inherent to
   TanStack file-route modules (they export both `Route` and a component), so
   `bun run lint` is green with them; `__root.tsx` alone accounts for three (the
-  shell plus the two boundaries). A THIRTEENTH is a regression.
+  shell plus the two boundaries). A THIRTEENTH is a regression, and
+  `--max-warnings=12` now enforces that rather than leaving it to this
+  paragraph. The rule counts about one warning per route module, not one per
+  stray export: adding a non-component export to a file that already warns moves
+  the warning without adding one. What reaches 13 is a NEW route module — so
+  raise the cap deliberately when you add a route, never to get back to green.
 - `@better-auth/core` must resolve to the **same** version as `better-auth`
   (1.6.23). `@better-auth/cli` lags (1.4.21) and drags an old core, so it's NOT a
   dependency — `auth:generate` runs it via `bunx @better-auth/cli@latest`.
